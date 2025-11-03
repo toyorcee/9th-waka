@@ -1,0 +1,37 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const PENDING_ACTION_KEY = "pendingAction";
+
+export type PendingAction = "request" | "track" | "sos" | null;
+
+export const navigationHelper = {
+  setPendingAction: async (action: PendingAction): Promise<void> => {
+    try {
+      if (action) {
+        await AsyncStorage.setItem(PENDING_ACTION_KEY, action);
+      } else {
+        await AsyncStorage.removeItem(PENDING_ACTION_KEY);
+      }
+    } catch (error) {
+      console.error("Error storing pending action:", error);
+    }
+  },
+
+  getPendingAction: async (): Promise<PendingAction> => {
+    try {
+      const action = await AsyncStorage.getItem(PENDING_ACTION_KEY);
+      return (action as PendingAction) || null;
+    } catch (error) {
+      console.error("Error getting pending action:", error);
+      return null;
+    }
+  },
+
+  clearPendingAction: async (): Promise<void> => {
+    try {
+      await AsyncStorage.removeItem(PENDING_ACTION_KEY);
+    } catch (error) {
+      console.error("Error clearing pending action:", error);
+    }
+  },
+};

@@ -1,0 +1,126 @@
+import {
+  getStoredToken,
+  loginUser,
+  registerUser,
+  removeToken,
+  storeToken,
+  User,
+} from "@/services/authApi";
+import React, { createContext, useContext, useEffect, useState } from "react";
+
+interface AuthContextType {
+  user: User | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  register: (
+    email: string,
+    password: string,
+    role?: "customer" | "rider"
+  ) => Promise<void>;
+  logout: () => Promise<void>;
+  updateUser: (updates: Partial<User>) => void;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Check if user is logged in when app starts
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
+
+  const checkAuthStatus = async () => {
+    try {
+      const token = await getStoredToken();
+      if (token) {
+        // Token exists, but we need to validate it
+        // For now, we'll just check if token exists
+        // You could add a "verify token" API call here
+        console.log("Token found, user is logged in");
+      } else {
+        console.log("No token found");
+      }
+    } catch (error) {
+      console.error("Error checking auth status:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const login = async (email: string, password: string) => {
+    try {
+      const response = await loginUser({ email, password });
+      await storeToken(response.token);
+      setUser(response.user);
+      console.log("✅ Login successful");
+    } catch (error: any) {
+      console.error("Login error:", error);
+      throw error;
+    }
+  };
+
+  const register = async (
+    email: string,
+    password: string,
+    role?: "customer" | "rider"
+  ) => {
+    try {
+      const response = await registerUser({
+        email,
+        password,
+        role: role || "customer",
+      });
+      await storeToken(response.token);
+      setUser(response.user);
+      console.log("✅ Registration successful");
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      throw error;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await removeToken();
+      setUser(null);
+      console.log("✅ Logout successful");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
+  const updateUser = (updates: Partial<User>) => {
+    setUser((prevUser) => {
+      if (!prevUser) return prevUser;
+      return { ...prevUser, ...updates };
+    });
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        isAuthenticated: !!user,
+        login,
+        register,
+        logout,
+        updateUser,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};

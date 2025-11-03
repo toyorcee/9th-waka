@@ -1,0 +1,78 @@
+import { apiClient } from "./apiClient";
+import { storage } from "./storage";
+
+export interface User {
+  id: string;
+  email: string;
+  profilePicture?: string | null;
+  role?: "customer" | "rider" | "admin";
+  fullName?: string | null;
+  phoneNumber?: string | null;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  message: string;
+  token: string;
+  user: User;
+}
+
+export interface VerifyPayload {
+  email: string;
+  code: string;
+}
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface RegisterCredentials {
+  email: string;
+  password: string;
+  role?: "customer" | "rider";
+}
+
+export const registerUser = async (
+  credentials: RegisterCredentials
+): Promise<AuthResponse> => {
+  try {
+    const response = await apiClient.post("/auth/register", credentials);
+    // Server returns: { success, message, token, user }
+    return response.data;
+  } catch (error: any) {
+    // Server error format: { success: false, error: "..." }
+    const errorMessage =
+      error.response?.data?.error || error.message || "Registration failed";
+    throw new Error(errorMessage);
+  }
+};
+
+export const loginUser = async (
+  credentials: LoginCredentials
+): Promise<AuthResponse> => {
+  try {
+    const response = await apiClient.post("/auth/login", credentials);
+    // Server returns: { success, message, token, user }
+    return response.data;
+  } catch (error: any) {
+    // Server error format: { success: false, error: "..." }
+    const errorMessage =
+      error.response?.data?.error || error.message || "Login failed";
+    throw new Error(errorMessage);
+  }
+};
+
+export const verifyEmailCode = async (payload: VerifyPayload) => {
+  const response = await apiClient.post("/auth/verify", payload);
+  return response.data;
+};
+
+export const resendVerification = async (email: string) => {
+  const response = await apiClient.post("/auth/resend-verification", { email });
+  return response.data;
+};
+
+export const getStoredToken = storage.getToken;
+export const storeToken = storage.setToken;
+export const removeToken = storage.removeToken;
