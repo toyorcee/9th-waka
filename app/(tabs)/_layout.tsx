@@ -1,25 +1,64 @@
 import { IconNames, Icons, MCIconNames } from "@/constants/icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { Tabs } from "expo-router";
+import React from "react";
+import { View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const TabIcon = ({
+  focused,
+  IconComp,
+  name,
+  size = 22,
+}: {
+  focused: boolean;
+  IconComp: any;
+  name: string;
+  size?: number;
+}) => (
+  <View className="items-center justify-center">
+    <IconComp
+      name={name as any}
+      size={size}
+      color={focused ? "#AB8BFF" : "#9CA4AB"}
+    />
+  </View>
+);
 
 export default function TabsLayout() {
-  const { user, isLoading } = useAuth();
+  const { user } = useAuth();
   const userRole = user?.role || "customer";
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = 65;
+  const bottomPadding = insets.bottom > 0 ? insets.bottom : 20;
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#AB8BFF",
-        tabBarInactiveTintColor: "#9CA4AB",
+        tabBarShowLabel: false,
+        tabBarItemStyle: {
+          width: "100%",
+          height: "100%",
+          justifyContent: "center",
+          alignItems: "center",
+          paddingVertical: 8,
+        },
         tabBarStyle: {
           backgroundColor: "#030014",
-          borderTopColor: "#3A3A3C",
-          borderTopWidth: 1,
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: "600",
+          borderRadius: 25,
+          marginHorizontal: 16,
+          marginBottom: bottomPadding,
+          position: "absolute",
+          overflow: "hidden",
+          borderWidth: 1,
+          borderColor: "#3A3A3C",
+          height: tabBarHeight,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+          elevation: 8,
         },
       }}
     >
@@ -28,90 +67,86 @@ export default function TabsLayout() {
         name="home"
         options={{
           title: "Home",
-          tabBarIcon: ({ color, size }) => (
-            <Icons.navigation
-              name={IconNames.homeOutline as any}
-              size={size}
-              color={color}
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              focused={focused}
+              IconComp={Icons.navigation}
+              name={IconNames.homeOutline}
             />
           ),
         }}
       />
 
-      {/* Customer Tabs */}
-      {userRole === "customer" && (
-        <>
-          <Tabs.Screen
-            name="orders"
-            options={{
-              title: "My Orders",
-              tabBarIcon: ({ color, size }) => (
-                <Icons.package
-                  name={IconNames.packageOutline as any}
-                  size={size}
-                  color={color}
-                />
-              ),
-            }}
-          />
-          <Tabs.Screen
-            name="track"
-            options={{
-              title: "Track",
-              tabBarIcon: ({ color, size }) => (
-                <Icons.map
-                  name={IconNames.mapOutline as any}
-                  size={size}
-                  color={color}
-                />
-              ),
-            }}
-          />
-        </>
-      )}
+      {/* Customer-specific tabs (shown when role is customer; hidden otherwise) */}
+      <Tabs.Screen
+        name="orders"
+        options={{
+          title: "My Orders",
+          href: userRole === "customer" ? undefined : null,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              focused={focused}
+              IconComp={Icons.package}
+              name={MCIconNames.packageVariant}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="track"
+        options={{
+          title: "Track",
+          href: userRole === "customer" ? undefined : null,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              focused={focused}
+              IconComp={Icons.map}
+              name={IconNames.mapOutline}
+            />
+          ),
+        }}
+      />
 
-      {/* Rider Tabs */}
-      {userRole === "rider" && (
-        <>
-          <Tabs.Screen
-            name="deliveries"
-            options={{
-              title: "Deliveries",
-              tabBarIcon: ({ color, size }) => (
-                <Icons.delivery
-                  name={MCIconNames.delivery as any}
-                  size={size}
-                  color={color}
-                />
-              ),
-            }}
-          />
-          <Tabs.Screen
-            name="earnings"
-            options={{
-              title: "Earnings",
-              tabBarIcon: ({ color, size }) => (
-                <Icons.money
-                  name={MCIconNames.cash as any}
-                  size={size}
-                  color={color}
-                />
-              ),
-            }}
-          />
-        </>
-      )}
+      {/* Rider-specific tabs (shown when role is rider; hidden otherwise) */}
+      <Tabs.Screen
+        name="deliveries"
+        options={{
+          title: "Deliveries",
+          href: userRole === "rider" ? undefined : null,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              focused={focused}
+              IconComp={Icons.delivery}
+              name={MCIconNames.delivery}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="earnings"
+        options={{
+          title: "Earnings",
+          href: userRole === "rider" ? undefined : null,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              focused={focused}
+              IconComp={Icons.money}
+              name={MCIconNames.cash}
+            />
+          ),
+        }}
+      />
 
       {/* Core Tab - Profile (All Users) */}
       <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color, size }) => (
-            <Icons.user
-              name={IconNames.personOutline as any}
-              size={size}
-              color={color}
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              focused={focused}
+              IconComp={Icons.user}
+              name={IconNames.personOutline}
             />
           ),
         }}

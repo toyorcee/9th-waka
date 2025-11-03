@@ -38,10 +38,8 @@ export const registerUser = async (
 ): Promise<AuthResponse> => {
   try {
     const response = await apiClient.post("/auth/register", credentials);
-    // Server returns: { success, message, token, user }
     return response.data;
   } catch (error: any) {
-    // Server error format: { success: false, error: "..." }
     const errorMessage =
       error.response?.data?.error || error.message || "Registration failed";
     throw new Error(errorMessage);
@@ -53,17 +51,17 @@ export const loginUser = async (
 ): Promise<AuthResponse> => {
   try {
     const response = await apiClient.post("/auth/login", credentials);
-    // Server returns: { success, message, token, user }
     return response.data;
   } catch (error: any) {
-    // Server error format: { success: false, error: "..." }
     const errorMessage =
       error.response?.data?.error || error.message || "Login failed";
     throw new Error(errorMessage);
   }
 };
 
-export const verifyEmailCode = async (payload: VerifyPayload) => {
+export const verifyEmailCode = async (
+  payload: VerifyPayload
+): Promise<AuthResponse> => {
   const response = await apiClient.post("/auth/verify", payload);
   return response.data;
 };
@@ -76,3 +74,8 @@ export const resendVerification = async (email: string) => {
 export const getStoredToken = storage.getToken;
 export const storeToken = storage.setToken;
 export const removeToken = storage.removeToken;
+
+export const fetchCurrentUser = async () => {
+  const response = await apiClient.get("/auth/me");
+  return response.data;
+};

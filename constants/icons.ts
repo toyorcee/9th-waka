@@ -151,7 +151,7 @@ export const IconNames = {
   medicalOutline: "medical-outline",
   sos: "alert-circle",
   security: "lock-closed",
-  securityOutline: "lock-outline",
+  securityOutline: "lock-closed-outline",
 
   // Communication
   call: "call",

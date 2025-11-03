@@ -35,3 +35,25 @@ export const navigationHelper = {
     }
   },
 };
+
+// Centralized route map
+export const Routes = {
+  tabs: {
+    home: "/(tabs)/home",
+    orders: "/(tabs)/orders",
+    track: "/(tabs)/track",
+    deliveries: "/(tabs)/deliveries",
+    earnings: "/(tabs)/earnings",
+    profile: "/(tabs)/profile",
+  },
+  standalone: {
+    auth: "/auth",
+    newOrder: "/orders/new",
+    orderDetail: (id: string) => `/orders/${id}`,
+    chatList: "/chat",
+    chatForOrder: (orderId: string) => `/chat/${orderId}`,
+    sos: "/sos",
+    profileEdit: "/profile/edit",
+    profileSettings: "/profile/settings",
+  },
+} as const;

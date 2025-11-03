@@ -1,4 +1,5 @@
 import {
+  fetchCurrentUser,
   getStoredToken,
   loginUser,
   registerUser,
@@ -12,6 +13,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  checkAuthStatus: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   register: (
     email: string,
@@ -19,6 +21,7 @@ interface AuthContextType {
     role?: "customer" | "rider"
   ) => Promise<void>;
   logout: () => Promise<void>;
+  verifyEmail: (token: string, user: User) => Promise<void>;
   updateUser: (updates: Partial<User>) => void;
 }
 
@@ -28,7 +31,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check if user is logged in when app starts
   useEffect(() => {
     checkAuthStatus();
   }, []);
@@ -37,10 +39,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const token = await getStoredToken();
       if (token) {
-        // Token exists, but we need to validate it
-        // For now, we'll just check if token exists
-        // You could add a "verify token" API call here
-        console.log("Token found, user is logged in");
+        try {
+          const me = await fetchCurrentUser();
+          const u = me?.user || me;
+          if (u?.id || u?._id)
+            setUser({
+              id: String(u.id || u._id),
+              email: u.email,
+              profilePicture: u.profilePicture ?? null,
+              role: u.role,
+              fullName: u.fullName ?? null,
+              phoneNumber: u.phoneNumber ?? null,
+            });
+        } catch (e) {
+          console.error("/auth/me failed", e);
+        }
       } else {
         console.log("No token found");
       }
@@ -74,9 +87,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         password,
         role: role || "customer",
       });
-      await storeToken(response.token);
-      setUser(response.user);
-      console.log("✅ Registration successful");
+
+      console.log("✅ Registration successful (verification required)");
     } catch (error: any) {
       console.error("Registration error:", error);
       throw error;
@@ -93,6 +105,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const verifyEmail = async (token: string, user: User) => {
+    try {
+      await storeToken(token);
+      setUser(user);
+      console.log("✅ Email verified and user logged in");
+    } catch (error) {
+      console.error("Error completing verification:", error);
+      throw error;
+    }
+  };
+
   const updateUser = (updates: Partial<User>) => {
     setUser((prevUser) => {
       if (!prevUser) return prevUser;
@@ -106,9 +129,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         user,
         isLoading,
         isAuthenticated: !!user,
+        checkAuthStatus,
         login,
         register,
         logout,
+        verifyEmail,
         updateUser,
       }}
     >

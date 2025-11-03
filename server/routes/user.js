@@ -1,10 +1,12 @@
 import express from "express";
-import { uploadProfilePicture } from "../controllers/userController.js";
+import {
+  updateProfile,
+  uploadProfilePicture,
+} from "../controllers/userController.js";
 import { protect } from "../middleware/auth.js";
 import { upload } from "../middleware/upload.js";
 
 const router = express.Router();
-
 
 router.post(
   "/profile-picture",
@@ -38,3 +40,8 @@ router.post(
 );
 
 export default router;
+
+// PUT /api/user/profile
+router.put("/profile", protect, async (req, res, next) => {
+  return updateProfile(req, res, next);
+});

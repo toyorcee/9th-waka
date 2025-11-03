@@ -1,5 +1,6 @@
 import { IconNames, Icons } from "@/constants/icons";
 import { useAuth } from "@/contexts/AuthContext";
+import { Routes } from "@/services/navigationHelper";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ActivityIndicator,
@@ -81,13 +82,15 @@ export default function OrderDetailScreen() {
           {/* Actions */}
           <View className="flex-row gap-3">
             <TouchableOpacity
-              onPress={() => router.push(`/chat/${id}` as any)}
+              onPress={() =>
+                router.push(Routes.standalone.chatForOrder(String(id)) as any)
+              }
               className="flex-1 bg-accent rounded-xl p-4 items-center"
             >
               <Text className="text-primary font-bold">Chat</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => router.push("/(tabs)/track")}
+              onPress={() => router.push(Routes.tabs.track)}
               className="flex-1 bg-accentWarm rounded-xl p-4 items-center"
             >
               <Text className="text-primary font-bold">Track</Text>

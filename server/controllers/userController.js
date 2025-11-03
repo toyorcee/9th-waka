@@ -1,4 +1,6 @@
+import { SocketEvents } from "../constants/socketEvents.js";
 import User from "../models/User.js";
+import { io } from "../server.js";
 
 export const uploadProfilePicture = async (req, res) => {
   console.log("📥 [PROFILE] Upload profile picture request received");
@@ -84,8 +86,52 @@ export const uploadProfilePicture = async (req, res) => {
         profilePicture: user.profilePicture,
       },
     });
+    try {
+      io.to(`user:${user._id}`).emit(SocketEvents.PROFILE_UPDATED, {
+        userId: user._id.toString(),
+      });
+    } catch {}
   } catch (error) {
     console.error("❌ [PROFILE] Error uploading profile picture:", error);
     res.status(500).json({ error: "Server error" });
+  }
+};
+
+export const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user?.userId || req.user?._id;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, error: "User not found" });
+    }
+
+    const { fullName, phoneNumber } = req.body || {};
+
+    if (typeof fullName !== "undefined") user.fullName = fullName || null;
+    if (typeof phoneNumber !== "undefined")
+      user.phoneNumber = phoneNumber || null;
+
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: "Profile updated",
+      user: {
+        id: user._id,
+        email: user.email,
+        fullName: user.fullName,
+        phoneNumber: user.phoneNumber,
+        profilePicture: user.profilePicture,
+        role: user.role,
+      },
+    });
+    try {
+      io.to(`user:${user._id}`).emit(SocketEvents.PROFILE_UPDATED, {
+        userId: user._id.toString(),
+      });
+    } catch {}
+  } catch (e) {
+    console.error("❌ [PROFILE] Error updating profile:", e);
+    return res.status(500).json({ success: false, error: "Server error" });
   }
 };

@@ -2,11 +2,14 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
+import path from "path";
+import { fileURLToPath } from "url";
+import { SocketEvents } from "../constants/socketEvents.js";
 import User from "../models/User.js";
+import { io } from "../server.js";
 import { buildDarkEmailTemplate } from "../services/emailTemplates.js";
 import { createAndSendNotification } from "../services/notificationService.js";
 
-// Generate JWT Token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE || "30d",
@@ -44,9 +47,8 @@ const getEmailTransporter = () => {
   });
 };
 
-const transporter = getEmailTransporter();
-
 const sendEmail = async ({ to, subject, html }) => {
+  const transporter = getEmailTransporter();
   if (!transporter || !process.env.EMAIL_USER) {
     console.log(
       "✉️ [EMAIL] Skipped: EMAIL_* not configured (set EMAIL_SERVICE/EMAIL_USER/EMAIL_PASSWORD)"
@@ -57,7 +59,29 @@ const sendEmail = async ({ to, subject, html }) => {
   }
 
   try {
-    await transporter.sendMail({
+    try {
+      await transporter.verify();
+      console.log("✉️ [EMAIL] Transport verified: ready to send");
+    } catch (verifyErr) {
+      console.warn(
+        "⚠️ [EMAIL] Transport verify failed:",
+        verifyErr?.message || verifyErr
+      );
+    }
+
+    const useCid = (process.env.EMAIL_USE_CID || "").toLowerCase() === "true";
+    const logoCid = process.env.EMAIL_LOGO_CID || "brandLogo";
+    let attachments = [];
+    if (useCid) {
+      try {
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = path.dirname(__filename);
+        const logoPath = path.join(__dirname, "../assets/Night-Waka.png");
+        attachments = [{ filename: "logo.png", path: logoPath, cid: logoCid }];
+      } catch (e) {}
+    }
+
+    const info = await transporter.sendMail({
       from:
         process.env.EMAIL_FROM ||
         process.env.EMAIL_USER ||
@@ -65,8 +89,16 @@ const sendEmail = async ({ to, subject, html }) => {
       to,
       subject,
       html,
+      attachments,
     });
-    console.log("✅ [EMAIL] Sent successfully to:", to);
+    console.log("✅ [EMAIL] Sent successfully");
+    console.log("   To:", to);
+    if (info?.messageId) console.log("   MessageID:", info.messageId);
+    if (info?.accepted)
+      console.log("   Accepted:", JSON.stringify(info.accepted));
+    if (info?.rejected && info.rejected.length)
+      console.log("   Rejected:", JSON.stringify(info.rejected));
+    if (info?.response) console.log("   Response:", info.response);
   } catch (error) {
     console.error("❌ [EMAIL] Failed to send:", error.message);
     throw error;
@@ -130,11 +162,7 @@ export const register = async (req, res, next) => {
       });
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
     const finalRole = role || "customer";
-    // Create verification code
     const verificationCode = Math.floor(
       100000 + Math.random() * 900000
     ).toString();
@@ -142,7 +170,7 @@ export const register = async (req, res, next) => {
 
     const user = await User.create({
       email,
-      password: hashedPassword,
+      password,
       role: finalRole,
       verificationCode,
       verificationExpires,
@@ -189,19 +217,13 @@ export const register = async (req, res, next) => {
       );
     }
 
-    const token = generateToken(user._id);
-
     res.status(201).json({
       success: true,
       message: "User registered successfully. Verification code sent to email.",
-      token,
+      requiresVerification: true,
       user: {
         id: user._id,
         email: user.email,
-        profilePicture: user.profilePicture,
-        role: user.role,
-        fullName: user.fullName,
-        phoneNumber: user.phoneNumber,
         isVerified: user.isVerified,
       },
     });
@@ -236,7 +258,6 @@ export const login = async (req, res, next) => {
       });
     }
 
-    // Check if password matches
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({
@@ -245,8 +266,12 @@ export const login = async (req, res, next) => {
       });
     }
 
-    // Generate token
     const token = generateToken(user._id);
+    try {
+      io.to(`user:${user._id}`).emit(SocketEvents.AUTH_VERIFIED, {
+        userId: user._id.toString(),
+      });
+    } catch {}
 
     res.status(200).json({
       success: true,
@@ -362,9 +387,22 @@ export const verifyEmail = async (req, res, next) => {
       );
     }
 
-    return res
-      .status(200)
-      .json({ success: true, message: "Email verified successfully" });
+    const token = generateToken(user._id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Email verified successfully",
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        profilePicture: user.profilePicture,
+        role: user.role,
+        fullName: user.fullName,
+        phoneNumber: user.phoneNumber,
+        isVerified: user.isVerified,
+      },
+    });
   } catch (error) {
     next(error);
   }
@@ -427,10 +465,8 @@ export const forgotPassword = async (req, res, next) => {
   try {
     let { email } = req.body;
 
-    // Normalize email: trim whitespace and convert to lowercase
     email = email ? email.trim().toLowerCase() : email;
 
-    // Validation
     if (!email) {
       return res.status(400).json({
         success: false,
@@ -438,7 +474,6 @@ export const forgotPassword = async (req, res, next) => {
       });
     }
 
-    // Validate email format
     const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
     if (!emailRegex.test(email)) {
       return res.status(400).json({
@@ -447,10 +482,8 @@ export const forgotPassword = async (req, res, next) => {
       });
     }
 
-    // Check if user exists (email is already lowercase from normalization)
     const user = await User.findOne({ email });
     if (!user) {
-      // Don't reveal if user exists or not (security best practice)
       return res.status(200).json({
         success: true,
         message: "If that email exists, a password reset link has been sent",

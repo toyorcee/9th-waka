@@ -1,7 +1,14 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
-import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from "expo-router";
 import { IconNames, Icons } from "@/constants/icons";
+import { useAuth } from "@/contexts/AuthContext";
+import { Routes } from "@/services/navigationHelper";
+import { useRouter } from "expo-router";
+import {
+  ActivityIndicator,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 export default function OrdersScreen() {
   const { user, isLoading } = useAuth();
@@ -19,11 +26,9 @@ export default function OrdersScreen() {
     <ScrollView className="flex-1 bg-primary">
       <View className="pt-20 px-6 pb-8">
         <View className="flex-row items-center justify-between mb-6">
-          <Text className="text-light-100 text-3xl font-bold">
-            My Orders
-          </Text>
+          <Text className="text-light-100 text-3xl font-bold">My Orders</Text>
           <TouchableOpacity
-            onPress={() => router.push("/orders/new")}
+            onPress={() => router.push(Routes.standalone.newOrder)}
             className="bg-accent px-4 py-2 rounded-xl"
           >
             <Icons.action
@@ -54,7 +59,7 @@ export default function OrdersScreen() {
               Start by creating your first delivery request
             </Text>
             <TouchableOpacity
-              onPress={() => router.push("/orders/new")}
+              onPress={() => router.push(Routes.standalone.newOrder)}
               className="bg-accent px-6 py-3 rounded-xl"
             >
               <Text className="text-primary font-bold">Create New Order</Text>
@@ -65,4 +70,3 @@ export default function OrdersScreen() {
     </ScrollView>
   );
 }
-

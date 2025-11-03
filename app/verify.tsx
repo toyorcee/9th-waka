@@ -1,57 +1,67 @@
+import { useAuth } from "@/contexts/AuthContext";
 import { resendVerification, verifyEmailCode } from "@/services/authApi";
-import { navigationHelper } from "@/services/navigationHelper";
+import { navigationHelper, Routes } from "@/services/navigationHelper";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
-  Alert,
+  ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import Toast from "react-native-toast-message";
 
 export default function VerifyScreen() {
   const router = useRouter();
+  const { verifyEmail } = useAuth();
   const params = useLocalSearchParams<{ email?: string }>();
   const [email, setEmail] = useState((params.email as string) || "");
   const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [showResentModal, setShowResentModal] = useState(false);
 
   const handleVerify = async () => {
     if (!email || !code) {
-      Alert.alert("Error", "Please enter your email and verification code");
+      Toast.show({
+        type: "error",
+        text1: "Missing fields",
+        text2: "Enter your email and 6-digit code",
+      });
       return;
     }
     setIsLoading(true);
     try {
-      await verifyEmailCode({ email, code });
+      const response = await verifyEmailCode({ email, code });
+
+      await verifyEmail(response.token, response.user);
 
       const pendingAction = await navigationHelper.getPendingAction();
       await navigationHelper.clearPendingAction();
 
-      Alert.alert("Success", "Your account has been verified!", [
-        {
-          text: "Continue",
-          onPress: () => {
-            if (pendingAction === "request") {
-              router.replace("/orders/new");
-            } else if (pendingAction === "track") {
-              router.replace("/(tabs)/track");
-            } else if (pendingAction === "sos") {
-              router.replace("/sos" as any);
-            } else {
-              router.replace("/(tabs)/home");
-            }
-          },
-        },
-      ]);
+      Toast.show({
+        type: "success",
+        text1: "Verified",
+        text2: "Your account has been verified",
+      });
+
+      if (pendingAction === "request") {
+        router.replace(Routes.standalone.newOrder);
+      } else if (pendingAction === "track") {
+        router.replace(Routes.tabs.track);
+      } else if (pendingAction === "sos") {
+        router.replace(Routes.standalone.sos as any);
+      } else {
+        router.replace(Routes.tabs.home);
+      }
     } catch (e: any) {
-      Alert.alert(
-        "Error",
-        e?.response?.data?.error || e?.message || "Verification failed"
-      );
+      const msg =
+        e?.response?.data?.error || e?.message || "Verification failed";
+      Toast.show({ type: "error", text1: msg });
     } finally {
       setIsLoading(false);
     }
@@ -60,13 +70,20 @@ export default function VerifyScreen() {
   const handleResend = async () => {
     if (!email) return;
     try {
+      setIsResending(true);
       await resendVerification(email);
-      Alert.alert("Sent", "A new code has been sent to your email.");
+      setShowResentModal(true);
+      Toast.show({
+        type: "success",
+        text1: "Code sent",
+        text2: `We emailed a new code to ${email}`,
+      });
     } catch (e: any) {
-      Alert.alert(
-        "Error",
-        e?.response?.data?.error || e?.message || "Failed to resend code"
-      );
+      const msg =
+        e?.response?.data?.error || e?.message || "Failed to resend code";
+      Toast.show({ type: "error", text1: msg });
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -108,17 +125,64 @@ export default function VerifyScreen() {
         <TouchableOpacity
           disabled={isLoading}
           onPress={handleVerify}
-          className="bg-accent rounded-xl py-4 items-center mb-3"
+          className={`bg-accent rounded-xl py-4 items-center mb-3 ${
+            isLoading ? "opacity-60" : ""
+          }`}
         >
-          <Text className="text-primary font-bold">Verify</Text>
+          {isLoading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text className="text-primary font-bold">Verify</Text>
+          )}
         </TouchableOpacity>
         <TouchableOpacity
           onPress={handleResend}
-          className="rounded-xl py-4 items-center border border-neutral-100"
+          disabled={isResending}
+          className={`rounded-xl py-4 items-center border border-neutral-100 ${
+            isResending ? "opacity-60" : ""
+          }`}
         >
-          <Text className="text-light-200 font-semibold">Resend Code</Text>
+          {isResending ? (
+            <View className="flex-row items-center gap-2">
+              <ActivityIndicator color="#9CA4AB" />
+              <Text className="text-light-300 font-semibold">Sending…</Text>
+            </View>
+          ) : (
+            <Text className="text-light-200 font-semibold">Resend Code</Text>
+          )}
         </TouchableOpacity>
       </View>
+
+      {/* Branded success modal */}
+      <Modal
+        visible={showResentModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowResentModal(false)}
+      >
+        <View className="flex-1 bg-black/60 items-center justify-center p-6">
+          <View className="w-full rounded-2xl p-6 bg-primary border border-neutral-100">
+            <View className="items-center mb-4">
+              <View className="h-12 w-12 rounded-full bg-accent items-center justify-center mb-3">
+                <Text className="text-primary font-extrabold text-lg">✓</Text>
+              </View>
+              <Text className="text-light-100 text-xl font-bold mb-1">
+                Code re-sent
+              </Text>
+              <Text className="text-light-300 text-center">
+                We emailed a fresh 6‑digit code to {email}. Enter it to verify
+                your account.
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setShowResentModal(false)}
+              className="bg-accent rounded-xl py-3 items-center"
+            >
+              <Text className="text-primary font-bold">Got it</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }

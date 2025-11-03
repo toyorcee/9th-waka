@@ -1,13 +1,12 @@
 import { IconNames, Icons } from "@/constants/icons";
 import { images } from "@/constants/images";
 import { useAuth } from "@/contexts/AuthContext";
-import { navigationHelper } from "@/services/navigationHelper";
+import { navigationHelper, Routes } from "@/services/navigationHelper";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -16,6 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Toast from "react-native-toast-message";
 
 type AuthMode = "login" | "signup";
 
@@ -30,24 +30,48 @@ export default function AuthScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [confirmMismatch, setConfirmMismatch] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState<
+    "weak" | "medium" | "strong" | null
+  >(null);
 
   const { login, register } = useAuth();
   const router = useRouter();
 
+  const evaluatePassword = (value: string): "weak" | "medium" | "strong" => {
+    const lengthScore = value.length >= 8;
+    const upper = /[A-Z]/.test(value);
+    const lower = /[a-z]/.test(value);
+    const number = /\d/.test(value);
+    const special = /[^A-Za-z0-9]/.test(value);
+    const checks = [upper, lower, number, special].filter(Boolean).length;
+    if (lengthScore && checks >= 3) return "strong";
+    if (value.length >= 6 && checks >= 2) return "medium";
+    return "weak";
+  };
+
   const handleSubmit = async () => {
     // Validation
     if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields");
+      Toast.show({
+        type: "error",
+        text1: "Missing fields",
+        text2: "Please fill in all fields",
+      });
       return;
     }
 
     if (mode === "signup" && password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
+      Toast.show({ type: "error", text1: "Passwords do not match" });
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters");
+      Toast.show({
+        type: "error",
+        text1: "Weak password",
+        text2: "Must be at least 6 characters",
+      });
       return;
     }
 
@@ -59,23 +83,42 @@ export default function AuthScreen() {
         await navigationHelper.clearPendingAction();
 
         if (pendingAction === "request") {
-          router.replace("/orders/new");
+          router.replace(Routes.standalone.newOrder);
         } else if (pendingAction === "track") {
-          router.replace("/(tabs)/track");
+          router.replace(Routes.tabs.track);
         } else if (pendingAction === "sos") {
-          router.replace("/sos" as any);
+          router.replace(Routes.standalone.sos as any);
         } else {
-          router.replace("/(tabs)/home");
+          router.replace(Routes.tabs.home);
         }
+        setEmail("");
+        setPassword("");
+        setConfirmPassword("");
+        setMode("login");
       } else {
+        const strength = evaluatePassword(password);
+        if (strength === "weak") {
+          Toast.show({
+            type: "error",
+            text1: "Password too weak",
+            text2: "Use at least 8 chars incl. upper/lower & number",
+          });
+          setIsLoading(false);
+          return;
+        }
         await register(email, password, selectedRole);
         router.replace(`/verify?email=${encodeURIComponent(email)}`);
+        setEmail("");
+        setPassword("");
+        setConfirmPassword("");
+        setMode("login");
       }
     } catch (error: any) {
-      Alert.alert(
-        "Error",
-        error.message || `${mode === "login" ? "Login" : "Signup"} failed`
-      );
+      const message =
+        error?.response?.data?.error ||
+        error?.message ||
+        `${mode === "login" ? "Login" : "Signup"} failed`;
+      Toast.show({ type: "error", text1: message });
     } finally {
       setIsLoading(false);
     }
@@ -97,6 +140,7 @@ export default function AuthScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       className="flex-1"
     >
+      {/* Toasts rendered globally in _layout.tsx */}
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ flexGrow: 1 }}
@@ -262,7 +306,10 @@ export default function AuthScreen() {
                 </View>
                 <TextInput
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(v) => {
+                    setPassword(v);
+                    setPasswordStrength(evaluatePassword(v));
+                  }}
                   placeholder="Enter your password"
                   placeholderTextColor="#9CA4AB"
                   secureTextEntry={!showPassword}
@@ -285,6 +332,28 @@ export default function AuthScreen() {
                 </TouchableOpacity>
               </View>
             </View>
+            {mode === "signup" && (
+              <View className="mb-4">
+                <View className="flex-row items-center">
+                  <View
+                    className={`h-2 flex-1 rounded-full ${
+                      passwordStrength === "strong"
+                        ? "bg-green-500"
+                        : passwordStrength === "medium"
+                        ? "bg-yellow-500"
+                        : "bg-red-500"
+                    }`}
+                  />
+                  <Text className="ml-3 text-light-300 text-xs">
+                    {passwordStrength ? passwordStrength.toUpperCase() : "WEAK"}
+                  </Text>
+                </View>
+                <Text className="text-light-400 text-xs mt-2">
+                  Use at least 8 characters with a mix of upper, lower, numbers,
+                  and symbols.
+                </Text>
+              </View>
+            )}
 
             {/* Confirm Password (Signup only) */}
             {mode === "signup" && (
@@ -292,7 +361,11 @@ export default function AuthScreen() {
                 <Text className="text-light-200 text-sm mb-2 font-medium">
                   Confirm Password
                 </Text>
-                <View className="flex-row items-center bg-dark-100 rounded-xl border border-neutral-100/50">
+                <View
+                  className={`flex-row items-center bg-dark-100 rounded-xl border ${
+                    confirmMismatch ? "border-red-500" : "border-neutral-100/50"
+                  }`}
+                >
                   <View className="pl-4">
                     <Icons.safety
                       name={IconNames.securityOutline as any}
@@ -302,7 +375,10 @@ export default function AuthScreen() {
                   </View>
                   <TextInput
                     value={confirmPassword}
-                    onChangeText={setConfirmPassword}
+                    onChangeText={(v) => {
+                      setConfirmPassword(v);
+                      setConfirmMismatch(v.length > 0 && v !== password);
+                    }}
                     placeholder="Confirm your password"
                     placeholderTextColor="#9CA4AB"
                     secureTextEntry={!showConfirmPassword}
@@ -324,6 +400,11 @@ export default function AuthScreen() {
                     />
                   </TouchableOpacity>
                 </View>
+                {confirmMismatch && (
+                  <Text className="text-red-500 text-xs mt-2">
+                    Passwords do not match
+                  </Text>
+                )}
               </View>
             )}
 

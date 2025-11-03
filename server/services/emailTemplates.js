@@ -4,11 +4,15 @@ export const buildDarkEmailTemplate = (title, message, code) => `
       <tr>
         <td style="padding:28px 28px 0 28px;text-align:center">
           ${(() => {
-            const src =
-              process.env.EMAIL_LOGO_URL ||
-              `${
-                process.env.SERVER_PUBLIC_URL || "http://localhost:3000"
-              }/assets/Night-Waka.png`;
+            const useCid =
+              (process.env.EMAIL_USE_CID || "").toLowerCase() === "true";
+            const cid = process.env.EMAIL_LOGO_CID || "brandLogo";
+            const src = useCid
+              ? `cid:${cid}`
+              : process.env.EMAIL_LOGO_URL ||
+                `${
+                  process.env.SERVER_PUBLIC_URL || "http://localhost:3000"
+                }/assets/Night-Waka.png`;
             return `<img src="${src}" alt="9thWaka" style="height:40px;display:block;margin:0 auto" />`;
           })()}
           <div style="margin-top:8px;font-size:13px;color:#AEB2C1">${title}</div>

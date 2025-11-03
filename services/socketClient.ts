@@ -11,12 +11,12 @@ class SocketClient {
   private isConnected: boolean = false;
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 5;
+  private notificationListeners: Array<(data: any) => void> = [];
 
   /**
    * Initialize socket connection
    */
   async connect(serverUrl?: string) {
-    // Get base URL from env (should be like http://localhost:3000, without /api)
     const baseUrl =
       process.env.EXPO_PUBLIC_API_BASE_URL?.replace("/api", "") ||
       process.env.EXPO_PUBLIC_API_BASE_URL ||
@@ -80,8 +80,20 @@ class SocketClient {
     this.socket.on("notification", (data) => {
       console.log("🔔 [SOCKET] Notification received:", data);
 
-      // Trigger custom event for notification handlers
-      if (typeof window !== "undefined") {
+      // Notify registered listeners (RN-safe)
+      this.notificationListeners.forEach((listener) => {
+        try {
+          listener(data);
+        } catch (e) {
+          // swallow listener errors to not break others
+        }
+      });
+
+      // For web, also emit a DOM CustomEvent (optional)
+      if (
+        typeof window !== "undefined" &&
+        typeof (window as any).CustomEvent !== "undefined"
+      ) {
         window.dispatchEvent(
           new CustomEvent("socket-notification", { detail: data })
         );
@@ -91,6 +103,20 @@ class SocketClient {
     this.socket.on("pong", (data) => {
       console.log("🏓 [SOCKET] Pong received:", data);
     });
+  }
+
+  /**
+   * Subscribe to notification events (works on React Native and Web)
+   */
+  addNotificationListener(listener: (data: any) => void) {
+    this.notificationListeners.push(listener);
+    return () => this.removeNotificationListener(listener);
+  }
+
+  removeNotificationListener(listener: (data: any) => void) {
+    this.notificationListeners = this.notificationListeners.filter(
+      (l) => l !== listener
+    );
   }
 
   /**

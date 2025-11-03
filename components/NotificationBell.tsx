@@ -1,18 +1,63 @@
 import { IconNames, Icons } from "@/constants/icons";
 import { useSocket } from "@/contexts/SocketContext";
+import { Routes } from "@/services/navigationHelper";
+import { fetchNotifications } from "@/services/notificationService";
+import useFetch from "@/services/useFetch";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function NotificationBell() {
   const { notifications, unreadCount, markAsRead, clearAll } = useSocket();
   const router = useRouter();
   const [modalVisible, setModalVisible] = useState(false);
+  const insets = useSafeAreaInsets();
+  const { data, loading, refetch, error } = useFetch(
+    () => fetchNotifications(0, 50),
+    false
+  );
+
+  const mergedNotifications = useMemo(() => {
+    const history = data?.items || [];
+    // Map to normalize id field
+    const normalize = (n: any) => ({
+      id: String(n.id || n._id || Date.now()),
+      type: n.type,
+      title: n.title,
+      message: n.message,
+      timestamp: n.timestamp || n.createdAt || new Date().toISOString(),
+      read: !!n.read,
+    });
+    const fromSocket = notifications.map(normalize);
+    const fromHistory = history.map(normalize);
+    const seen = new Set<string>();
+    const all = [...fromSocket, ...fromHistory].filter((n) => {
+      if (seen.has(n.id)) return false;
+      seen.add(n.id);
+      return true;
+    });
+    return all.sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1));
+  }, [notifications, data]);
+
+  useEffect(() => {
+    if (modalVisible) {
+      refetch();
+    }
+  }, [modalVisible, refetch]);
+
+  const mergedUnreadCount = useMemo(
+    () => mergedNotifications.filter((n) => !n.read).length,
+    [mergedNotifications]
+  );
 
   return (
     <>
       <TouchableOpacity
-        onPress={() => setModalVisible(true)}
+        onPress={() => {
+          setModalVisible(true);
+          refetch();
+        }}
         className="relative mr-4"
       >
         <Icons.notification
@@ -20,10 +65,10 @@ export default function NotificationBell() {
           size={24}
           color="#FFFFFF"
         />
-        {unreadCount > 0 && (
+        {mergedUnreadCount > 0 && (
           <View className="absolute -top-1 -right-1 bg-danger rounded-full w-5 h-5 items-center justify-center">
             <Text className="text-white text-xs font-bold">
-              {unreadCount > 9 ? "9+" : unreadCount}
+              {mergedUnreadCount > 9 ? "9+" : mergedUnreadCount}
             </Text>
           </View>
         )}
@@ -35,12 +80,15 @@ export default function NotificationBell() {
         transparent={true}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-secondary rounded-t-3xl max-h-[80%]">
+        <View className="flex-1 bg-black/50 justify-start">
+          <View
+            className="bg-secondary rounded-b-3xl max-h-[80%]"
+            style={{ paddingTop: insets.top + 12 }}
+          >
             {/* Header */}
             <View className="flex-row items-center justify-between p-6 border-b border-neutral-100">
               <Text className="text-light-100 text-xl font-bold">
-                Notifications ({notifications.length})
+                Notifications ({mergedNotifications.length})
               </Text>
               <View className="flex-row gap-4">
                 {notifications.length > 0 && (
@@ -56,7 +104,11 @@ export default function NotificationBell() {
 
             {/* Notifications List */}
             <ScrollView className="flex-1">
-              {notifications.length === 0 ? (
+              {loading ? (
+                <View className="p-8 items-center">
+                  <Text className="text-light-300">Loading…</Text>
+                </View>
+              ) : mergedNotifications.length === 0 ? (
                 <View className="p-8 items-center">
                   <Icons.notification
                     name={IconNames.notificationsOutline as any}
@@ -67,14 +119,20 @@ export default function NotificationBell() {
                 </View>
               ) : (
                 <View className="p-4">
-                  {notifications.map((notif) => (
+                  {mergedNotifications.map((notif) => (
                     <TouchableOpacity
                       key={notif.id}
-                      onPress={() => {
+                      onPress={async () => {
                         markAsRead(notif.id);
-                        // Handle notification tap based on type
+                        try {
+                          await fetchNotifications(0, 0);
+                        } catch {}
                         if (notif.type === "order") {
-                          router.push(`/orders/${notif.id}`);
+                          router.push(
+                            Routes.standalone.orderDetail(
+                              String(notif.id)
+                            ) as any
+                          );
                         }
                       }}
                       className={`bg-dark-100 rounded-xl p-4 mb-3 border ${

@@ -2,6 +2,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import mongoose from "mongoose";
+import nodemailer from "nodemailer";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -9,6 +10,9 @@ import http from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { errorHandler } from "./middleware/index.js";
 import authRoutes from "./routes/auth.js";
+import notificationRoutes from "./routes/notifications.js";
+import orderRoutes from "./routes/orders.js";
+import payoutRoutes from "./routes/payouts.js";
 import userRoutes from "./routes/user.js";
 import {
   authenticateSocket,
@@ -108,6 +112,9 @@ mongoose.connection.on("error", (err) => {
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/payouts", payoutRoutes);
+app.use("/api/notifications", notificationRoutes);
 // Add more routes as you build them
 // app.use("/api/delivery", deliveryRoutes);
 // app.use("/api/rider", riderRoutes);
@@ -137,4 +144,48 @@ httpServer.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 9th Waka Server running on port ${PORT}`);
   console.log(`📊 Health check: ${publicBase}/api/health`);
   console.log(`🔐 Auth API: ${publicBase}/api/auth`);
+
+  // SMTP transport startup verification
+  const emailUser = process.env.EMAIL_USER;
+  const emailPass = process.env.EMAIL_PASSWORD;
+  const emailService = process.env.EMAIL_SERVICE;
+  const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
+  const smtpPort = Number(process.env.SMTP_PORT) || 587;
+
+  if (!emailUser || !emailPass) {
+    console.log(
+      "✉️ [EMAIL] Startup: Skipped SMTP verify (EMAIL_* not configured)"
+    );
+  } else {
+    const transport = emailService
+      ? nodemailer.createTransport({
+          service: emailService.toLowerCase(),
+          auth: { user: emailUser, pass: emailPass },
+        })
+      : nodemailer.createTransport({
+          host: smtpHost,
+          port: smtpPort,
+          secure: false,
+          auth: { user: emailUser, pass: emailPass },
+        });
+
+    transport
+      .verify()
+      .then(() => {
+        console.log("✉️ [EMAIL] Startup: SMTP verified and ready to send");
+        console.log("   User:", emailUser);
+        if (!emailService) {
+          console.log("   Host:", smtpHost);
+          console.log("   Port:", smtpPort);
+        } else {
+          console.log("   Service:", emailService.toLowerCase());
+        }
+      })
+      .catch((err) => {
+        console.warn(
+          "⚠️ [EMAIL] Startup: SMTP verify failed:",
+          err?.message || err
+        );
+      });
+  }
 });

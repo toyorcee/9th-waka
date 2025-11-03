@@ -1,9 +1,13 @@
 import { IconNames, Icons } from "@/constants/icons";
 import { useAuth } from "@/contexts/AuthContext";
+import { Routes } from "@/services/navigationHelper";
+import { toAbsoluteUrl } from "@/services/url";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
+import React from "react";
 import {
   ActivityIndicator,
-  Alert,
+  Modal,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -13,19 +17,10 @@ import {
 export default function ProfileScreen() {
   const { user, isLoading, logout } = useAuth();
   const router = useRouter();
+  const [showLogout, setShowLogout] = React.useState(false);
 
   const handleLogout = async () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Logout",
-        style: "destructive",
-        onPress: async () => {
-          await logout();
-          router.replace("/");
-        },
-      },
-    ]);
+    setShowLogout(true);
   };
 
   if (isLoading) {
@@ -44,9 +39,15 @@ export default function ProfileScreen() {
         {/* Profile Info */}
         <View className="bg-secondary rounded-2xl p-5 mb-6 border border-neutral-100">
           <View className="items-center mb-4">
-            <View className="w-24 h-24 rounded-full bg-accent items-center justify-center mb-4">
+            <View className="w-24 h-24 rounded-full bg-accent items-center justify-center mb-4 overflow-hidden">
               {user?.profilePicture ? (
-                <Text className="text-primary text-2xl">👤</Text>
+                <Image
+                  source={{
+                    uri: String(toAbsoluteUrl(String(user.profilePicture))),
+                  }}
+                  style={{ width: 96, height: 96, borderRadius: 48 }}
+                  contentFit="cover"
+                />
               ) : (
                 <Icons.user
                   name={IconNames.personCircle as any}
@@ -69,7 +70,7 @@ export default function ProfileScreen() {
           </View>
 
           <TouchableOpacity
-            onPress={() => router.push("/profile/edit")}
+            onPress={() => router.push(Routes.standalone.profileEdit)}
             className="bg-accent px-4 py-2 rounded-xl items-center"
           >
             <Text className="text-primary font-bold">Edit Profile</Text>
@@ -79,7 +80,7 @@ export default function ProfileScreen() {
         {/* Menu Options */}
         <View className="gap-3 mb-6">
           <TouchableOpacity
-            onPress={() => router.push("/profile/edit")}
+            onPress={() => router.push(Routes.standalone.profileEdit)}
             className="bg-secondary rounded-xl p-4 flex-row items-center justify-between border border-neutral-100"
           >
             <View className="flex-row items-center">
@@ -100,7 +101,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => router.push("/profile/settings")}
+            onPress={() => router.push(Routes.standalone.profileSettings)}
             className="bg-secondary rounded-xl p-4 flex-row items-center justify-between border border-neutral-100"
           >
             <View className="flex-row items-center">
@@ -127,6 +128,42 @@ export default function ProfileScreen() {
           <Text className="text-light-100 font-bold">Logout</Text>
         </TouchableOpacity>
       </View>
+      {/* Logout Confirm Modal */}
+      <Modal
+        visible={showLogout}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLogout(false)}
+      >
+        <View className="flex-1 bg-black/60 items-center justify-center p-6">
+          <View className="w-full rounded-2xl p-6 bg-primary border border-neutral-100">
+            <Text className="text-light-100 text-xl font-bold mb-2">
+              Logout
+            </Text>
+            <Text className="text-light-300 mb-5">
+              Are you sure you want to logout?
+            </Text>
+            <View className="flex-row gap-3">
+              <TouchableOpacity
+                onPress={() => setShowLogout(false)}
+                className="flex-1 bg-secondary rounded-xl py-3 items-center border border-neutral-100"
+              >
+                <Text className="text-light-100 font-semibold">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={async () => {
+                  setShowLogout(false);
+                  await logout();
+                  router.replace(Routes.standalone.auth);
+                }}
+                className="flex-1 bg-danger rounded-xl py-3 items-center"
+              >
+                <Text className="text-light-100 font-bold">Logout</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
