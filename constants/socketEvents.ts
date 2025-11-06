@@ -9,6 +9,9 @@ export const SocketEvents = {
   PROFILE_UPDATED: "profile.updated",
   PAYOUT_GENERATED: "payout.generated",
   PAYOUT_PAID: "payout.paid",
+  PRICE_CHANGE_REQUESTED: "price.change_requested",
+  PRICE_CHANGE_ACCEPTED: "price.change_accepted",
+  PRICE_CHANGE_REJECTED: "price.change_rejected",
 } as const;
 
 export type SocketEventName = (typeof SocketEvents)[keyof typeof SocketEvents];

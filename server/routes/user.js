@@ -1,6 +1,9 @@
 import express from "express";
 import {
+  getNotificationPreferences,
+  updateNotificationPreferences,
   updateProfile,
+  updatePushToken,
   uploadProfilePicture,
 } from "../controllers/userController.js";
 import { protect } from "../middleware/auth.js";
@@ -45,3 +48,12 @@ export default router;
 router.put("/profile", protect, async (req, res, next) => {
   return updateProfile(req, res, next);
 });
+
+// POST /api/user/push-token
+router.post("/push-token", protect, updatePushToken);
+
+// GET /api/user/notification-preferences
+router.get("/notification-preferences", protect, getNotificationPreferences);
+
+// PUT /api/user/notification-preferences
+router.put("/notification-preferences", protect, updateNotificationPreferences);

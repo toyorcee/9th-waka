@@ -110,11 +110,12 @@ const sendEmail = async ({ to, subject, html }) => {
 // @access  Public
 export const register = async (req, res, next) => {
   try {
-    let { email, password, role } = req.body;
+    let { email, password, role, vehicleType } = req.body;
 
     email = email ? email.trim().toLowerCase() : email;
     password = password ? password.trim() : password;
     role = role ? role.trim().toLowerCase() : "customer";
+    vehicleType = vehicleType ? vehicleType.trim().toLowerCase() : null;
 
     console.log("📝 [REGISTER] New registration attempt");
     console.log("   Email:", email);
@@ -163,18 +164,34 @@ export const register = async (req, res, next) => {
     }
 
     const finalRole = role || "customer";
+
+    // Validate vehicleType if rider
+    if (finalRole === "rider" && vehicleType) {
+      if (!["motorcycle", "car"].includes(vehicleType)) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid vehicleType. Must be 'motorcycle' or 'car'",
+        });
+      }
+    }
+
     const verificationCode = Math.floor(
       100000 + Math.random() * 900000
     ).toString();
     const verificationExpires = new Date(Date.now() + 10 * 60 * 1000);
 
-    const user = await User.create({
+    const userData = {
       email,
       password,
       role: finalRole,
       verificationCode,
       verificationExpires,
-    });
+    };
+
+    if (finalRole === "rider" && vehicleType)
+      userData.vehicleType = vehicleType;
+
+    const user = await User.create(userData);
 
     console.log("✅ [REGISTER] User registered successfully");
     console.log("   User ID:", user._id);
@@ -308,6 +325,11 @@ export const getCurrentUser = async (req, res, next) => {
         role: user.role,
         fullName: user.fullName,
         phoneNumber: user.phoneNumber,
+        vehicleType: user.vehicleType || null,
+        nin: user.nin || null,
+        bvn: user.bvn || null,
+        defaultAddress: user.defaultAddress || null,
+        address: user.address || null,
       },
     });
   } catch (error) {
@@ -375,7 +397,7 @@ export const verifyEmail = async (req, res, next) => {
     // In-app + persist welcome notification
     try {
       await createAndSendNotification(user._id, {
-        type: "welcome",
+        type: "auth_verified",
         title: "Welcome to 9thWaka",
         message:
           "Your account is verified. Let's get your first delivery started!",
@@ -400,6 +422,7 @@ export const verifyEmail = async (req, res, next) => {
         role: user.role,
         fullName: user.fullName,
         phoneNumber: user.phoneNumber,
+        vehicleType: user.vehicleType || null,
         isVerified: user.isVerified,
       },
     });

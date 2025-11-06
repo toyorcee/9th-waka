@@ -68,6 +68,9 @@ export const Icons = {
   communication: Ionicons,
   chat: Ionicons,
   call: Ionicons,
+
+  // Media Icons
+  media: Ionicons,
 };
 
 /**
@@ -176,6 +179,10 @@ export const IconNames = {
   settingsOutline: "settings-outline",
   logout: "log-out",
   logoutOutline: "log-out-outline",
+
+  // Media
+  camera: "camera",
+  cameraOutline: "camera-outline",
 
   // Payment & Money
   card: "card",

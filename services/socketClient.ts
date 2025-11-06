@@ -1,3 +1,4 @@
+import Constants from "expo-constants";
 import { io, Socket } from "socket.io-client";
 import { storage } from "./storage";
 
@@ -14,18 +15,37 @@ class SocketClient {
   private notificationListeners: Array<(data: any) => void> = [];
 
   /**
+   * Get the base URL for socket connection (without /api)
+   */
+  private getBaseUrl(): string {
+    const apiBaseUrl =
+      Constants.expoConfig?.extra?.apiBaseUrl ||
+      process.env.EXPO_PUBLIC_API_BASE_URL ||
+      "http://localhost:3000/api";
+
+    // Remove /api if present to get the base server URL
+    const baseUrl =
+      apiBaseUrl.replace(/\/api\/?$/, "") || "http://localhost:3000";
+
+    console.log("🔌 [SOCKET] Base URL:", baseUrl);
+    return baseUrl;
+  }
+
+  /**
    * Initialize socket connection
    */
   async connect(serverUrl?: string) {
-    const baseUrl =
-      process.env.EXPO_PUBLIC_API_BASE_URL?.replace("/api", "") ||
-      process.env.EXPO_PUBLIC_API_BASE_URL ||
-      "http://localhost:3000";
-    const API_URL = serverUrl || baseUrl;
     if (this.socket?.connected) {
       console.log("🔌 [SOCKET] Already connected");
       return;
     }
+
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
+
+    const API_URL = serverUrl || this.getBaseUrl();
 
     try {
       const token = await storage.getToken();
@@ -35,6 +55,8 @@ class SocketClient {
         return;
       }
 
+      console.log("🔌 [SOCKET] Connecting to:", API_URL);
+
       this.socket = io(API_URL, {
         auth: {
           token: token,
@@ -43,6 +65,7 @@ class SocketClient {
         reconnection: true,
         reconnectionDelay: 1000,
         reconnectionAttempts: this.maxReconnectAttempts,
+        timeout: 10000,
       });
 
       this.setupEventHandlers();
@@ -71,10 +94,18 @@ class SocketClient {
     this.socket.on("connect_error", (error) => {
       this.reconnectAttempts++;
       console.error("❌ [SOCKET] Connection error:", error.message);
+      console.error("❌ [SOCKET] Error details:", error);
 
       if (this.reconnectAttempts >= this.maxReconnectAttempts) {
         console.warn("⚠️ [SOCKET] Max reconnection attempts reached");
+        // Stop trying to reconnect
+        this.socket?.disconnect();
       }
+    });
+
+    // Handle websocket-specific errors
+    this.socket.on("error", (error) => {
+      console.error("❌ [SOCKET] Socket error:", error);
     });
 
     this.socket.on("notification", (data) => {

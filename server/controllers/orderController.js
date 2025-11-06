@@ -1,10 +1,142 @@
 import { SocketEvents } from "../constants/socketEvents.js";
 import Order from "../models/Order.js";
+import RiderLocation from "../models/RiderLocation.js";
+import Transaction from "../models/Transaction.js";
+import User from "../models/User.js";
 import { io } from "../server.js";
+import { geocodeAddress } from "../services/geocodingService.js";
 import { createAndSendNotification } from "../services/notificationService.js";
 
 const appendTimeline = (order, status, note) => {
   order.timeline.push({ status, note, at: new Date() });
+};
+
+// Calculate price based on tiered distance (Sunday to Saturday week)
+// Base fare + tiered per-km rates
+const calculateDeliveryPrice = (distanceKm, vehicleType = "motorcycle") => {
+  const baseFare = Number(process.env.PRICE_BASE_FARE || 700);
+  const minFare = Number(process.env.PRICE_MIN_FARE || 1500);
+
+  // Tiered per-km rates
+  const shortRate = Number(process.env.PRICE_PER_KM_SHORT || 130); // 0-8km
+  const mediumRate = Number(process.env.PRICE_PER_KM_MEDIUM || 160); // 9-20km
+  const longRate = Number(process.env.PRICE_PER_KM_LONG || 200); // 21km+
+
+  // Vehicle type multiplier (car is more expensive)
+  const vehicleMultiplier = vehicleType === "car" ? 1.25 : 1.0; // Car is 25% more
+
+  if (!distanceKm || distanceKm <= 0) {
+    return minFare;
+  }
+
+  let calculatedPrice = baseFare;
+
+  // Tiered calculation
+  if (distanceKm <= 8) {
+    // Short distance: 0-8km
+    calculatedPrice += distanceKm * shortRate;
+  } else if (distanceKm <= 20) {
+    // Medium distance: 9-20km
+    calculatedPrice += 8 * shortRate; // First 8km
+    calculatedPrice += (distanceKm - 8) * mediumRate; // Remaining km
+  } else {
+    // Long distance: 21km+
+    calculatedPrice += 8 * shortRate; // First 8km (0-8)
+    calculatedPrice += 12 * mediumRate; // Next 12km (9-20)
+    calculatedPrice += (distanceKm - 20) * longRate; // Remaining km (21+)
+  }
+
+  // Apply vehicle multiplier
+  calculatedPrice = calculatedPrice * vehicleMultiplier;
+
+  // Ensure minimum fare
+  return Math.max(Math.round(calculatedPrice), minFare);
+};
+
+// Estimate price before creating order
+export const estimatePrice = async (req, res) => {
+  try {
+    const { pickup, dropoff } = req.body || {};
+    if (!pickup?.address || !dropoff?.address) {
+      return res.status(400).json({
+        success: false,
+        error: "Pickup and dropoff addresses are required",
+      });
+    }
+
+    let distanceKm = null;
+    let estimatedPrice = 0;
+
+    // Try to geocode if coordinates not provided
+    const pickupData = { ...pickup };
+    const dropoffData = { ...dropoff };
+
+    if ((!pickupData.lat || !pickupData.lng) && process.env.OPENCAGE_API_KEY) {
+      try {
+        const geo = await geocodeAddress(pickupData.address);
+        if (geo) {
+          pickupData.lat = geo.lat;
+          pickupData.lng = geo.lng;
+        }
+      } catch (err) {
+        console.warn("[ESTIMATE] Failed to geocode pickup:", err.message);
+      }
+    }
+
+    if (
+      (!dropoffData.lat || !dropoffData.lng) &&
+      process.env.OPENCAGE_API_KEY
+    ) {
+      try {
+        const geo = await geocodeAddress(dropoffData.address);
+        if (geo) {
+          dropoffData.lat = geo.lat;
+          dropoffData.lng = geo.lng;
+        }
+      } catch (err) {
+        console.warn("[ESTIMATE] Failed to geocode dropoff:", err.message);
+      }
+    }
+
+    if (
+      pickupData.lat &&
+      pickupData.lng &&
+      dropoffData.lat &&
+      dropoffData.lng
+    ) {
+      distanceKm = haversineKm(
+        pickupData.lat,
+        pickupData.lng,
+        dropoffData.lat,
+        dropoffData.lng
+      );
+      // Calculate for both vehicle types
+      const bikePrice = calculateDeliveryPrice(distanceKm, "motorcycle");
+      const carPrice = calculateDeliveryPrice(distanceKm, "car");
+      estimatedPrice = bikePrice; // Default to bike
+      res.json({
+        success: true,
+        estimatedPrice: Math.round(estimatedPrice),
+        bikePrice: Math.round(bikePrice),
+        carPrice: Math.round(carPrice),
+        distanceKm: distanceKm ? Math.round(distanceKm * 10) / 10 : null,
+        currency: "NGN",
+      });
+    } else {
+      // Use minimum fare if can't calculate distance
+      estimatedPrice = calculateDeliveryPrice(0);
+      res.json({
+        success: true,
+        estimatedPrice: Math.round(estimatedPrice),
+        bikePrice: Math.round(estimatedPrice),
+        carPrice: Math.round(estimatedPrice * 1.25),
+        distanceKm: null,
+        currency: "NGN",
+      });
+    }
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
 };
 
 export const createOrder = async (req, res) => {
@@ -15,28 +147,97 @@ export const createOrder = async (req, res) => {
         .status(403)
         .json({ success: false, error: "Only customers can create orders" });
     }
-    const { pickup, dropoff, items, price } = req.body || {};
+    const { pickup, dropoff, items, price, preferredVehicleType } =
+      req.body || {};
     if (!pickup?.address || !dropoff?.address) {
       return res.status(400).json({
         success: false,
         error: "Pickup and dropoff addresses are required",
       });
     }
+
+    const pickupData = { ...pickup };
+    const dropoffData = { ...dropoff };
+
+    if ((!pickupData.lat || !pickupData.lng) && process.env.OPENCAGE_API_KEY) {
+      try {
+        const geo = await geocodeAddress(pickupData.address);
+        if (geo) {
+          pickupData.lat = geo.lat;
+          pickupData.lng = geo.lng;
+          if (geo.formatted && !pickupData.address.includes(geo.formatted)) {
+            pickupData.formattedAddress = geo.formatted;
+          }
+        }
+      } catch (err) {
+        console.warn("[ORDER] Failed to geocode pickup:", err.message);
+      }
+    }
+
+    if (
+      (!dropoffData.lat || !dropoffData.lng) &&
+      process.env.OPENCAGE_API_KEY
+    ) {
+      try {
+        const geo = await geocodeAddress(dropoffData.address);
+        if (geo) {
+          dropoffData.lat = geo.lat;
+          dropoffData.lng = geo.lng;
+          if (geo.formatted && !dropoffData.address.includes(geo.formatted)) {
+            dropoffData.formattedAddress = geo.formatted;
+          }
+        }
+      } catch (err) {
+        console.warn("[ORDER] Failed to geocode dropoff:", err.message);
+      }
+    }
+
+    // Calculate distance and price
+    let distanceKm = null;
+    let calculatedPrice = Number(price) || 0;
+
+    if (
+      pickupData.lat &&
+      pickupData.lng &&
+      dropoffData.lat &&
+      dropoffData.lng
+    ) {
+      distanceKm = haversineKm(
+        pickupData.lat,
+        pickupData.lng,
+        dropoffData.lat,
+        dropoffData.lng
+      );
+      if (!price || process.env.PRICE_AUTO === "true") {
+        const vehicleType = preferredVehicleType || "motorcycle";
+        calculatedPrice = calculateDeliveryPrice(distanceKm, vehicleType);
+      }
+    } else if (!price) {
+      const vehicleType = preferredVehicleType || "motorcycle";
+      calculatedPrice = calculateDeliveryPrice(0, vehicleType);
+    }
+
+    const finalPrice = Math.round(calculatedPrice);
     const order = await Order.create({
       customerId: user._id,
-      pickup,
-      dropoff,
+      pickup: pickupData,
+      dropoff: dropoffData,
       items: items || "",
-      price: Number(price) || 0,
+      preferredVehicleType: preferredVehicleType || null,
+      price: finalPrice,
+      originalPrice: finalPrice,
       status: "pending",
       timeline: [],
+      meta: {
+        distanceKm: distanceKm ? Math.round(distanceKm * 10) / 10 : null,
+      },
     });
     appendTimeline(order, "pending", "Order created");
     await order.save();
 
     try {
       await createAndSendNotification(user._id, {
-        type: "order",
+        type: "order_created",
         title: "Order created",
         message: `Order #${order._id} created, awaiting assignment`,
       });
@@ -61,14 +262,70 @@ export const getMyOrders = async (req, res) => {
   }
 };
 
+// Haversine distance in km
+const haversineKm = (lat1, lon1, lat2, lon2) => {
+  const toRad = (d) => (d * Math.PI) / 180;
+  const R = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
 export const getAvailableOrders = async (req, res) => {
   try {
     if (req.user.role !== "rider")
       return res.status(403).json({ success: false, error: "Only riders" });
-    const orders = await Order.find({ status: "pending", riderId: null })
+    const maxRadiusKm = Number(process.env.RIDER_ORDER_RADIUS_KM || 7);
+
+    // Get rider's current location
+    const riderLoc = await RiderLocation.findOne({
+      riderId: req.user._id,
+      online: true,
+    });
+
+    let orders = await Order.find({ status: "pending", riderId: null })
       .sort({ createdAt: 1 })
-      .limit(50);
-    res.json({ success: true, orders });
+      .limit(100);
+
+    // If rider has location, filter by proximity
+    if (riderLoc?.location?.coordinates) {
+      const [riderLng, riderLat] = riderLoc.location.coordinates;
+      const withDistance = orders
+        .map((order) => {
+          if (
+            typeof order.pickup?.lat === "number" &&
+            typeof order.pickup?.lng === "number"
+          ) {
+            const dist = haversineKm(
+              riderLat,
+              riderLng,
+              order.pickup.lat,
+              order.pickup.lng
+            );
+            return { order, distanceKm: dist };
+          }
+          return { order, distanceKm: null };
+        })
+        .filter(
+          (item) => item.distanceKm !== null && item.distanceKm <= maxRadiusKm
+        )
+        .sort((a, b) => a.distanceKm - b.distanceKm)
+        .map((item) => ({
+          ...item.order.toObject(),
+          distanceKm: Math.round(item.distanceKm * 10) / 10,
+        }));
+      return res.json({ success: true, orders: withDistance });
+    }
+
+    // No location: return empty (rider must be online with location)
+    res.json({ success: true, orders: [] });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
   }
@@ -78,18 +335,63 @@ export const acceptOrder = async (req, res) => {
   try {
     if (req.user.role !== "rider")
       return res.status(403).json({ success: false, error: "Only riders" });
-    const order = await Order.findById(req.params.id);
-    if (!order)
-      return res.status(404).json({ success: false, error: "Order not found" });
-    if (order.status !== "pending" || order.riderId) {
+
+    const rider = await User.findById(req.user._id).select("nin bvn");
+    if (!rider) {
+      return res.status(404).json({ success: false, error: "Rider not found" });
+    }
+
+    const hasNin = rider.nin && rider.nin.trim().length > 0;
+    const hasBvn = rider.bvn && rider.bvn.trim().length > 0;
+
+    if (!hasNin && !hasBvn) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "KYC verification required. Please complete your profile by adding either your NIN (National Identification Number) or BVN (Bank Verification Number) before accepting orders.",
+        kycRequired: true,
+      });
+    }
+
+    const order = await Order.findOneAndUpdate(
+      { _id: req.params.id, status: "pending", riderId: null },
+      {
+        $set: { riderId: req.user._id, status: "assigned" },
+        $push: {
+          timeline: {
+            status: "assigned",
+            note: `Rider ${req.user._id} accepted`,
+            at: new Date(),
+          },
+        },
+      },
+      { new: true }
+    );
+
+    if (!order) {
       return res
-        .status(400)
+        .status(409)
         .json({ success: false, error: "Order already assigned" });
     }
-    order.riderId = req.user._id;
-    order.status = "assigned";
-    appendTimeline(order, "assigned", `Rider ${req.user._id} accepted`);
-    await order.save();
+
+    // Notify customer
+    try {
+      await createAndSendNotification(order.customerId, {
+        type: "order_assigned",
+        title: "Order assigned",
+        message: `A rider has been assigned to your order #${order._id}`,
+      });
+    } catch {}
+
+    // Notify rider
+    try {
+      await createAndSendNotification(req.user._id, {
+        type: "order_assigned",
+        title: "Order assigned",
+        message: `You've been assigned to order #${order._id}`,
+      });
+    } catch {}
+
     io.to(`user:${order.customerId}`).emit(SocketEvents.ORDER_ASSIGNED, {
       id: order._id.toString(),
       riderId: req.user._id.toString(),
@@ -97,6 +399,161 @@ export const acceptOrder = async (req, res) => {
     io.to(`user:${req.user._id}`).emit(SocketEvents.ORDER_ASSIGNED, {
       id: order._id.toString(),
     });
+    res.json({ success: true, order });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+};
+
+// Rider requests price change
+export const requestPriceChange = async (req, res) => {
+  try {
+    if (req.user.role !== "rider")
+      return res.status(403).json({ success: false, error: "Only riders" });
+
+    const { requestedPrice, reason } = req.body || {};
+    if (
+      !requestedPrice ||
+      typeof requestedPrice !== "number" ||
+      requestedPrice <= 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: "Valid requested price is required",
+      });
+    }
+
+    const order = await Order.findById(req.params.id);
+    if (!order)
+      return res.status(404).json({ success: false, error: "Order not found" });
+    if (String(order.riderId) !== String(req.user._id))
+      return res.status(403).json({ success: false, error: "Not your order" });
+    if (!["assigned", "picked_up", "delivering"].includes(order.status)) {
+      return res.status(400).json({
+        success: false,
+        error: "Cannot request price change at this stage",
+      });
+    }
+    if (order.priceNegotiation?.status === "requested") {
+      return res
+        .status(400)
+        .json({ success: false, error: "Price request already pending" });
+    }
+
+    const roundedPrice = Math.round(requestedPrice);
+    order.riderRequestedPrice = roundedPrice;
+    order.priceNegotiation = {
+      status: "requested",
+      requestedAt: new Date(),
+      reason: reason || null,
+      respondedAt: null,
+    };
+    appendTimeline(
+      order,
+      order.status,
+      `Rider requested price change: ₦${roundedPrice.toLocaleString()}${
+        reason ? ` (${reason})` : ""
+      }`
+    );
+    await order.save();
+
+    try {
+      await createAndSendNotification(order.customerId, {
+        type: "price_change_requested",
+        title: "Price change requested",
+        message: `Rider requested ₦${roundedPrice.toLocaleString()}${
+          reason ? ` - ${reason}` : ""
+        }`,
+      });
+    } catch {}
+
+    io.to(`user:${order.customerId}`).emit(
+      SocketEvents.PRICE_CHANGE_REQUESTED,
+      {
+        id: order._id.toString(),
+        requestedPrice: roundedPrice,
+        originalPrice: order.originalPrice,
+        reason: reason || null,
+      }
+    );
+
+    res.json({ success: true, order });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+};
+
+// Customer accepts/rejects price change
+export const respondToPriceRequest = async (req, res) => {
+  try {
+    if (req.user.role !== "customer")
+      return res.status(403).json({ success: false, error: "Only customers" });
+
+    const { accept } = req.body || {};
+    if (typeof accept !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        error: "accept (boolean) is required",
+      });
+    }
+
+    const order = await Order.findById(req.params.id);
+    if (!order)
+      return res.status(404).json({ success: false, error: "Order not found" });
+    if (String(order.customerId) !== String(req.user._id))
+      return res.status(403).json({ success: false, error: "Not your order" });
+    if (order.priceNegotiation?.status !== "requested") {
+      return res
+        .status(400)
+        .json({ success: false, error: "No pending price request" });
+    }
+
+    if (accept) {
+      // Accept: Update final price
+      order.price = order.riderRequestedPrice;
+      order.priceNegotiation.status = "accepted";
+      order.priceNegotiation.respondedAt = new Date();
+      appendTimeline(
+        order,
+        order.status,
+        `Customer accepted price change: ₦${order.riderRequestedPrice.toLocaleString()}`
+      );
+
+      // Notify rider
+      try {
+        await createAndSendNotification(order.riderId, {
+          type: "price_change_accepted",
+          title: "Price change accepted",
+          message: `Customer accepted your requested price of ₦${order.riderRequestedPrice.toLocaleString()}`,
+        });
+      } catch {}
+
+      io.to(`user:${order.riderId}`).emit(SocketEvents.PRICE_CHANGE_ACCEPTED, {
+        id: order._id.toString(),
+        finalPrice: order.riderRequestedPrice,
+      });
+    } else {
+      // Reject: Keep original price
+      order.priceNegotiation.status = "rejected";
+      order.priceNegotiation.respondedAt = new Date();
+      order.riderRequestedPrice = null;
+      appendTimeline(order, order.status, "Customer rejected price change");
+
+      // Notify rider
+      try {
+        await createAndSendNotification(order.riderId, {
+          type: "price_change_rejected",
+          title: "Price change rejected",
+          message: "Customer rejected your price change request",
+        });
+      } catch {}
+
+      io.to(`user:${order.riderId}`).emit(SocketEvents.PRICE_CHANGE_REJECTED, {
+        id: order._id.toString(),
+      });
+    }
+
+    await order.save();
     res.json({ success: true, order });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
@@ -130,6 +587,27 @@ export const updateStatus = async (req, res) => {
     order.status = next;
     appendTimeline(order, next, `Status set to ${next}`);
     await order.save();
+
+    // Notify customer
+    try {
+      await createAndSendNotification(order.customerId, {
+        type: "order_status_updated",
+        title: "Order status updated",
+        message: `Order #${order._id} status changed to ${next}`,
+      });
+    } catch {}
+
+    // Notify rider if assigned
+    if (order.riderId) {
+      try {
+        await createAndSendNotification(order.riderId, {
+          type: "order_status_updated",
+          title: "Order status updated",
+          message: `Order #${order._id} status changed to ${next}`,
+        });
+      } catch {}
+    }
+
     io.to(`user:${order.customerId}`).emit(SocketEvents.ORDER_STATUS_UPDATED, {
       id: order._id.toString(),
       status: next,
@@ -186,7 +664,7 @@ export const generateDeliveryOtp = async (req, res) => {
     await order.save();
     try {
       await createAndSendNotification(order.customerId, {
-        type: "order",
+        type: "delivery_otp",
         title: "Delivery code",
         message: `Your delivery code is ${code}. Share only with the rider.`,
       });
@@ -235,11 +713,8 @@ export const verifyDeliveryOtp = async (req, res) => {
     order.status = "delivered";
     const commissionRate = Number(process.env.COMMISSION_RATE_PERCENT || 10);
     const gross = Number(order.price) || 0;
-    const commission =
-      Math.round(gross * commissionRate * 100) / 100 / 100
-        ? Math.round(gross * commissionRate * 100) / 100 / 100
-        : +(gross * (commissionRate / 100)).toFixed(2);
-    const riderNet = +(gross - commission).toFixed(2);
+    const commission = Math.round(((gross * commissionRate) / 100) * 100) / 100; // Round to 2 decimals
+    const riderNet = Math.round((gross - commission) * 100) / 100;
     order.financial = {
       grossAmount: gross,
       commissionRatePct: commissionRate,
@@ -248,6 +723,71 @@ export const verifyDeliveryOtp = async (req, res) => {
     };
     appendTimeline(order, "delivered", "OTP verified and order delivered");
     await order.save();
+
+    // Create transactions for financial tracking
+    try {
+      // 1. Customer payment transaction
+      await Transaction.create({
+        orderId: order._id,
+        customerId: order.customerId,
+        riderId: order.riderId,
+        type: "order_payment",
+        amount: gross,
+        currency: "NGN",
+        status: "completed",
+        description: `Order #${order._id} payment`,
+        processedAt: new Date(),
+      });
+
+      // 2. Commission transaction (10% to platform)
+      await Transaction.create({
+        orderId: order._id,
+        customerId: order.customerId,
+        riderId: order.riderId,
+        type: "commission",
+        amount: commission,
+        currency: "NGN",
+        status: "completed",
+        description: `Commission from order #${order._id}`,
+        commissionRate: commissionRate,
+        processedAt: new Date(),
+      });
+
+      // 3. Rider earnings transaction (will be included in weekly payout)
+      await Transaction.create({
+        orderId: order._id,
+        customerId: order.customerId,
+        riderId: order.riderId,
+        type: "rider_payout",
+        amount: riderNet,
+        currency: "NGN",
+        status: "pending", // Will be marked completed when payout is processed
+        description: `Rider earnings from order #${order._id}`,
+        processedAt: null, // Will be set when payout is processed
+      });
+    } catch (txError) {
+      console.error("[ORDER] Failed to create transactions:", txError.message);
+      // Don't fail the delivery if transaction creation fails
+    }
+
+    // Notify customer
+    try {
+      await createAndSendNotification(order.customerId, {
+        type: "delivery_verified",
+        title: "Delivery verified",
+        message: `Order #${order._id} has been delivered and verified`,
+      });
+    } catch {}
+
+    // Notify rider
+    try {
+      await createAndSendNotification(req.user._id, {
+        type: "delivery_verified",
+        title: "Delivery verified",
+        message: `Order #${order._id} delivery has been verified`,
+      });
+    } catch {}
+
     io.to(`user:${order.customerId}`).emit(SocketEvents.ORDER_STATUS_UPDATED, {
       id: order._id.toString(),
       status: order.status,
@@ -280,6 +820,16 @@ export const updateDeliveryProof = async (req, res) => {
     if (note) order.delivery.note = note;
     appendTimeline(order, order.status, "Delivery proof updated");
     await order.save();
+
+    // Notify customer
+    try {
+      await createAndSendNotification(order.customerId, {
+        type: "delivery_proof_updated",
+        title: "Delivery proof updated",
+        message: `Delivery proof for order #${order._id} has been updated`,
+      });
+    } catch {}
+
     io.to(`user:${order.customerId}`).emit(
       SocketEvents.DELIVERY_PROOF_UPDATED,
       {

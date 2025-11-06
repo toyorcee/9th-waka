@@ -27,10 +27,12 @@ export default function AuthScreen() {
   const [selectedRole, setSelectedRole] = useState<"customer" | "rider">(
     "customer"
   );
+  const [vehicleType, setVehicleType] = useState<"motorcycle" | "car" | "">("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [confirmMismatch, setConfirmMismatch] = useState(false);
+  const [passwordsMatch, setPasswordsMatch] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState<
     "weak" | "medium" | "strong" | null
   >(null);
@@ -94,6 +96,7 @@ export default function AuthScreen() {
         setEmail("");
         setPassword("");
         setConfirmPassword("");
+        setPasswordsMatch(false);
         setMode("login");
       } else {
         const strength = evaluatePassword(password);
@@ -106,11 +109,25 @@ export default function AuthScreen() {
           setIsLoading(false);
           return;
         }
-        await register(email, password, selectedRole);
+        if (selectedRole === "rider") {
+          if (!vehicleType) {
+            Toast.show({ type: "error", text1: "Select your vehicle" });
+            setIsLoading(false);
+            return;
+          }
+        }
+        await register(
+          email,
+          password,
+          selectedRole,
+          vehicleType || (undefined as any)
+        );
         router.replace(`/verify?email=${encodeURIComponent(email)}`);
         setEmail("");
         setPassword("");
         setConfirmPassword("");
+        setPasswordsMatch(false);
+        setVehicleType("");
         setMode("login");
       }
     } catch (error: any) {
@@ -309,6 +326,12 @@ export default function AuthScreen() {
                   onChangeText={(v) => {
                     setPassword(v);
                     setPasswordStrength(evaluatePassword(v));
+                    // Re-check password match when password changes
+                    if (confirmPassword.length > 0) {
+                      const matches = v === confirmPassword;
+                      setConfirmMismatch(!matches);
+                      setPasswordsMatch(matches);
+                    }
                   }}
                   placeholder="Enter your password"
                   placeholderTextColor="#9CA4AB"
@@ -363,7 +386,11 @@ export default function AuthScreen() {
                 </Text>
                 <View
                   className={`flex-row items-center bg-dark-100 rounded-xl border ${
-                    confirmMismatch ? "border-red-500" : "border-neutral-100/50"
+                    confirmMismatch
+                      ? "border-red-500"
+                      : passwordsMatch
+                      ? "border-green-500"
+                      : "border-neutral-100/50"
                   }`}
                 >
                   <View className="pl-4">
@@ -377,7 +404,9 @@ export default function AuthScreen() {
                     value={confirmPassword}
                     onChangeText={(v) => {
                       setConfirmPassword(v);
-                      setConfirmMismatch(v.length > 0 && v !== password);
+                      const matches = v.length > 0 && v === password;
+                      setConfirmMismatch(v.length > 0 && !matches);
+                      setPasswordsMatch(matches);
                     }}
                     placeholder="Confirm your password"
                     placeholderTextColor="#9CA4AB"
@@ -405,36 +434,97 @@ export default function AuthScreen() {
                     Passwords do not match
                   </Text>
                 )}
+                {passwordsMatch && !confirmMismatch && (
+                  <Text className="text-green-500 text-xs mt-2">
+                    ✓ Passwords match
+                  </Text>
+                )}
+              </View>
+            )}
+
+            {/* Rider: Vehicle Type (Signup only) */}
+            {mode === "signup" && selectedRole === "rider" && (
+              <View className="mb-6">
+                <Text className="text-light-200 text-sm mb-3 font-medium">
+                  Vehicle Type
+                </Text>
+                <View className="flex-row bg-dark-100 rounded-2xl p-1">
+                  <TouchableOpacity
+                    onPress={() => setVehicleType("motorcycle")}
+                    className={`flex-1 py-3 rounded-xl ${
+                      vehicleType === "motorcycle" ? "bg-accent" : ""
+                    }`}
+                  >
+                    <Text
+                      className={`text-center font-semibold text-sm ${
+                        vehicleType === "motorcycle"
+                          ? "text-primary"
+                          : "text-light-300"
+                      }`}
+                    >
+                      Motorcycle
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setVehicleType("car")}
+                    className={`flex-1 py-3 rounded-xl ${
+                      vehicleType === "car" ? "bg-accent" : ""
+                    }`}
+                  >
+                    <Text
+                      className={`text-center font-semibold text-sm ${
+                        vehicleType === "car"
+                          ? "text-primary"
+                          : "text-light-300"
+                      }`}
+                    >
+                      Car
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
 
             {/* Submit Button */}
-            <TouchableOpacity
-              onPress={handleSubmit}
-              disabled={isLoading}
-              className="bg-accent rounded-xl py-4 mb-4 flex-row items-center justify-center"
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#030014" size="small" />
-              ) : (
-                <>
-                  <View style={{ marginRight: 8 }}>
-                    <Icons.action
-                      name={
-                        (mode === "login"
-                          ? IconNames.arrowForward
-                          : IconNames.addCircle) as any
-                      }
-                      size={20}
-                      color="#030014"
-                    />
-                  </View>
-                  <Text className="text-primary font-bold text-base">
-                    {mode === "login" ? "Login" : "Create Account"}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
+            {(() => {
+              const signupMismatch =
+                mode === "signup" &&
+                confirmPassword.length > 0 &&
+                confirmPassword !== password;
+              const riderNeedsVehicle =
+                mode === "signup" && selectedRole === "rider" && !vehicleType;
+              const disabled = isLoading || signupMismatch || riderNeedsVehicle;
+              return (
+                <TouchableOpacity
+                  onPress={handleSubmit}
+                  disabled={disabled}
+                  className={`rounded-xl py-4 mb-4 flex-row items-center justify-center ${
+                    disabled ? "bg-accent/50" : "bg-accent"
+                  }`}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#030014" size="small" />
+                  ) : (
+                    <>
+                      <View style={{ marginRight: 8 }}>
+                        <Icons.action
+                          name={
+                            (mode === "login"
+                              ? IconNames.arrowForward
+                              : IconNames.addCircle) as any
+                          }
+                          size={20}
+                          color="#030014"
+                        />
+                      </View>
+                      <Text className="text-primary font-bold text-base">
+                        {mode === "login" ? "Login" : "Create Account"}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              );
+            })()}
 
             {/* Toggle Text */}
             <View className="flex-row justify-center items-center">
@@ -447,6 +537,7 @@ export default function AuthScreen() {
                 onPress={() => {
                   setMode(mode === "login" ? "signup" : "login");
                   setConfirmPassword("");
+                  setPasswordsMatch(false);
                 }}
               >
                 <Text className="text-accent font-semibold text-sm">

@@ -37,6 +37,38 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    // Default address for customers (KYC)
+    defaultAddress: {
+      type: String,
+      default: null,
+    },
+    // Address for riders
+    address: {
+      type: String,
+      default: null,
+    },
+    vehicleType: {
+      type: String,
+      enum: ["motorcycle", "car", null],
+      default: null,
+    },
+    // KYC fields for riders
+    nin: {
+      type: String,
+      default: null,
+    },
+    bvn: {
+      type: String,
+      default: null,
+    },
+    ninVerified: {
+      type: Boolean,
+      default: false,
+    },
+    bvnVerified: {
+      type: Boolean,
+      default: false,
+    },
     isVerified: {
       type: Boolean,
       default: false,
@@ -58,6 +90,98 @@ const userSchema = new mongoose.Schema(
     resetPasswordExpire: {
       type: Date,
       default: null,
+    },
+    // Expo push notification token
+    expoPushToken: {
+      type: String,
+      default: null,
+    },
+    // Notification preferences
+    notificationPreferences: {
+      type: {
+        // Payment notifications
+        payment_reminder: {
+          inApp: { type: Boolean, default: true },
+          push: { type: Boolean, default: true },
+          email: { type: Boolean, default: true },
+        },
+        payment_day: {
+          inApp: { type: Boolean, default: true },
+          push: { type: Boolean, default: true },
+          email: { type: Boolean, default: true },
+        },
+        // Order notifications
+        order_created: {
+          inApp: { type: Boolean, default: true },
+          push: { type: Boolean, default: true },
+          email: { type: Boolean, default: true },
+        },
+        order_assigned: {
+          inApp: { type: Boolean, default: true },
+          push: { type: Boolean, default: true },
+          email: { type: Boolean, default: true },
+        },
+        order_status_updated: {
+          inApp: { type: Boolean, default: true },
+          push: { type: Boolean, default: true },
+          email: { type: Boolean, default: true },
+        },
+        // Delivery notifications
+        delivery_otp: {
+          inApp: { type: Boolean, default: true },
+          push: { type: Boolean, default: true },
+          email: { type: Boolean, default: true },
+        },
+        delivery_verified: {
+          inApp: { type: Boolean, default: true },
+          push: { type: Boolean, default: true },
+          email: { type: Boolean, default: true },
+        },
+        delivery_proof_updated: {
+          inApp: { type: Boolean, default: true },
+          push: { type: Boolean, default: true },
+          email: { type: Boolean, default: true },
+        },
+        // Account notifications
+        auth_verified: {
+          inApp: { type: Boolean, default: true },
+          push: { type: Boolean, default: true },
+          email: { type: Boolean, default: true },
+        },
+        profile_updated: {
+          inApp: { type: Boolean, default: true },
+          push: { type: Boolean, default: true },
+          email: { type: Boolean, default: true },
+        },
+        // Payout notifications
+        payout_generated: {
+          inApp: { type: Boolean, default: true },
+          push: { type: Boolean, default: true },
+          email: { type: Boolean, default: true },
+        },
+        payout_paid: {
+          inApp: { type: Boolean, default: true },
+          push: { type: Boolean, default: true },
+          email: { type: Boolean, default: true },
+        },
+        // Price negotiation
+        price_change_requested: {
+          inApp: { type: Boolean, default: true },
+          push: { type: Boolean, default: true },
+          email: { type: Boolean, default: true },
+        },
+        price_change_accepted: {
+          inApp: { type: Boolean, default: true },
+          push: { type: Boolean, default: true },
+          email: { type: Boolean, default: true },
+        },
+        price_change_rejected: {
+          inApp: { type: Boolean, default: true },
+          push: { type: Boolean, default: true },
+          email: { type: Boolean, default: true },
+        },
+      },
+      default: {},
     },
   },
   {

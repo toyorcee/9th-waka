@@ -7,6 +7,7 @@ import {
   storeToken,
   User,
 } from "@/services/authApi";
+import { registerForPushNotificationsAsync } from "@/services/notificationService";
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 interface AuthContextType {
@@ -18,7 +19,8 @@ interface AuthContextType {
   register: (
     email: string,
     password: string,
-    role?: "customer" | "rider"
+    role?: "customer" | "rider",
+    vehicleType?: "motorcycle" | "car"
   ) => Promise<void>;
   logout: () => Promise<void>;
   verifyEmail: (token: string, user: User) => Promise<void>;
@@ -42,7 +44,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
           const me = await fetchCurrentUser();
           const u = me?.user || me;
-          if (u?.id || u?._id)
+          if (u?.id || u?._id) {
             setUser({
               id: String(u.id || u._id),
               email: u.email,
@@ -50,7 +52,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               role: u.role,
               fullName: u.fullName ?? null,
               phoneNumber: u.phoneNumber ?? null,
+              vehicleType: u.vehicleType ?? null,
             });
+            registerForPushNotificationsAsync().catch((err) =>
+              console.warn("Failed to register push notifications:", err)
+            );
+          }
         } catch (e) {
           console.error("/auth/me failed", e);
         }
@@ -70,6 +77,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await storeToken(response.token);
       setUser(response.user);
       console.log("✅ Login successful");
+      // Register for push notifications after login
+      registerForPushNotificationsAsync().catch((err) =>
+        console.warn("Failed to register push notifications:", err)
+      );
     } catch (error: any) {
       console.error("Login error:", error);
       throw error;
@@ -79,13 +90,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const register = async (
     email: string,
     password: string,
-    role?: "customer" | "rider"
+    role?: "customer" | "rider",
+    vehicleType?: "motorcycle" | "car"
   ) => {
     try {
       const response = await registerUser({
         email,
         password,
         role: role || "customer",
+        ...(vehicleType ? { vehicleType } : {}),
       });
 
       console.log("✅ Registration successful (verification required)");
@@ -110,6 +123,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await storeToken(token);
       setUser(user);
       console.log("✅ Email verified and user logged in");
+      registerForPushNotificationsAsync().catch((err) =>
+        console.warn("Failed to register push notifications:", err)
+      );
     } catch (error) {
       console.error("Error completing verification:", error);
       throw error;

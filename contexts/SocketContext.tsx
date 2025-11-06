@@ -1,4 +1,5 @@
 import { SocketEvents } from "@/constants/socketEvents";
+import { showLocalNotification } from "@/services/notificationService";
 import { socketClient } from "@/services/socketClient";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { AppState, AppStateStatus } from "react-native";
@@ -37,11 +38,8 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    const baseUrl =
-      process.env.EXPO_PUBLIC_API_BASE_URL?.replace("/api", "") ||
-      process.env.EXPO_PUBLIC_API_BASE_URL ||
-      "http://localhost:3000";
-    socketClient.connect(baseUrl);
+    // Let socketClient determine the URL itself using the same logic as apiClient
+    socketClient.connect();
 
     const interval = setInterval(() => {
       setConnected(socketClient.connected);
@@ -56,13 +54,19 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       };
 
       setNotifications((prev) => [newNotification, ...prev]);
+
+      // Show native notification
+      showLocalNotification(notification.title, notification.message, {
+        notificationId: newNotification.id,
+        type: notification.type,
+      }).catch((err) => console.warn("Failed to show notification:", err));
     };
     const unsubscribeNotification =
       socketClient.addNotificationListener(handleNotification);
 
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
       if (nextAppState === "active" && isAuthenticated) {
-        socketClient.connect(baseUrl);
+        socketClient.connect();
       } else if (nextAppState === "background") {
         // Keep connected but can optimize
       }
@@ -84,6 +88,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
           text1: "Verified",
           text2: "Welcome to 9thWaka",
         });
+        showLocalNotification("Verified", "Welcome to 9thWaka").catch(() => {});
         checkAuthStatus();
       });
       on(SocketEvents.PROFILE_UPDATED, () => {
@@ -100,16 +105,23 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
           text1: "Order created",
           text2: "Your order has been placed and is awaiting assignment",
         });
+        showLocalNotification(
+          "Order created",
+          "Your order has been placed and is awaiting assignment"
+        ).catch(() => {});
       });
       on(SocketEvents.ORDER_ASSIGNED, (data: any) => {
         const isRider = !data.riderId;
+        const title = isRider ? "Order accepted" : "Rider assigned";
+        const message = isRider
+          ? "You have accepted the order"
+          : "A rider has been assigned to your order";
         Toast.show({
           type: "success",
-          text1: isRider ? "Order accepted" : "Rider assigned",
-          text2: isRider
-            ? "You have accepted the order"
-            : "A rider has been assigned to your order",
+          text1: title,
+          text2: message,
         });
+        showLocalNotification(title, message).catch(() => {});
       });
       on(SocketEvents.ORDER_STATUS_UPDATED, (data: any) => {
         const statusMessages: Record<
@@ -138,6 +150,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
           subtitle: "Order status has changed",
         };
         Toast.show({ type: "info", text1: msg.title, text2: msg.subtitle });
+        showLocalNotification(msg.title, msg.subtitle).catch(() => {});
       });
       on(SocketEvents.DELIVERY_OTP, () => {
         Toast.show({
@@ -145,6 +158,10 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
           text1: "Delivery code sent",
           text2: "Check your notifications for the delivery code",
         });
+        showLocalNotification(
+          "Delivery code sent",
+          "Check your notifications for the delivery code"
+        ).catch(() => {});
       });
       on(SocketEvents.DELIVERY_VERIFIED, () => {
         Toast.show({
@@ -152,6 +169,10 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
           text1: "Delivery confirmed",
           text2: "Order has been verified and marked as delivered",
         });
+        showLocalNotification(
+          "Delivery confirmed",
+          "Order has been verified and marked as delivered"
+        ).catch(() => {});
       });
       on(SocketEvents.DELIVERY_PROOF_UPDATED, () => {
         Toast.show({
@@ -166,6 +187,10 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
           text1: "Weekly payout generated",
           text2: "Your weekly earnings summary is ready",
         });
+        showLocalNotification(
+          "Weekly payout generated",
+          "Your weekly earnings summary is ready"
+        ).catch(() => {});
       });
       on(SocketEvents.PAYOUT_PAID, () => {
         Toast.show({
@@ -173,6 +198,47 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
           text1: "Payout processed",
           text2: "Your weekly remittance has been marked as paid",
         });
+        showLocalNotification(
+          "Payout processed",
+          "Your weekly remittance has been marked as paid"
+        ).catch(() => {});
+      });
+      on(SocketEvents.PRICE_CHANGE_REQUESTED, (data: any) => {
+        Toast.show({
+          type: "info",
+          text1: "Price change requested",
+          text2: `Rider requested ₦${
+            data?.requestedPrice?.toLocaleString() || "new price"
+          }`,
+        });
+        showLocalNotification(
+          "Price change requested",
+          `Rider requested a price change for your order`
+        ).catch(() => {});
+      });
+      on(SocketEvents.PRICE_CHANGE_ACCEPTED, (data: any) => {
+        Toast.show({
+          type: "success",
+          text1: "Price change accepted",
+          text2: `Customer accepted your requested price of ₦${
+            data?.finalPrice?.toLocaleString() || ""
+          }`,
+        });
+        showLocalNotification(
+          "Price change accepted",
+          "Customer accepted your price change request"
+        ).catch(() => {});
+      });
+      on(SocketEvents.PRICE_CHANGE_REJECTED, () => {
+        Toast.show({
+          type: "error",
+          text1: "Price change rejected",
+          text2: "Customer rejected your price change request",
+        });
+        showLocalNotification(
+          "Price change rejected",
+          "Customer rejected your price change request"
+        ).catch(() => {});
       });
       // Detach on cleanup
       detachFns.push(() => {
@@ -187,6 +253,9 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         off(SocketEvents.DELIVERY_PROOF_UPDATED);
         off(SocketEvents.PAYOUT_GENERATED);
         off(SocketEvents.PAYOUT_PAID);
+        off(SocketEvents.PRICE_CHANGE_REQUESTED);
+        off(SocketEvents.PRICE_CHANGE_ACCEPTED);
+        off(SocketEvents.PRICE_CHANGE_REJECTED);
       });
     };
     const attachTimer = setTimeout(tryAttach, 300);

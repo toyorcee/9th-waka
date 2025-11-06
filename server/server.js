@@ -1,25 +1,28 @@
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
+import http from "http";
 import mongoose from "mongoose";
 import nodemailer from "nodemailer";
 import path from "path";
-import { fileURLToPath } from "url";
-
-import http from "http";
 import { Server as SocketIOServer } from "socket.io";
+import { fileURLToPath } from "url";
 import { errorHandler } from "./middleware/index.js";
 import authRoutes from "./routes/auth.js";
 import notificationRoutes from "./routes/notifications.js";
 import orderRoutes from "./routes/orders.js";
 import payoutRoutes from "./routes/payouts.js";
+import riderRoutes from "./routes/riders.js";
 import userRoutes from "./routes/user.js";
+import {
+  scheduleSaturdayReminder,
+  scheduleSundayPayment,
+} from "./services/scheduledNotifications.js";
 import {
   authenticateSocket,
   handleDisconnect,
   joinUserRoom,
 } from "./services/socketService.js";
-// Add more routes as you build them
 // import deliveryRoutes from "./routes/delivery.js";
 // import riderRoutes from "./routes/rider.js";
 
@@ -115,6 +118,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/payouts", payoutRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/riders", riderRoutes);
 // Add more routes as you build them
 // app.use("/api/delivery", deliveryRoutes);
 // app.use("/api/rider", riderRoutes);
@@ -144,6 +148,10 @@ httpServer.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 9th Waka Server running on port ${PORT}`);
   console.log(`📊 Health check: ${publicBase}/api/health`);
   console.log(`🔐 Auth API: ${publicBase}/api/auth`);
+
+  // Initialize scheduled notifications (cron jobs)
+  scheduleSaturdayReminder(); // Reminder on Saturday (for Sunday payment)
+  scheduleSundayPayment(); // Payment day on Sunday
 
   // SMTP transport startup verification
   const emailUser = process.env.EMAIL_USER;

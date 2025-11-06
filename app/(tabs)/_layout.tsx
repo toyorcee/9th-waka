@@ -78,64 +78,64 @@ export default function TabsLayout() {
       />
 
       {/* Customer-specific tabs (shown when role is customer; hidden otherwise) */}
-      <Tabs.Screen
-        name="orders"
-        options={{
-          title: "My Orders",
+          <Tabs.Screen
+            name="orders"
+            options={{
+              title: "My Orders",
           href: userRole === "customer" ? undefined : null,
           tabBarIcon: ({ focused }) => (
             <TabIcon
               focused={focused}
               IconComp={Icons.package}
               name={MCIconNames.packageVariant}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="track"
-        options={{
-          title: "Track",
+                />
+              ),
+            }}
+          />
+          <Tabs.Screen
+            name="track"
+            options={{
+              title: "Track",
           href: userRole === "customer" ? undefined : null,
           tabBarIcon: ({ focused }) => (
             <TabIcon
               focused={focused}
               IconComp={Icons.map}
               name={IconNames.mapOutline}
-            />
-          ),
-        }}
-      />
+                />
+              ),
+            }}
+          />
 
       {/* Rider-specific tabs (shown when role is rider; hidden otherwise) */}
-      <Tabs.Screen
-        name="deliveries"
-        options={{
-          title: "Deliveries",
+          <Tabs.Screen
+            name="deliveries"
+            options={{
+              title: "Deliveries",
           href: userRole === "rider" ? undefined : null,
           tabBarIcon: ({ focused }) => (
             <TabIcon
               focused={focused}
               IconComp={Icons.delivery}
               name={MCIconNames.delivery}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="earnings"
-        options={{
-          title: "Earnings",
+                />
+              ),
+            }}
+          />
+          <Tabs.Screen
+            name="earnings"
+            options={{
+              title: "Earnings",
           href: userRole === "rider" ? undefined : null,
           tabBarIcon: ({ focused }) => (
             <TabIcon
               focused={focused}
               IconComp={Icons.money}
               name={MCIconNames.cash}
-            />
-          ),
-        }}
-      />
+                />
+              ),
+            }}
+          />
 
       {/* Core Tab - Profile (All Users) */}
       <Tabs.Screen

@@ -1,7 +1,10 @@
 import { IconNames, Icons } from "@/constants/icons";
 import { useSocket } from "@/contexts/SocketContext";
 import { Routes } from "@/services/navigationHelper";
-import { fetchNotifications } from "@/services/notificationService";
+import {
+  fetchNotifications,
+  markNotificationRead,
+} from "@/services/notificationService";
 import useFetch from "@/services/useFetch";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
@@ -9,11 +12,11 @@ import { Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function NotificationBell() {
-  const { notifications, unreadCount, markAsRead, clearAll } = useSocket();
+  const { notifications, markAsRead, clearAll } = useSocket();
   const router = useRouter();
   const [modalVisible, setModalVisible] = useState(false);
   const insets = useSafeAreaInsets();
-  const { data, loading, refetch, error } = useFetch(
+  const { data, loading, refetch } = useFetch(
     () => fetchNotifications(0, 50),
     false
   );
@@ -125,7 +128,8 @@ export default function NotificationBell() {
                       onPress={async () => {
                         markAsRead(notif.id);
                         try {
-                          await fetchNotifications(0, 0);
+                          await markNotificationRead(notif.id);
+                          await refetch();
                         } catch {}
                         if (notif.type === "order") {
                           router.push(

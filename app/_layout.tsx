@@ -35,10 +35,18 @@ export default function RootLayout() {
           <StatusBar hidden={true} />
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="chat" options={{ headerShown: false }} />
-            <Stack.Screen name="orders" options={{ headerShown: false }} />
-            <Stack.Screen name="profile" options={{ headerShown: false }} />
-            <Stack.Screen name="sos" options={{ headerShown: false }} />
+            <Stack.Screen name="auth" options={{ headerShown: false }} />
+            <Stack.Screen name="verify" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="profile/edit"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="profile/settings"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen name="orders/new" options={{ headerShown: false }} />
+            <Stack.Screen name="orders/[id]" options={{ headerShown: false }} />
           </Stack>
           <Toast topOffset={12} config={toastConfig} />
         </SocketProvider>

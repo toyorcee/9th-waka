@@ -43,7 +43,24 @@ const OrderSchema = new mongoose.Schema(
     pickup: { type: PointSchema, required: true },
     dropoff: { type: PointSchema, required: true },
     items: { type: String, default: "" },
+    preferredVehicleType: {
+      type: String,
+      enum: ["motorcycle", "car", null],
+      default: null,
+    },
     price: { type: Number, default: 0 },
+    originalPrice: { type: Number, default: 0 },
+    riderRequestedPrice: { type: Number, default: null },
+    priceNegotiation: {
+      status: {
+        type: String,
+        enum: ["none", "requested", "accepted", "rejected"],
+        default: "none",
+      },
+      requestedAt: { type: Date, default: null },
+      reason: { type: String, default: null },
+      respondedAt: { type: Date, default: null },
+    },
     status: {
       type: String,
       enum: [

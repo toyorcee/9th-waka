@@ -2,16 +2,17 @@ import { SocketEvents } from "../constants/socketEvents.js";
 import Order from "../models/Order.js";
 import RiderPayout from "../models/RiderPayout.js";
 import { io } from "../server.js";
+import { createAndSendNotification } from "../services/notificationService.js";
 
+// Get current week range (Sunday to Saturday)
 function getWeekRange(date = new Date()) {
   const d = new Date(date);
-  const day = d.getUTCDay();
-  const diffToMonday = (day + 6) % 7;
-  const start = new Date(
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - diffToMonday)
-  );
+  const day = d.getDay();
+  const diff = d.getDate() - day;
+  const start = new Date(d.setDate(diff));
+  start.setHours(0, 0, 0, 0);
   const end = new Date(start);
-  end.setUTCDate(start.getUTCDate() + 7);
+  end.setDate(start.getDate() + 7);
   return { start, end };
 }
 
@@ -81,6 +82,15 @@ export const generatePayoutsForWeek = async (req, res) => {
     };
     try {
       for (const p of results) {
+        // Notify rider
+        try {
+          await createAndSendNotification(p.riderId, {
+            type: "payout_generated",
+            title: "Weekly payout generated",
+            message: `Your weekly earnings of ₦${p.totals.riderNet.toLocaleString()} have been calculated and are ready for payment`,
+          });
+        } catch {}
+
         io.to(`user:${p.riderId}`).emit(SocketEvents.PAYOUT_GENERATED, {
           payoutId: p._id.toString(),
           weekStart: p.weekStart,
@@ -120,6 +130,16 @@ export const markPayoutPaid = async (req, res) => {
     payout.status = "paid";
     payout.paidAt = new Date();
     await payout.save();
+
+    // Notify rider
+    try {
+      await createAndSendNotification(payout.riderId, {
+        type: "payout_paid",
+        title: "Payment received",
+        message: `Your weekly earnings of ₦${payout.totals.riderNet.toLocaleString()} have been paid`,
+      });
+    } catch {}
+
     try {
       io.to(`user:${payout.riderId}`).emit(SocketEvents.PAYOUT_PAID, {
         payoutId: payout._id.toString(),
