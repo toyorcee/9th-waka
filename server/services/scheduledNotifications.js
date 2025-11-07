@@ -12,19 +12,17 @@ import { isNotificationEnabled } from "./notificationPreferences.js";
 import { createAndSendNotification } from "./notificationService.js";
 import { sendExpoPushNotifications } from "./pushNotificationService.js";
 
-// Get current week range (Sunday to Saturday)
 function getWeekRange(date = new Date()) {
   const d = new Date(date);
-  const day = d.getDay(); // 0 = Sunday, 6 = Saturday
-  const diff = d.getDate() - day; // Go back to Sunday
+  const day = d.getDay(); 
+  const diff = d.getDate() - day; 
   const start = new Date(d.setDate(diff));
   start.setHours(0, 0, 0, 0);
   const end = new Date(start);
-  end.setDate(start.getDate() + 7); // Next Sunday (exclusive, so includes all of Saturday)
+  end.setDate(start.getDate() + 7); 
   return { start, end };
 }
 
-// Email helper functions
 const getEmailTransporter = () => {
   const service = process.env.EMAIL_SERVICE;
   const user = process.env.EMAIL_USER;
@@ -150,7 +148,7 @@ export const scheduleSaturdayReminder = () => {
                   title,
                   message,
                 },
-                { skipInApp: false }
+                { skipInApp: false, skipPush: true, skipEmail: true }
               );
               notifications.push(rider._id);
             } catch (e) {
@@ -161,7 +159,6 @@ export const scheduleSaturdayReminder = () => {
             }
           }
 
-          // Push notification (via Expo) - only if enabled and token exists
           if (pushEnabled && rider.expoPushToken) {
             pushTokens.push({
               token: rider.expoPushToken,
@@ -293,7 +290,7 @@ export const scheduleSundayPayment = () => {
                   title,
                   message,
                 },
-                { skipInApp: false }
+                { skipInApp: false, skipPush: true, skipEmail: true }
               );
               notifications.push(rider._id);
             } catch (e) {

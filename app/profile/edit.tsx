@@ -1,13 +1,20 @@
 import { IconNames, Icons } from "@/constants/icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { toAbsoluteUrl } from "@/services/url";
-import { updateProfile, uploadProfilePicture } from "@/services/userApi";
+import {
+  checkEmailAvailability,
+  updateProfile,
+  uploadDriverLicense,
+  uploadProfilePicture,
+  uploadVehiclePicture,
+} from "@/services/userApi";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   ScrollView,
   Text,
   TextInput,
@@ -26,15 +33,104 @@ export default function EditProfileScreen() {
   const [profilePicture, setProfilePicture] = useState<string | undefined>(
     user?.profilePicture || undefined
   );
-  // KYC fields
   const [nin, setNin] = useState(user?.nin || "");
   const [bvn, setBvn] = useState(user?.bvn || "");
   const [defaultAddress, setDefaultAddress] = useState(
     user?.defaultAddress || ""
   );
   const [address, setAddress] = useState(user?.address || "");
+  const [driverLicenseNumber, setDriverLicenseNumber] = useState(
+    user?.driverLicenseNumber || ""
+  );
+  const [driverLicensePicture, setDriverLicensePicture] = useState<
+    string | undefined
+  >(user?.driverLicensePicture || undefined);
+  const [vehiclePicture, setVehiclePicture] = useState<string | undefined>(
+    user?.vehiclePicture || undefined
+  );
   const [uploading, setUploading] = useState(false);
+  const [uploadingLicense, setUploadingLicense] = useState(false);
+  const [uploadingVehicle, setUploadingVehicle] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [verifyingNin, setVerifyingNin] = useState(false);
+  const [verifyingBvn, setVerifyingBvn] = useState(false);
+  const [ninVerified, setNinVerified] = useState(user?.ninVerified || false);
+  const [bvnVerified, setBvnVerified] = useState(user?.bvnVerified || false);
+  const [driverLicenseVerified, setDriverLicenseVerified] = useState(
+    user?.driverLicenseVerified || false
+  );
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null);
+  const [emailValid, setEmailValid] = useState<boolean | null>(null);
+  const [emailMessage, setEmailMessage] = useState<string>("");
+  const [vehicleType, setVehicleType] = useState<"motorcycle" | "car" | null>(
+    user?.vehicleType || null
+  );
+
+  const stepAnimations = useMemo(
+    () => ({
+      identity: new Animated.Value(0),
+      address: new Animated.Value(0),
+      driverLicense: new Animated.Value(0),
+      vehicle: new Animated.Value(0),
+    }),
+    []
+  );
+
+  // Check KYC completion status for riders
+  const kycSteps = useMemo(() => {
+    if (user?.role !== "rider") return null;
+    const hasNin = nin.trim().length > 0;
+    const hasBvn = bvn.trim().length > 0;
+    const hasAddress = address.trim().length > 0;
+    const hasDriverLicense = driverLicenseNumber.trim().length > 0;
+    const hasDriverLicensePic = !!driverLicensePicture;
+
+    return {
+      identity: hasNin || hasBvn, // At least one required
+      address: hasAddress,
+      driverLicense:
+        hasDriverLicense && hasDriverLicensePic && driverLicenseVerified,
+      vehicle: !!vehiclePicture,
+      allComplete:
+        (hasNin || hasBvn) &&
+        hasAddress &&
+        hasDriverLicense &&
+        hasDriverLicensePic &&
+        driverLicenseVerified &&
+        !!vehiclePicture,
+    };
+  }, [
+    user?.role,
+    nin,
+    bvn,
+    address,
+    driverLicenseNumber,
+    driverLicensePicture,
+    driverLicenseVerified,
+    vehiclePicture,
+  ]);
+
+  useEffect(() => {
+    if (!kycSteps) return;
+
+    const animateStep = (
+      step: keyof typeof stepAnimations,
+      completed: boolean
+    ) => {
+      Animated.spring(stepAnimations[step], {
+        toValue: completed ? 1 : 0,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 7,
+      }).start();
+    };
+
+    animateStep("identity", kycSteps.identity);
+    animateStep("address", kycSteps.address);
+    animateStep("driverLicense", kycSteps.driverLicense);
+    animateStep("vehicle", kycSteps.vehicle);
+  }, [kycSteps, stepAnimations]);
 
   useEffect(() => {
     if (params.email) {
@@ -52,10 +148,25 @@ export default function EditProfileScreen() {
         if (!nin && user.nin) setNin(user.nin);
         if (!bvn && user.bvn) setBvn(user.bvn);
         if (!address && user.address) setAddress(user.address);
+        if (!driverLicenseNumber && user.driverLicenseNumber)
+          setDriverLicenseNumber(user.driverLicenseNumber);
+        if (user.driverLicensePicture)
+          setDriverLicensePicture(user.driverLicensePicture);
+        if (user.vehiclePicture) setVehiclePicture(user.vehiclePicture);
+        if (user.ninVerified !== undefined) setNinVerified(user.ninVerified);
+        if (user.bvnVerified !== undefined) setBvnVerified(user.bvnVerified);
+        if (user.driverLicenseVerified !== undefined)
+          setDriverLicenseVerified(user.driverLicenseVerified);
+        if (user.vehicleType !== undefined) setVehicleType(user.vehicleType);
       }
       if (user.role === "customer") {
         if (!defaultAddress && user.defaultAddress)
           setDefaultAddress(user.defaultAddress);
+        // Load optional KYC fields for customers
+        if (!nin && user.nin) setNin(user.nin);
+        if (!bvn && user.bvn) setBvn(user.bvn);
+        if (user.ninVerified !== undefined) setNinVerified(user.ninVerified);
+        if (user.bvnVerified !== undefined) setBvnVerified(user.bvnVerified);
       }
     }
   }, [user]);
@@ -120,8 +231,260 @@ export default function EditProfileScreen() {
     }
   };
 
+  const pickVehicleImage = async () => {
+    try {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Toast.show({
+          type: "error",
+          text1: "Permission needed",
+          text2: "Please grant camera roll permissions to upload photos",
+        });
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9], // Vehicle aspect ratio
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const uri = result.assets[0].uri;
+        setVehiclePicture(uri);
+        setUploadingVehicle(true);
+
+        try {
+          const response = await uploadVehiclePicture(uri);
+          if (response.vehiclePicture) {
+            setVehiclePicture(response.vehiclePicture);
+            Toast.show({
+              type: "success",
+              text1: "Vehicle picture uploaded",
+              text2: "Your vehicle picture has been uploaded",
+            });
+            await checkAuthStatus();
+          }
+        } catch (error: any) {
+          Toast.show({
+            type: "error",
+            text1: "Upload failed",
+            text2:
+              error?.response?.data?.error ||
+              error?.message ||
+              "Failed to upload vehicle image",
+          });
+          setVehiclePicture(user?.vehiclePicture || undefined);
+        } finally {
+          setUploadingVehicle(false);
+        }
+      }
+    } catch (error: any) {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: error?.message || "Failed to pick image",
+      });
+      setUploadingVehicle(false);
+    }
+  };
+
+  const pickLicenseImage = async () => {
+    try {
+      // Request camera permissions
+      const { status: cameraStatus } =
+        await ImagePicker.requestCameraPermissionsAsync();
+      if (cameraStatus !== "granted") {
+        Toast.show({
+          type: "error",
+          text1: "Camera permission needed",
+          text2: "Please grant camera permissions to take a selfie",
+        });
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.9,
+        cameraType: ImagePicker.CameraType.front,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const uri = result.assets[0].uri;
+        setDriverLicensePicture(uri);
+        setUploadingLicense(true);
+
+        try {
+          const response = await uploadDriverLicense(uri);
+          if (response.driverLicensePicture) {
+            setDriverLicensePicture(response.driverLicensePicture);
+            // Check if license is verified (both number and picture present)
+            if (response.user?.driverLicenseVerified) {
+              setDriverLicenseVerified(true);
+              Toast.show({
+                type: "success",
+                text1: "License Verified",
+                text2: "Your driver license has been verified",
+              });
+            } else {
+              Toast.show({
+                type: "success",
+                text1: "Selfie uploaded",
+                text2: "Add license number to complete verification",
+              });
+            }
+            await checkAuthStatus();
+          }
+        } catch (error: any) {
+          Toast.show({
+            type: "error",
+            text1: "Upload failed",
+            text2:
+              error?.response?.data?.error ||
+              error?.message ||
+              "Failed to upload license image",
+          });
+          setDriverLicensePicture(user?.driverLicensePicture || undefined);
+        } finally {
+          setUploadingLicense(false);
+        }
+      }
+    } catch (error: any) {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: error?.message || "Failed to pick image",
+      });
+      setUploadingLicense(false);
+    }
+  };
+
+  // Simple debounce helper
+  const debounce = (func: (...args: any[]) => any, wait: number) => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    return function executedFunction(...args: any[]) {
+      const later = () => {
+        timeout = null;
+        func(...args);
+      };
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  };
+
+  // Debounced verification function for NIN
+  const verifyNinDebounced = React.useMemo(
+    () =>
+      debounce(async (ninValue: string) => {
+        if (!ninValue || ninValue.trim().length === 0) {
+          setNinVerified(false);
+          return;
+        }
+
+        setVerifyingNin(true);
+        try {
+          const updateData: any = {
+            nin: ninValue.trim(),
+          };
+          const response = await updateProfile(updateData);
+          if (response?.user?.ninVerified) {
+            setNinVerified(true);
+            Toast.show({
+              type: "success",
+              text1: "NIN Verified",
+              text2: "Your NIN has been successfully verified",
+            });
+          } else {
+            setNinVerified(false);
+          }
+          await checkAuthStatus();
+        } catch (error: any) {
+          setNinVerified(false);
+          // Don't show error toast for verification failures, just silently fail
+        } finally {
+          setVerifyingNin(false);
+        }
+      }, 1500), // Wait 1.5 seconds after user stops typing
+    [checkAuthStatus]
+  );
+
+  // Debounced verification function for BVN
+  const verifyBvnDebounced = React.useMemo(
+    () =>
+      debounce(async (bvnValue: string) => {
+        if (!bvnValue || bvnValue.trim().length === 0) {
+          setBvnVerified(false);
+          return;
+        }
+
+        setVerifyingBvn(true);
+        try {
+          const updateData: any = {
+            bvn: bvnValue.trim(),
+          };
+          const response = await updateProfile(updateData);
+          if (response?.user?.bvnVerified) {
+            setBvnVerified(true);
+            Toast.show({
+              type: "success",
+              text1: "BVN Verified",
+              text2: "Your BVN has been successfully verified",
+            });
+          } else {
+            setBvnVerified(false);
+          }
+          await checkAuthStatus();
+        } catch (error: any) {
+          setBvnVerified(false);
+        } finally {
+          setVerifyingBvn(false);
+        }
+      }, 1500),
+    [checkAuthStatus]
+  );
+
+  // Debounced email availability check
+  const checkEmailDebounced = React.useMemo(
+    () =>
+      debounce(async (emailValue: string) => {
+        // Reset state if empty
+        if (!emailValue || emailValue.trim().length === 0) {
+          setEmailAvailable(null);
+          setEmailValid(null);
+          setEmailMessage("");
+          return;
+        }
+
+        // Don't check if it's the same as current email
+        if (emailValue.trim().toLowerCase() === user?.email?.toLowerCase()) {
+          setEmailAvailable(true);
+          setEmailValid(true);
+          setEmailMessage("");
+          return;
+        }
+
+        setCheckingEmail(true);
+        try {
+          const result = await checkEmailAvailability(emailValue.trim());
+          setEmailValid(result.valid);
+          setEmailAvailable(result.available);
+          setEmailMessage(result.message);
+        } catch (error: any) {
+          setEmailValid(false);
+          setEmailAvailable(false);
+          setEmailMessage("Error checking email availability");
+        } finally {
+          setCheckingEmail(false);
+        }
+      }, 1000), // Wait 1 second after user stops typing
+    [user?.email]
+  );
+
   const handleSave = async () => {
-    // Basic validation - at least name or phone
     if (!fullName.trim() && !phoneNumber.trim()) {
       Toast.show({
         type: "error",
@@ -133,18 +496,35 @@ export default function EditProfileScreen() {
 
     setSaving(true);
     try {
+      // Validate email if changed
+      if (email.trim().toLowerCase() !== user?.email?.toLowerCase()) {
+        if (emailAvailable === false || emailValid === false) {
+          Toast.show({
+            type: "error",
+            text1: "Invalid email",
+            text2: emailMessage || "Please enter a valid and available email",
+          });
+          return;
+        }
+      }
+
       const updateData: any = {
         fullName: fullName.trim() || undefined,
         phoneNumber: phoneNumber.trim() || undefined,
+        email: email.trim() !== user?.email ? email.trim() : undefined,
       };
 
-      // Add role-specific KYC fields
       if (user?.role === "rider") {
         updateData.nin = nin.trim() || undefined;
         updateData.bvn = bvn.trim() || undefined;
         updateData.address = address.trim() || undefined;
+        updateData.driverLicenseNumber =
+          driverLicenseNumber.trim() || undefined;
+        updateData.vehicleType = vehicleType || undefined;
       } else if (user?.role === "customer") {
         updateData.defaultAddress = defaultAddress.trim() || undefined;
+        updateData.nin = nin.trim() || undefined;
+        updateData.bvn = bvn.trim() || undefined;
       }
 
       await updateProfile(updateData);
@@ -195,7 +575,7 @@ export default function EditProfileScreen() {
             />
           </TouchableOpacity>
           <Text className="text-light-100 text-2xl font-bold">
-            Edit Profile
+            {user?.role === "rider" ? "Complete Your KYC" : "Edit Profile"}
           </Text>
           <View className="w-10" />
         </View>
@@ -252,20 +632,332 @@ export default function EditProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* KYC Progress Indicator for Riders */}
+        {user?.role === "rider" && kycSteps && (
+          <View className="bg-secondary rounded-2xl p-5 mb-6 border border-neutral-100">
+            <Text className="text-light-100 text-lg font-bold mb-4">
+              KYC Verification Progress
+            </Text>
+            <View className="gap-3">
+              {/* Step 1: Identity Verification */}
+              <Animated.View
+                className="flex-row items-center"
+                style={{
+                  opacity: stepAnimations.identity.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.7, 1],
+                  }),
+                  transform: [
+                    {
+                      scale: stepAnimations.identity.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.95, 1],
+                      }),
+                    },
+                  ],
+                }}
+              >
+                <Animated.View
+                  className={`w-6 h-6 rounded-full items-center justify-center mr-3 ${
+                    kycSteps.identity
+                      ? "bg-green-500"
+                      : "bg-accent/30 border-2 border-accent"
+                  }`}
+                  style={{
+                    transform: [
+                      {
+                        scale: stepAnimations.identity.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [1, 1.2],
+                        }),
+                      },
+                    ],
+                  }}
+                >
+                  {kycSteps.identity ? (
+                    <Text className="text-white text-xs font-bold">✓</Text>
+                  ) : (
+                    <Text className="text-accent text-xs font-bold">1</Text>
+                  )}
+                </Animated.View>
+                <View className="flex-1">
+                  <Text
+                    className={`text-sm font-semibold ${
+                      kycSteps.identity ? "text-green-400" : "text-light-200"
+                    }`}
+                  >
+                    Identity Verification
+                  </Text>
+                  <Text className="text-light-400 text-xs">
+                    {kycSteps.identity
+                      ? "NIN or BVN added"
+                      : "Add your NIN or BVN (required)"}
+                  </Text>
+                </View>
+              </Animated.View>
+
+              {/* Step 2: Address */}
+              <Animated.View
+                className="flex-row items-center"
+                style={{
+                  opacity: stepAnimations.address.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.7, 1],
+                  }),
+                  transform: [
+                    {
+                      scale: stepAnimations.address.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.95, 1],
+                      }),
+                    },
+                  ],
+                }}
+              >
+                <Animated.View
+                  className={`w-6 h-6 rounded-full items-center justify-center mr-3 ${
+                    kycSteps.address
+                      ? "bg-green-500"
+                      : "bg-accent/30 border-2 border-accent"
+                  }`}
+                  style={{
+                    transform: [
+                      {
+                        scale: stepAnimations.address.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [1, 1.2],
+                        }),
+                      },
+                    ],
+                  }}
+                >
+                  {kycSteps.address ? (
+                    <Text className="text-white text-xs font-bold">✓</Text>
+                  ) : (
+                    <Text className="text-accent text-xs font-bold">2</Text>
+                  )}
+                </Animated.View>
+                <View className="flex-1">
+                  <Text
+                    className={`text-sm font-semibold ${
+                      kycSteps.address ? "text-green-400" : "text-light-200"
+                    }`}
+                  >
+                    Address Information
+                  </Text>
+                  <Text className="text-light-400 text-xs">
+                    {kycSteps.address
+                      ? "Address added"
+                      : "Add your residential address"}
+                  </Text>
+                </View>
+              </Animated.View>
+
+              {/* Step 3: Driver License */}
+              <Animated.View
+                className="flex-row items-center"
+                style={{
+                  opacity: stepAnimations.driverLicense.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.7, 1],
+                  }),
+                  transform: [
+                    {
+                      scale: stepAnimations.driverLicense.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.95, 1],
+                      }),
+                    },
+                  ],
+                }}
+              >
+                <Animated.View
+                  className={`w-6 h-6 rounded-full items-center justify-center mr-3 ${
+                    kycSteps.driverLicense
+                      ? "bg-green-500"
+                      : "bg-accent/30 border-2 border-accent"
+                  }`}
+                  style={{
+                    transform: [
+                      {
+                        scale: stepAnimations.driverLicense.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [1, 1.2],
+                        }),
+                      },
+                    ],
+                  }}
+                >
+                  {kycSteps.driverLicense ? (
+                    <Text className="text-white text-xs font-bold">✓</Text>
+                  ) : (
+                    <Text className="text-accent text-xs font-bold">3</Text>
+                  )}
+                </Animated.View>
+                <View className="flex-1">
+                  <Text
+                    className={`text-sm font-semibold ${
+                      kycSteps.driverLicense
+                        ? "text-green-400"
+                        : "text-light-200"
+                    }`}
+                  >
+                    Driver License
+                  </Text>
+                  <Text className="text-light-400 text-xs">
+                    {kycSteps.driverLicense
+                      ? "License number and picture added"
+                      : "Add license number and picture"}
+                  </Text>
+                </View>
+              </Animated.View>
+
+              {/* Step 4: Vehicle Picture */}
+              <Animated.View
+                className="flex-row items-center"
+                style={{
+                  opacity: stepAnimations.vehicle.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.7, 1],
+                  }),
+                  transform: [
+                    {
+                      scale: stepAnimations.vehicle.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.95, 1],
+                      }),
+                    },
+                  ],
+                }}
+              >
+                <Animated.View
+                  className={`w-6 h-6 rounded-full items-center justify-center mr-3 ${
+                    kycSteps.vehicle
+                      ? "bg-green-500"
+                      : "bg-accent/30 border-2 border-accent"
+                  }`}
+                  style={{
+                    transform: [
+                      {
+                        scale: stepAnimations.vehicle.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [1, 1.2],
+                        }),
+                      },
+                    ],
+                  }}
+                >
+                  {kycSteps.vehicle ? (
+                    <Text className="text-white text-xs font-bold">✓</Text>
+                  ) : (
+                    <Text className="text-accent text-xs font-bold">4</Text>
+                  )}
+                </Animated.View>
+                <View className="flex-1">
+                  <Text
+                    className={`text-sm font-semibold ${
+                      kycSteps.vehicle ? "text-green-400" : "text-light-200"
+                    }`}
+                  >
+                    Vehicle Picture
+                  </Text>
+                  <Text className="text-light-400 text-xs">
+                    {kycSteps.vehicle
+                      ? "Vehicle picture uploaded"
+                      : "Upload a picture of your vehicle"}
+                  </Text>
+                </View>
+              </Animated.View>
+            </View>
+
+            {kycSteps.allComplete && (
+              <View className="mt-4 pt-4 border-t border-neutral-100">
+                <View className="flex-row items-center bg-green-500/20 rounded-xl p-3">
+                  <Icons.safety
+                    name={IconNames.checkmarkCircle as any}
+                    size={20}
+                    color="#10B981"
+                  />
+                  <Text className="text-green-400 font-semibold ml-2">
+                    KYC Verification Complete! You can now accept orders.
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Form Fields */}
         <View className="gap-4 mb-6">
           <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
             <Text className="text-light-300 text-sm mb-2">Email</Text>
-            <TextInput
-              value={email}
-              editable={false}
-              placeholder="your@email.com"
-              placeholderTextColor="#9CA4AB"
-              className="text-light-400 bg-dark-100 rounded-xl px-4 py-3 text-base opacity-60"
-            />
-            <Text className="text-light-400 text-xs mt-1">
-              Email cannot be changed
-            </Text>
+            <View className="relative">
+              <TextInput
+                value={email}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  setEmailAvailable(null);
+                  setEmailValid(null);
+                  setEmailMessage("");
+                  checkEmailDebounced(text);
+                }}
+                placeholder="your@email.com"
+                placeholderTextColor="#9CA4AB"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                className={`text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base pr-12 ${
+                  emailAvailable === true
+                    ? "border-2 border-green-500"
+                    : emailAvailable === false
+                    ? "border-2 border-red-500"
+                    : ""
+                }`}
+              />
+              {checkingEmail && (
+                <View className="absolute right-4 top-3">
+                  <ActivityIndicator size="small" color="#AB8BFF" />
+                </View>
+              )}
+              {!checkingEmail && emailAvailable === true && (
+                <View className="absolute right-4 top-3">
+                  <Icons.safety
+                    name={IconNames.checkmarkCircle as any}
+                    size={20}
+                    color="#10B981"
+                  />
+                </View>
+              )}
+              {!checkingEmail && emailAvailable === false && (
+                <View className="absolute right-4 top-3">
+                  <Icons.safety
+                    name={IconNames.closeCircle as any}
+                    size={20}
+                    color="#EF4444"
+                  />
+                </View>
+              )}
+            </View>
+            {emailMessage && (
+              <Text
+                className={`text-xs mt-1 ${
+                  emailAvailable === true
+                    ? "text-green-400"
+                    : emailAvailable === false
+                    ? "text-red-400"
+                    : "text-light-400"
+                }`}
+              >
+                {emailMessage}
+              </Text>
+            )}
+            {!emailMessage && (
+              <Text className="text-light-400 text-xs mt-1">
+                {email === user?.email
+                  ? "Your current email address"
+                  : "Enter a new email address to change it"}
+              </Text>
+            )}
           </View>
 
           <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
@@ -291,19 +983,107 @@ export default function EditProfileScreen() {
             />
           </View>
 
-          {/* Vehicle Type (Riders only - Read-only display) */}
-          {user?.role === "rider" && user?.vehicleType && (
+          {/* Vehicle Type (Riders only - Editable selector) */}
+          {user?.role === "rider" && (
             <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
-              <Text className="text-light-300 text-sm mb-2">Vehicle Type</Text>
-              <View className="bg-dark-100 rounded-xl px-4 py-3 border border-accent/30">
-                <Text className="text-accent font-semibold text-base">
-                  {user.vehicleType === "motorcycle"
-                    ? "🏍️ Motorcycle"
-                    : "🚗 Car/Van"}
-                </Text>
+              <Text className="text-light-300 text-sm mb-3">Vehicle Type</Text>
+              <View className="flex-row bg-dark-100 rounded-2xl p-1">
+                <TouchableOpacity
+                  onPress={() => setVehicleType("motorcycle")}
+                  className={`flex-1 py-3 rounded-xl ${
+                    vehicleType === "motorcycle" ? "bg-accent" : ""
+                  }`}
+                >
+                  <Text
+                    className={`text-center font-semibold text-sm ${
+                      vehicleType === "motorcycle"
+                        ? "text-primary"
+                        : "text-light-300"
+                    }`}
+                  >
+                    🏍️ Motorcycle
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setVehicleType("car")}
+                  className={`flex-1 py-3 rounded-xl ${
+                    vehicleType === "car" ? "bg-accent" : ""
+                  }`}
+                >
+                  <Text
+                    className={`text-center font-semibold text-sm ${
+                      vehicleType === "car" ? "text-primary" : "text-light-300"
+                    }`}
+                  >
+                    🚗 Car/Van/Tricycle
+                  </Text>
+                </TouchableOpacity>
               </View>
               <Text className="text-light-400 text-xs mt-2">
-                You can change this in Settings
+                Select your vehicle type for deliveries
+              </Text>
+            </View>
+          )}
+
+          {/* Vehicle Picture Upload (Riders only) */}
+          {user?.role === "rider" && (
+            <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
+              <Text className="text-light-300 text-sm mb-3">
+                Vehicle Picture
+              </Text>
+              {vehiclePicture ? (
+                <View className="mb-3">
+                  <View className="relative">
+                    <Image
+                      source={{
+                        uri: vehiclePicture.startsWith("http")
+                          ? vehiclePicture
+                          : toAbsoluteUrl(vehiclePicture) || vehiclePicture,
+                      }}
+                      style={{
+                        width: "100%",
+                        height: 200,
+                        borderRadius: 12,
+                      }}
+                      contentFit="cover"
+                    />
+                    {uploadingVehicle && (
+                      <View className="absolute inset-0 bg-black/50 rounded-xl items-center justify-center">
+                        <ActivityIndicator size="large" color="#AB8BFF" />
+                      </View>
+                    )}
+                  </View>
+                </View>
+              ) : (
+                <View className="mb-3 bg-dark-100 rounded-xl p-8 items-center justify-center border-2 border-dashed border-neutral-100">
+                  <Icons.media
+                    name={IconNames.cameraOutline as any}
+                    size={48}
+                    color="#9CA4AB"
+                  />
+                  <Text className="text-light-400 text-xs mt-2 text-center">
+                    No vehicle picture uploaded
+                  </Text>
+                </View>
+              )}
+              <TouchableOpacity
+                onPress={pickVehicleImage}
+                disabled={uploadingVehicle}
+                className="bg-accent/20 border border-accent rounded-xl py-3 px-4 items-center"
+              >
+                {uploadingVehicle ? (
+                  <ActivityIndicator size="small" color="#AB8BFF" />
+                ) : (
+                  <Text className="text-accent font-semibold">
+                    {vehiclePicture
+                      ? "Change Vehicle Picture"
+                      : "Upload Vehicle Picture"}
+                  </Text>
+                )}
+              </TouchableOpacity>
+              <Text className="text-light-400 text-xs mt-2">
+                Upload a clear picture of your{" "}
+                {user?.vehicleType === "motorcycle" ? "motorcycle" : "car/van"}
               </Text>
             </View>
           )}
@@ -315,34 +1095,98 @@ export default function EditProfileScreen() {
                 <Text className="text-light-300 text-sm mb-2">
                   NIN (National Identification Number)
                 </Text>
-                <TextInput
-                  value={nin}
-                  onChangeText={setNin}
-                  placeholder="Enter your NIN (optional)"
-                  placeholderTextColor="#9CA4AB"
-                  keyboardType="numeric"
-                  className="text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base"
-                />
-                <Text className="text-light-400 text-xs mt-1">
-                  Required to accept delivery orders. Provide either NIN or BVN.
-                </Text>
+                <View className="relative">
+                  <TextInput
+                    value={nin}
+                    onChangeText={(text) => {
+                      setNin(text);
+                      setNinVerified(false); // Reset verification when typing
+                      verifyNinDebounced(text);
+                    }}
+                    placeholder="Enter your NIN (optional)"
+                    placeholderTextColor="#9CA4AB"
+                    keyboardType="numeric"
+                    className={`text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base pr-12 ${
+                      ninVerified ? "border-2 border-green-500" : ""
+                    }`}
+                  />
+                  {verifyingNin && (
+                    <View className="absolute right-4 top-3">
+                      <ActivityIndicator size="small" color="#AB8BFF" />
+                    </View>
+                  )}
+                  {ninVerified && !verifyingNin && (
+                    <View className="absolute right-4 top-3">
+                      <Icons.safety
+                        name={IconNames.checkmarkCircle as any}
+                        size={20}
+                        color="#10B981"
+                      />
+                    </View>
+                  )}
+                </View>
+                {ninVerified && !verifyingNin && (
+                  <View className="flex-row items-center mt-2">
+                    <Text className="text-green-400 text-xs font-semibold">
+                      ✓ Verified
+                    </Text>
+                  </View>
+                )}
+                {!ninVerified && !verifyingNin && (
+                  <Text className="text-light-400 text-xs mt-1">
+                    Required to accept delivery orders. Provide either NIN or
+                    BVN.
+                  </Text>
+                )}
               </View>
 
               <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
                 <Text className="text-light-300 text-sm mb-2">
                   BVN (Bank Verification Number)
                 </Text>
-                <TextInput
-                  value={bvn}
-                  onChangeText={setBvn}
-                  placeholder="Enter your BVN (optional)"
-                  placeholderTextColor="#9CA4AB"
-                  keyboardType="numeric"
-                  className="text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base"
-                />
-                <Text className="text-light-400 text-xs mt-1">
-                  Required to accept delivery orders. Provide either NIN or BVN.
-                </Text>
+                <View className="relative">
+                  <TextInput
+                    value={bvn}
+                    onChangeText={(text) => {
+                      setBvn(text);
+                      setBvnVerified(false); // Reset verification when typing
+                      verifyBvnDebounced(text);
+                    }}
+                    placeholder="Enter your BVN (optional)"
+                    placeholderTextColor="#9CA4AB"
+                    keyboardType="numeric"
+                    className={`text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base pr-12 ${
+                      bvnVerified ? "border-2 border-green-500" : ""
+                    }`}
+                  />
+                  {verifyingBvn && (
+                    <View className="absolute right-4 top-3">
+                      <ActivityIndicator size="small" color="#AB8BFF" />
+                    </View>
+                  )}
+                  {bvnVerified && !verifyingBvn && (
+                    <View className="absolute right-4 top-3">
+                      <Icons.safety
+                        name={IconNames.checkmarkCircle as any}
+                        size={20}
+                        color="#10B981"
+                      />
+                    </View>
+                  )}
+                </View>
+                {bvnVerified && !verifyingBvn && (
+                  <View className="flex-row items-center mt-2">
+                    <Text className="text-green-400 text-xs font-semibold">
+                      ✓ Verified
+                    </Text>
+                  </View>
+                )}
+                {!bvnVerified && !verifyingBvn && (
+                  <Text className="text-light-400 text-xs mt-1">
+                    Required to accept delivery orders. Provide either NIN or
+                    BVN.
+                  </Text>
+                )}
               </View>
 
               <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
@@ -361,31 +1205,295 @@ export default function EditProfileScreen() {
                   Your residential or business address
                 </Text>
               </View>
+
+              <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
+                <Text className="text-light-300 text-sm mb-2">
+                  Driver License Number
+                </Text>
+                <View className="relative">
+                  <TextInput
+                    value={driverLicenseNumber}
+                    onChangeText={(text) => {
+                      setDriverLicenseNumber(text);
+                      // Check verification when number changes (if picture exists)
+                      if (text.trim().length > 0 && driverLicensePicture) {
+                        // Trigger verification check by updating profile
+                        setTimeout(async () => {
+                          try {
+                            const updateData: any = {
+                              driverLicenseNumber: text.trim(),
+                            };
+                            const response = await updateProfile(updateData);
+                            if (response?.user?.driverLicenseVerified) {
+                              setDriverLicenseVerified(true);
+                            } else {
+                              setDriverLicenseVerified(false);
+                            }
+                            await checkAuthStatus();
+                          } catch (error) {
+                            // Silent fail
+                          }
+                        }, 1500);
+                      } else {
+                        setDriverLicenseVerified(false);
+                      }
+                    }}
+                    placeholder="Enter your driver license number"
+                    placeholderTextColor="#9CA4AB"
+                    className={`text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base pr-12 ${
+                      driverLicenseVerified ? "border-2 border-green-500" : ""
+                    }`}
+                  />
+                  {driverLicenseVerified && (
+                    <View className="absolute right-4 top-3">
+                      <Icons.safety
+                        name={IconNames.checkmarkCircle as any}
+                        size={20}
+                        color="#10B981"
+                      />
+                    </View>
+                  )}
+                </View>
+                {driverLicenseVerified && (
+                  <View className="flex-row items-center mt-2">
+                    <Text className="text-green-400 text-xs font-semibold">
+                      ✓ Verified
+                    </Text>
+                  </View>
+                )}
+                {!driverLicenseVerified && (
+                  <Text className="text-light-400 text-xs mt-1">
+                    {driverLicensePicture
+                      ? "Add license number to verify"
+                      : "Add both license number and selfie to verify"}
+                  </Text>
+                )}
+              </View>
+
+              {/* Driver License Selfie Upload */}
+              <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
+                <Text className="text-light-300 text-sm mb-3">
+                  Selfie with License
+                </Text>
+                <View className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3 mb-3">
+                  <Text className="text-blue-300 text-xs font-semibold mb-1">
+                    📸 Security Requirement
+                  </Text>
+                  <Text className="text-light-300 text-xs">
+                    Take a clear selfie holding your driver license next to your
+                    face. This helps us verify your identity and prevent fraud.
+                  </Text>
+                </View>
+                {driverLicensePicture ? (
+                  <View className="mb-3">
+                    <View className="relative">
+                      <Image
+                        source={{
+                          uri: driverLicensePicture.startsWith("http")
+                            ? driverLicensePicture
+                            : toAbsoluteUrl(driverLicensePicture) ||
+                              driverLicensePicture,
+                        }}
+                        style={{
+                          width: "100%",
+                          height: 200,
+                          borderRadius: 12,
+                        }}
+                        contentFit="cover"
+                      />
+                      {uploadingLicense && (
+                        <View className="absolute inset-0 bg-black/50 rounded-xl items-center justify-center">
+                          <ActivityIndicator size="large" color="#AB8BFF" />
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                ) : (
+                  <View className="mb-3 bg-dark-100 rounded-xl p-8 items-center justify-center border-2 border-dashed border-neutral-100">
+                    <Icons.media
+                      name={IconNames.cameraOutline as any}
+                      size={48}
+                      color="#9CA4AB"
+                    />
+                    <Text className="text-light-400 text-xs mt-2 text-center">
+                      No selfie uploaded
+                    </Text>
+                    <Text className="text-light-500 text-xs mt-1 text-center">
+                      Hold your license next to your face
+                    </Text>
+                  </View>
+                )}
+                <TouchableOpacity
+                  onPress={pickLicenseImage}
+                  disabled={uploadingLicense}
+                  className="bg-accent/20 border border-accent rounded-xl py-3 px-4 items-center"
+                >
+                  {uploadingLicense ? (
+                    <ActivityIndicator size="small" color="#AB8BFF" />
+                  ) : (
+                    <Text className="text-accent font-semibold">
+                      {driverLicensePicture
+                        ? "Retake Selfie"
+                        : "Take Selfie with License"}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+                <Text className="text-light-400 text-xs mt-2">
+                  Take a clear selfie holding your license next to your face.
+                  Make sure both your face and the license are clearly visible.
+                </Text>
+                {driverLicenseVerified && (
+                  <View className="flex-row items-center mt-2 bg-green-500/20 rounded-xl p-2">
+                    <Icons.safety
+                      name={IconNames.checkmarkCircle as any}
+                      size={16}
+                      color="#10B981"
+                    />
+                    <Text className="text-green-400 text-xs font-semibold ml-2">
+                      License verified (number + selfie)
+                    </Text>
+                  </View>
+                )}
+              </View>
             </>
           )}
 
           {/* KYC Fields for Customers */}
           {user?.role === "customer" && (
-            <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
-              <Text className="text-light-300 text-sm mb-2">
-                Default Address
-              </Text>
-              <TextInput
-                value={defaultAddress}
-                onChangeText={setDefaultAddress}
-                placeholder="Enter your default delivery address"
-                placeholderTextColor="#9CA4AB"
-                multiline
-                numberOfLines={3}
-                className="text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base"
-                textAlignVertical="top"
-              />
-              <Text className="text-light-400 text-xs mt-1">
-                💡 Tip: Save your address here to quickly fill it when creating
-                orders. You can use the checkbox when placing an order to
-                auto-fill your pickup address.
-              </Text>
-            </View>
+            <>
+              <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
+                <Text className="text-light-300 text-sm mb-2">
+                  Default Address
+                </Text>
+                <TextInput
+                  value={defaultAddress}
+                  onChangeText={setDefaultAddress}
+                  placeholder="Enter your default delivery address"
+                  placeholderTextColor="#9CA4AB"
+                  multiline
+                  numberOfLines={3}
+                  className="text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base"
+                  textAlignVertical="top"
+                />
+                <Text className="text-light-400 text-xs mt-1">
+                  💡 Tip: Save your address here to quickly fill it when
+                  creating orders. You can use the checkbox when placing an
+                  order to auto-fill your pickup address.
+                </Text>
+              </View>
+
+              {/* Optional Identity Verification for Customers */}
+              <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
+                <View className="flex-row items-center mb-3">
+                  <Text className="text-light-100 text-base font-semibold flex-1">
+                    Identity Verification (Optional)
+                  </Text>
+                </View>
+                <View className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3 mb-4">
+                  <Text className="text-blue-300 text-xs font-semibold mb-1">
+                    🔒 Security & Dispute Protection
+                  </Text>
+                  <Text className="text-light-300 text-xs">
+                    Verify your identity to protect your account and enable
+                    faster dispute resolution. This is optional but recommended
+                    for your security.
+                  </Text>
+                </View>
+
+                <Text className="text-light-300 text-sm mb-2">
+                  NIN (National Identification Number)
+                </Text>
+                <View className="relative">
+                  <TextInput
+                    value={nin}
+                    onChangeText={(text) => {
+                      setNin(text);
+                      setNinVerified(false);
+                      verifyNinDebounced(text);
+                    }}
+                    placeholder="Enter your NIN (optional)"
+                    placeholderTextColor="#9CA4AB"
+                    keyboardType="numeric"
+                    className={`text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base pr-12 ${
+                      ninVerified ? "border-2 border-green-500" : ""
+                    }`}
+                  />
+                  {verifyingNin && (
+                    <View className="absolute right-4 top-3">
+                      <ActivityIndicator size="small" color="#AB8BFF" />
+                    </View>
+                  )}
+                  {ninVerified && !verifyingNin && (
+                    <View className="absolute right-4 top-3">
+                      <Icons.safety
+                        name={IconNames.checkmarkCircle as any}
+                        size={20}
+                        color="#10B981"
+                      />
+                    </View>
+                  )}
+                </View>
+                {ninVerified && !verifyingNin && (
+                  <View className="flex-row items-center mt-2">
+                    <Text className="text-green-400 text-xs font-semibold">
+                      ✓ Verified
+                    </Text>
+                  </View>
+                )}
+                {!ninVerified && !verifyingNin && (
+                  <Text className="text-light-400 text-xs mt-1">
+                    Optional: Helps with account security and dispute resolution
+                  </Text>
+                )}
+
+                <Text className="text-light-300 text-sm mb-2 mt-4">
+                  BVN (Bank Verification Number)
+                </Text>
+                <View className="relative">
+                  <TextInput
+                    value={bvn}
+                    onChangeText={(text) => {
+                      setBvn(text);
+                      setBvnVerified(false);
+                      verifyBvnDebounced(text);
+                    }}
+                    placeholder="Enter your BVN (optional)"
+                    placeholderTextColor="#9CA4AB"
+                    keyboardType="numeric"
+                    className={`text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base pr-12 ${
+                      bvnVerified ? "border-2 border-green-500" : ""
+                    }`}
+                  />
+                  {verifyingBvn && (
+                    <View className="absolute right-4 top-3">
+                      <ActivityIndicator size="small" color="#AB8BFF" />
+                    </View>
+                  )}
+                  {bvnVerified && !verifyingBvn && (
+                    <View className="absolute right-4 top-3">
+                      <Icons.safety
+                        name={IconNames.checkmarkCircle as any}
+                        size={20}
+                        color="#10B981"
+                      />
+                    </View>
+                  )}
+                </View>
+                {bvnVerified && !verifyingBvn && (
+                  <View className="flex-row items-center mt-2">
+                    <Text className="text-green-400 text-xs font-semibold">
+                      ✓ Verified
+                    </Text>
+                  </View>
+                )}
+                {!bvnVerified && !verifyingBvn && (
+                  <Text className="text-light-400 text-xs mt-1">
+                    Optional: Provide either NIN or BVN for identity
+                    verification
+                  </Text>
+                )}
+              </View>
+            </>
           )}
         </View>
 

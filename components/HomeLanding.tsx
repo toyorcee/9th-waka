@@ -48,7 +48,7 @@ export default function HomeLanding() {
                 className="mb-2"
               />
               <Text className="text-light-200 text-lg">
-                Night Delivery • Safe • Fast
+                Modern Delivery • Safe • Fast
               </Text>
             </View>
             {isAuthenticated ? (
@@ -60,7 +60,9 @@ export default function HomeLanding() {
                 >
                   {user?.profilePicture ? (
                     <Image
-                      source={{ uri: String(toAbsoluteUrl(String(user.profilePicture))) }}
+                      source={{
+                        uri: String(toAbsoluteUrl(String(user.profilePicture))),
+                      }}
                       style={{ width: 32, height: 32, borderRadius: 16 }}
                       contentFit="cover"
                     />
@@ -93,13 +95,15 @@ export default function HomeLanding() {
             <Text className="text-light-100 text-lg font-semibold">
               Service Status
             </Text>
-            <View className="flex-row items-center">
-              <View className="w-3 h-3 rounded-full bg-active mr-2" />
-              <Text className="text-active font-medium">Active</Text>
-            </View>
+            {isAuthenticated && (
+              <View className="flex-row items-center">
+                <View className="w-3 h-3 rounded-full bg-active mr-2" />
+                <Text className="text-active font-medium">Active</Text>
+              </View>
+            )}
           </View>
           <Text className="text-light-300 text-sm">
-            Operating: 5:00 PM - 10:00 PM
+            Daily Service • Open until 10:00 PM
           </Text>
         </View>
 
@@ -127,17 +131,20 @@ export default function HomeLanding() {
           </View>
         </View>
 
-        <View className="mx-6 mb-6">
-          <TouchableOpacity
-            onPress={() => handleAction("sos")}
-            className="bg-danger rounded-xl p-5 flex-row items-center justify-center shadow-lg"
-          >
-            <Text className="text-light-100 font-bold text-lg mr-2">🆘</Text>
-            <Text className="text-light-100 font-bold text-lg">
-              Emergency SOS
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* SOS Button - Only for Riders */}
+        {isAuthenticated && user?.role === "rider" && (
+          <View className="mx-6 mb-6">
+            <TouchableOpacity
+              onPress={() => handleAction("sos")}
+              className="bg-danger rounded-xl p-5 flex-row items-center justify-center shadow-lg"
+            >
+              <Text className="text-light-100 font-bold text-lg mr-2">🆘</Text>
+              <Text className="text-light-100 font-bold text-lg">
+                Emergency SOS
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View className="mx-6 mb-6">
           <Text className="text-light-200 text-base font-semibold mb-4">
@@ -196,7 +203,7 @@ export default function HomeLanding() {
 
         <View className="mx-6 mt-4 mb-4">
           <Text className="text-light-400 text-xs text-center">
-            Operating in Lagos, Nigeria • Night hours only
+            Serving Lagos, Nigeria • Daily until 10 PM
           </Text>
         </View>
       </View>

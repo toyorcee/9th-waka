@@ -46,6 +46,13 @@
           "color": "#AB8BFF",
           "sounds": []
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you upload profile pictures and vehicle images.",
+          "cameraPermission": "The app accesses your camera to take a selfie with your driver license for identity verification."
+        }
       ]
     ],
     "experiments": {

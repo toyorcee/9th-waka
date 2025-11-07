@@ -52,6 +52,10 @@ const userSchema = new mongoose.Schema(
       enum: ["motorcycle", "car", null],
       default: null,
     },
+    vehiclePicture: {
+      type: String,
+      default: null,
+    },
     // KYC fields for riders
     nin: {
       type: String,
@@ -60,6 +64,18 @@ const userSchema = new mongoose.Schema(
     bvn: {
       type: String,
       default: null,
+    },
+    driverLicenseNumber: {
+      type: String,
+      default: null,
+    },
+    driverLicensePicture: {
+      type: String,
+      default: null,
+    },
+    driverLicenseVerified: {
+      type: Boolean,
+      default: false,
     },
     ninVerified: {
       type: Boolean,

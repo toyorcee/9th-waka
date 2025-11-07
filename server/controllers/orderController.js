@@ -192,7 +192,6 @@ export const createOrder = async (req, res) => {
       }
     }
 
-    // Calculate distance and price
     let distanceKm = null;
     let calculatedPrice = Number(price) || 0;
 
@@ -336,19 +335,62 @@ export const acceptOrder = async (req, res) => {
     if (req.user.role !== "rider")
       return res.status(403).json({ success: false, error: "Only riders" });
 
-    const rider = await User.findById(req.user._id).select("nin bvn");
+    const rider = await User.findById(req.user._id).select(
+      "nin bvn ninVerified bvnVerified address driverLicenseNumber driverLicensePicture driverLicenseVerified vehiclePicture"
+    );
     if (!rider) {
       return res.status(404).json({ success: false, error: "Rider not found" });
     }
 
-    const hasNin = rider.nin && rider.nin.trim().length > 0;
-    const hasBvn = rider.bvn && rider.bvn.trim().length > 0;
+    const hasVerifiedIdentity =
+      rider.ninVerified === true || rider.bvnVerified === true;
 
-    if (!hasNin && !hasBvn) {
+    if (!hasVerifiedIdentity) {
       return res.status(400).json({
         success: false,
         error:
-          "KYC verification required. Please complete your profile by adding either your NIN (National Identification Number) or BVN (Bank Verification Number) before accepting orders.",
+          "KYC verification required. Please verify your identity by completing either your NIN (National Identification Number) or BVN (Bank Verification Number) before accepting orders.",
+        kycRequired: true,
+      });
+    }
+
+    const hasAddress = rider.address && rider.address.trim().length > 0;
+    if (!hasAddress) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Please complete your KYC by adding your address before accepting orders.",
+        kycRequired: true,
+      });
+    }
+
+    const hasDriverLicenseNumber =
+      rider.driverLicenseNumber && rider.driverLicenseNumber.trim().length > 0;
+    const hasDriverLicensePicture =
+      rider.driverLicensePicture &&
+      rider.driverLicensePicture.trim().length > 0;
+    const isDriverLicenseVerified = rider.driverLicenseVerified === true;
+
+    if (
+      !hasDriverLicenseNumber ||
+      !hasDriverLicensePicture ||
+      !isDriverLicenseVerified
+    ) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Please complete your KYC by adding your driver license number and selfie, and ensure it's verified before accepting orders.",
+        kycRequired: true,
+      });
+    }
+
+    const hasVehiclePicture =
+      rider.vehiclePicture && rider.vehiclePicture.trim().length > 0;
+    if (!hasVehiclePicture) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Please complete your KYC by uploading your vehicle picture before accepting orders.",
         kycRequired: true,
       });
     }
@@ -374,7 +416,6 @@ export const acceptOrder = async (req, res) => {
         .json({ success: false, error: "Order already assigned" });
     }
 
-    // Notify customer
     try {
       await createAndSendNotification(order.customerId, {
         type: "order_assigned",
@@ -383,7 +424,6 @@ export const acceptOrder = async (req, res) => {
       });
     } catch {}
 
-    // Notify rider
     try {
       await createAndSendNotification(req.user._id, {
         type: "order_assigned",
@@ -405,7 +445,6 @@ export const acceptOrder = async (req, res) => {
   }
 };
 
-// Rider requests price change
 export const requestPriceChange = async (req, res) => {
   try {
     if (req.user.role !== "rider")

@@ -102,7 +102,7 @@ export default function NewOrderScreen() {
         });
       } else {
         if (router.canGoBack()) {
-          router.back();
+        router.back();
         } else {
           router.replace("/(tabs)/orders");
         }
@@ -124,15 +124,25 @@ export default function NewOrderScreen() {
         </Text>
 
         {/* Use Default Address Checkbox */}
-        {user?.defaultAddress && (
-          <View className="bg-secondary border border-neutral-100 rounded-2xl p-4 mb-4">
+        {user?.defaultAddress ? (
+          <View className="bg-accent/10 border-2 border-accent/30 rounded-2xl p-4 mb-4">
             <View className="flex-row items-center justify-between">
               <View className="flex-1 mr-3">
-                <Text className="text-light-100 font-semibold mb-1">
-                  Use my saved address
-                </Text>
-                <Text className="text-light-400 text-xs">
+                <View className="flex-row items-center mb-1">
+                  <Text className="text-accent font-bold text-base mr-2">
+                    ✓
+                  </Text>
+                  <Text className="text-light-100 font-bold text-base">
+                    Use my saved address
+                  </Text>
+                </View>
+                <Text className="text-light-300 text-sm ml-6">
                   Auto-fill pickup address from your profile
+                </Text>
+                <Text className="text-light-400 text-xs mt-1 ml-6 italic">
+                  {user.defaultAddress.length > 50
+                    ? `${user.defaultAddress.substring(0, 50)}...`
+                    : user.defaultAddress}
                 </Text>
               </View>
               <Switch
@@ -141,6 +151,29 @@ export default function NewOrderScreen() {
                 trackColor={{ false: "#3A3A3A", true: "#AB8BFF" }}
                 thumbColor={useDefaultAddress ? "#030014" : "#9CA4AB"}
               />
+            </View>
+          </View>
+        ) : (
+          <View className="bg-secondary/50 border border-neutral-100 rounded-2xl p-4 mb-4">
+            <View className="flex-row items-start">
+              <Text className="text-light-400 text-lg mr-2">💡</Text>
+              <View className="flex-1">
+                <Text className="text-light-200 font-semibold mb-1">
+                  Save time on future orders
+                </Text>
+                <Text className="text-light-400 text-xs mb-2">
+                  Add your default address in your profile to quickly fill it
+                  here with one tap
+                </Text>
+                <TouchableOpacity
+                  onPress={() => router.push("/profile/edit" as any)}
+                  className="bg-accent/20 border border-accent rounded-xl py-2 px-3 self-start"
+                >
+                  <Text className="text-accent font-semibold text-xs">
+                    Add Address to Profile
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         )}

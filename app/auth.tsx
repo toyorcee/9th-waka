@@ -15,6 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 type AuthMode = "login" | "signup";
@@ -39,6 +40,7 @@ export default function AuthScreen() {
 
   const { login, register } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const evaluatePassword = (value: string): "weak" | "medium" | "strong" => {
     const lengthScore = value.length >= 8;
@@ -89,7 +91,7 @@ export default function AuthScreen() {
         } else if (pendingAction === "track") {
           router.replace(Routes.tabs.track);
         } else if (pendingAction === "sos") {
-          router.replace(Routes.standalone.sos as any);
+          router.replace(Routes.standalone.sos);
         } else {
           router.replace(Routes.tabs.home);
         }
@@ -122,6 +124,7 @@ export default function AuthScreen() {
           selectedRole,
           vehicleType || (undefined as any)
         );
+
         router.replace(`/verify?email=${encodeURIComponent(email)}`);
         setEmail("");
         setPassword("");
@@ -135,7 +138,16 @@ export default function AuthScreen() {
         error?.response?.data?.error ||
         error?.message ||
         `${mode === "login" ? "Login" : "Signup"} failed`;
-      Toast.show({ type: "error", text1: message });
+
+      Toast.show({
+        type: "error",
+        text1: message,
+        text2: "Please try again",
+      });
+
+      if (__DEV__) {
+        console.error("Auth error:", error);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -160,7 +172,11 @@ export default function AuthScreen() {
       {/* Toasts rendered globally in _layout.tsx */}
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom,
+        }}
         showsVerticalScrollIndicator={false}
       >
         {/* Background Image with Overlay */}
@@ -183,7 +199,7 @@ export default function AuthScreen() {
               className="mb-3"
             />
             <Text className="text-light-200 text-base text-center">
-              Night Delivery • Safe • Fast
+              Modern Delivery • Safe • Fast
             </Text>
           </View>
 
@@ -325,8 +341,11 @@ export default function AuthScreen() {
                   value={password}
                   onChangeText={(v) => {
                     setPassword(v);
-                    setPasswordStrength(evaluatePassword(v));
-                    // Re-check password match when password changes
+                    if (v.length > 0) {
+                      setPasswordStrength(evaluatePassword(v));
+                    } else {
+                      setPasswordStrength(null);
+                    }
                     if (confirmPassword.length > 0) {
                       const matches = v === confirmPassword;
                       setConfirmMismatch(!matches);
@@ -355,7 +374,7 @@ export default function AuthScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-            {mode === "signup" && (
+            {mode === "signup" && password.length > 0 && (
               <View className="mb-4">
                 <View className="flex-row items-center">
                   <View

@@ -26,7 +26,7 @@ const TabIcon = ({
 );
 
 export default function TabsLayout() {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const userRole = user?.role || "customer";
   const insets = useSafeAreaInsets();
   const tabBarHeight = 65;
@@ -44,7 +44,8 @@ export default function TabsLayout() {
           alignItems: "center",
           paddingVertical: 8,
         },
-        tabBarStyle: {
+        tabBarStyle: isAuthenticated
+          ? {
           backgroundColor: "#030014",
           borderRadius: 25,
           marginHorizontal: 16,
@@ -59,7 +60,8 @@ export default function TabsLayout() {
           shadowOpacity: 0.3,
           shadowRadius: 8,
           elevation: 8,
-        },
+            }
+          : { display: "none" },
       }}
     >
       {/* Core Tab - Home (All Users) */}

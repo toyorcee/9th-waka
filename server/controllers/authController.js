@@ -48,6 +48,14 @@ const getEmailTransporter = () => {
 };
 
 const sendEmail = async ({ to, subject, html }) => {
+  // Skip email in dev mode if SKIP_EMAIL is set
+  if (process.env.SKIP_EMAIL === "true") {
+    console.log("✉️ [EMAIL] Skipped (SKIP_EMAIL=true)");
+    console.log("   To:", to);
+    console.log("   Subject:", subject);
+    return Promise.resolve();
+  }
+
   const transporter = getEmailTransporter();
   if (!transporter || !process.env.EMAIL_USER) {
     console.log(
@@ -55,53 +63,78 @@ const sendEmail = async ({ to, subject, html }) => {
     );
     console.log("   To:", to);
     console.log("   Subject:", subject);
-    return;
+    return Promise.resolve();
   }
 
-  try {
+  // Add timeout to prevent hanging (10 seconds)
+  const emailPromise = (async () => {
     try {
-      await transporter.verify();
-      console.log("✉️ [EMAIL] Transport verified: ready to send");
-    } catch (verifyErr) {
-      console.warn(
-        "⚠️ [EMAIL] Transport verify failed:",
-        verifyErr?.message || verifyErr
-      );
-    }
+      // Skip verification in dev to speed things up
+      const skipVerify = process.env.NODE_ENV !== "production";
+      if (!skipVerify) {
+        try {
+          await transporter.verify();
+          console.log("✉️ [EMAIL] Transport verified: ready to send");
+        } catch (verifyErr) {
+          console.warn(
+            "⚠️ [EMAIL] Transport verify failed:",
+            verifyErr?.message || verifyErr
+          );
+        }
+      }
 
-    const useCid = (process.env.EMAIL_USE_CID || "").toLowerCase() === "true";
-    const logoCid = process.env.EMAIL_LOGO_CID || "brandLogo";
-    let attachments = [];
-    if (useCid) {
-      try {
-        const __filename = fileURLToPath(import.meta.url);
-        const __dirname = path.dirname(__filename);
-        const logoPath = path.join(__dirname, "../assets/Night-Waka.png");
-        attachments = [{ filename: "logo.png", path: logoPath, cid: logoCid }];
-      } catch (e) {}
-    }
+      const useCid = (process.env.EMAIL_USE_CID || "").toLowerCase() === "true";
+      const logoCid = process.env.EMAIL_LOGO_CID || "brandLogo";
+      let attachments = [];
+      if (useCid) {
+        try {
+          const __filename = fileURLToPath(import.meta.url);
+          const __dirname = path.dirname(__filename);
+          const logoPath = path.join(__dirname, "../assets/Night-Waka.png");
+          attachments = [
+            { filename: "logo.png", path: logoPath, cid: logoCid },
+          ];
+        } catch (e) {}
+      }
 
-    const info = await transporter.sendMail({
-      from:
-        process.env.EMAIL_FROM ||
-        process.env.EMAIL_USER ||
-        "9thWaka <no-reply@9thwaka.app>",
-      to,
-      subject,
-      html,
-      attachments,
-    });
-    console.log("✅ [EMAIL] Sent successfully");
-    console.log("   To:", to);
-    if (info?.messageId) console.log("   MessageID:", info.messageId);
-    if (info?.accepted)
-      console.log("   Accepted:", JSON.stringify(info.accepted));
-    if (info?.rejected && info.rejected.length)
-      console.log("   Rejected:", JSON.stringify(info.rejected));
-    if (info?.response) console.log("   Response:", info.response);
+      const info = await transporter.sendMail({
+        from:
+          process.env.EMAIL_FROM ||
+          process.env.EMAIL_USER ||
+          "9thWaka <no-reply@9thwaka.app>",
+        to,
+        subject,
+        html,
+        attachments,
+      });
+      console.log("✅ [EMAIL] Sent successfully");
+      console.log("   To:", to);
+      if (info?.messageId) console.log("   MessageID:", info.messageId);
+      if (info?.accepted)
+        console.log("   Accepted:", JSON.stringify(info.accepted));
+      if (info?.rejected && info.rejected.length)
+        console.log("   Rejected:", JSON.stringify(info.rejected));
+      if (info?.response) console.log("   Response:", info.response);
+    } catch (error) {
+      console.error("❌ [EMAIL] Failed to send:", error.message);
+      throw error;
+    }
+  })();
+
+  // Add timeout wrapper
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => {
+      reject(new Error("Email sending timeout (10s)"));
+    }, 10000);
+  });
+
+  try {
+    await Promise.race([emailPromise, timeoutPromise]);
   } catch (error) {
-    console.error("❌ [EMAIL] Failed to send:", error.message);
-    throw error;
+    // Don't throw - just log the error and continue
+    // Registration should succeed even if email fails
+    console.error("❌ [EMAIL] Error (non-blocking):", error.message);
+    return Promise.resolve(); // Return resolved promise instead of throwing
   }
 };
 
@@ -202,6 +235,16 @@ export const register = async (req, res, next) => {
       user.role === "customer" ? "👤 Customer" : "🏍️ Rider"
     );
 
+    // Log verification code in development mode only
+    if (
+      process.env.LOG_IN_DEV === "true" ||
+      process.env.NODE_ENV !== "production"
+    ) {
+      console.log("🔑 [DEV] Verification Code:", verificationCode);
+      console.log("   Expires at:", verificationExpires.toISOString());
+    }
+
+    let emailSent = false;
     try {
       await sendEmail({
         to: user.email,
@@ -212,12 +255,14 @@ export const register = async (req, res, next) => {
           verificationCode
         ),
       });
+      emailSent = true;
       console.log("✉️ [EMAIL] Verification code sent to:", user.email);
     } catch (e) {
       console.error(
         "❌ [EMAIL] Failed to send verification email:",
-        e?.message
+        e?.message || e
       );
+      emailSent = false;
     }
 
     try {
@@ -236,8 +281,11 @@ export const register = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: "User registered successfully. Verification code sent to email.",
+      message: emailSent
+        ? "User registered successfully. Verification code sent to email."
+        : "User registered successfully. Please check your email for verification code.",
       requiresVerification: true,
+      emailSent,
       user: {
         id: user._id,
         email: user.email,
@@ -328,8 +376,14 @@ export const getCurrentUser = async (req, res, next) => {
         vehicleType: user.vehicleType || null,
         nin: user.nin || null,
         bvn: user.bvn || null,
+        ninVerified: user.ninVerified || false,
+        bvnVerified: user.bvnVerified || false,
         defaultAddress: user.defaultAddress || null,
         address: user.address || null,
+        driverLicenseNumber: user.driverLicenseNumber || null,
+        driverLicensePicture: user.driverLicensePicture || null,
+        driverLicenseVerified: user.driverLicenseVerified || false,
+        vehiclePicture: user.vehiclePicture || null,
       },
     });
   } catch (error) {
@@ -457,6 +511,16 @@ export const resendVerification = async (req, res, next) => {
     user.verificationCode = verificationCode;
     user.verificationExpires = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
+
+    // Log verification code in development mode only
+    if (
+      process.env.LOG_IN_DEV === "true" ||
+      process.env.NODE_ENV !== "production"
+    ) {
+      console.log("🔑 [DEV] Resent Verification Code:", verificationCode);
+      console.log("   Email:", user.email);
+      console.log("   Expires at:", user.verificationExpires.toISOString());
+    }
 
     try {
       await sendEmail({

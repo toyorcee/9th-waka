@@ -49,24 +49,27 @@ export default function VerifyScreen() {
         text2: "Your account has been verified",
       });
 
-      // Always redirect to profile edit to complete KYC with prefilled email
       const user = response.user;
 
-      // Navigate to profile edit with email prefilled
-      router.replace(
-        `${Routes.standalone.profileEdit}?email=${encodeURIComponent(
-          user.email
-        )}`
-      );
-
-      Toast.show({
-        type: "info",
-        text1: "Complete Your Profile",
-        text2:
-          user.role === "rider"
-            ? "Add your details to start delivering"
-            : "Add your name and phone to complete your profile",
-      });
+      if (user.role === "rider") {
+        router.replace("/kyc-wizard");
+        Toast.show({
+          type: "info",
+          text1: "Complete Your KYC",
+          text2: "Verify your identity to start accepting deliveries",
+        });
+      } else {
+        router.replace(
+          `${Routes.standalone.profileEdit}?email=${encodeURIComponent(
+            user.email
+          )}`
+        );
+        Toast.show({
+          type: "info",
+          text1: "Complete Your Profile",
+          text2: "Add your name and phone to complete your profile",
+        });
+      }
     } catch (e: any) {
       const msg =
         e?.response?.data?.error || e?.message || "Verification failed";

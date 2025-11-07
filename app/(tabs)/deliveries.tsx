@@ -1,4 +1,4 @@
-import { Icons, MCIconNames } from "@/constants/icons";
+import { IconNames, Icons, MCIconNames } from "@/constants/icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { acceptOrder, getAvailableOrders, Order } from "@/services/orderApi";
 import { updateRiderPresence } from "@/services/riderApi";
@@ -101,7 +101,8 @@ export default function DeliveriesScreen() {
         Toast.show({
           type: "error",
           text1: "KYC Verification Required",
-          text2: "Please complete your profile with NIN or BVN to accept orders",
+          text2:
+            "Please complete your profile with NIN or BVN to accept orders",
         });
         // Navigate to profile edit after a short delay
         setTimeout(() => {
@@ -125,15 +126,67 @@ export default function DeliveriesScreen() {
     );
   }
 
+  // Check KYC completion status for riders
+  const isKycComplete = React.useMemo(() => {
+    if (!isRider || !user) return false;
+    const hasNin = user.nin && user.nin.trim().length > 0;
+    const hasBvn = user.bvn && user.bvn.trim().length > 0;
+    return hasNin || hasBvn;
+  }, [isRider, user]);
+
   return (
     <ScrollView className="flex-1 bg-primary">
       <View className="pt-20 px-6 pb-8">
-        <View className="flex-row items-center justify-between mb-6">
-          <Text className="text-light-100 text-3xl font-bold">Deliveries</Text>
-          {isRider && (
-            <View className="flex-row items-center gap-3">
+        <Text className="text-light-100 text-3xl font-bold mb-6">
+          Deliveries
+        </Text>
+
+        {/* KYC Completion Banner (Riders only) */}
+        {isRider && !isKycComplete && (
+          <View className="bg-accent/20 border border-accent rounded-2xl p-5 mb-6">
+            <View className="flex-row items-start mb-3">
+              <View className="bg-accent/30 rounded-full p-2 mr-3">
+                <Icons.safety
+                  name={IconNames.securityOutline as any}
+                  size={24}
+                  color="#AB8BFF"
+                />
+              </View>
+              <View className="flex-1">
+                <Text className="text-accent font-bold text-lg mb-1">
+                  Complete Your KYC Verification
+                </Text>
+                <Text className="text-light-300 text-sm mb-3">
+                  To start accepting delivery orders, you need to complete your
+                  profile verification.
+                </Text>
+                <TouchableOpacity
+                  onPress={() => router.push("/profile/edit" as any)}
+                  className="bg-accent rounded-xl py-3 px-4 items-center"
+                >
+                  <Text className="text-primary font-bold">
+                    Complete KYC Now
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Go Online Section - Moved to Middle */}
+        {isRider && (
+          <View className="bg-secondary rounded-2xl p-6 mb-6 border border-neutral-100 items-center">
+            <Text className="text-light-100 text-xl font-bold mb-2">
+              {online ? "You're Online" : "Go Online"}
+            </Text>
+            <Text className="text-light-400 text-sm text-center mb-4">
+              {online
+                ? "You're receiving delivery requests nearby"
+                : "Turn on to start receiving delivery requests"}
+            </Text>
+            <View className="flex-row items-center gap-4">
               <Text
-                className={`text-sm ${
+                className={`text-base font-semibold ${
                   online ? "text-green-400" : "text-light-400"
                 }`}
               >
@@ -143,6 +196,19 @@ export default function DeliveriesScreen() {
                 value={online}
                 onValueChange={async (val) => {
                   if (val) {
+                    // Check KYC before going online
+                    if (!isKycComplete) {
+                      Toast.show({
+                        type: "error",
+                        text1: "KYC Required",
+                        text2:
+                          "Please complete your KYC verification to go online",
+                      });
+                      setTimeout(() => {
+                        router.push("/profile/edit" as any);
+                      }, 1500);
+                      return;
+                    }
                     try {
                       const { status } =
                         await Location.requestForegroundPermissionsAsync();
@@ -181,8 +247,8 @@ export default function DeliveriesScreen() {
                 thumbColor={online ? "#030014" : "#9CA4AB"}
               />
             </View>
-          )}
-        </View>
+          </View>
+        )}
 
         {/* Available Deliveries */}
         <View className="mb-6">
@@ -267,10 +333,35 @@ export default function DeliveriesScreen() {
                       ₦{Number(order.price || 0).toLocaleString()}
                     </Text>
                     <TouchableOpacity
-                      onPress={() => handleAcceptOrder(order._id || order.id!)}
-                      className="bg-accent px-4 py-2 rounded-xl"
+                      onPress={() => {
+                        if (!isKycComplete) {
+                          Toast.show({
+                            type: "error",
+                            text1: "KYC Verification Required",
+                            text2:
+                              "Please complete your profile with NIN or BVN to accept orders",
+                          });
+                          setTimeout(() => {
+                            router.push("/profile/edit" as any);
+                          }, 1500);
+                          return;
+                        }
+                        handleAcceptOrder(order._id || order.id!);
+                      }}
+                      disabled={!isKycComplete}
+                      className={`px-4 py-2 rounded-xl ${
+                        isKycComplete
+                          ? "bg-accent"
+                          : "bg-neutral-100/50 opacity-60"
+                      }`}
                     >
-                      <Text className="text-primary font-bold">Accept</Text>
+                      <Text
+                        className={`font-bold ${
+                          isKycComplete ? "text-primary" : "text-light-400"
+                        }`}
+                      >
+                        {isKycComplete ? "Accept" : "Complete KYC"}
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </View>

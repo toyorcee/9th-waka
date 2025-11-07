@@ -37,6 +37,7 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="auth" options={{ headerShown: false }} />
             <Stack.Screen name="verify" options={{ headerShown: false }} />
+            <Stack.Screen name="kyc-wizard" options={{ headerShown: false }} />
             <Stack.Screen
               name="profile/edit"
               options={{ headerShown: false }}
@@ -47,6 +48,7 @@ export default function RootLayout() {
             />
             <Stack.Screen name="orders/new" options={{ headerShown: false }} />
             <Stack.Screen name="orders/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="sos" options={{ headerShown: false }} />
           </Stack>
           <Toast topOffset={12} config={toastConfig} />
         </SocketProvider>

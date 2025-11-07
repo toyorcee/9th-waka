@@ -55,5 +55,6 @@ export const Routes = {
     sos: "/sos",
     profileEdit: "/profile/edit",
     profileSettings: "/profile/settings",
+    notifications: "/notifications",
   },
 } as const;

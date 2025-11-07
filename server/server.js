@@ -8,6 +8,7 @@ import path from "path";
 import { Server as SocketIOServer } from "socket.io";
 import { fileURLToPath } from "url";
 import { errorHandler } from "./middleware/index.js";
+import analyticsRoutes from "./routes/analytics.js";
 import authRoutes from "./routes/auth.js";
 import notificationRoutes from "./routes/notifications.js";
 import orderRoutes from "./routes/orders.js";
@@ -119,6 +120,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/payouts", payoutRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/riders", riderRoutes);
+app.use("/api/analytics", analyticsRoutes);
 // Add more routes as you build them
 // app.use("/api/delivery", deliveryRoutes);
 // app.use("/api/rider", riderRoutes);

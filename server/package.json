@@ -10,7 +10,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "9th Waka Night Delivery App Server",
+  "description": "9th Waka Modern Delivery App Server",
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",

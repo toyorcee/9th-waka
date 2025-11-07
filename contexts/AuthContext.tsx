@@ -53,6 +53,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               fullName: u.fullName ?? null,
               phoneNumber: u.phoneNumber ?? null,
               vehicleType: u.vehicleType ?? null,
+              nin: u.nin ?? null,
+              bvn: u.bvn ?? null,
+              ninVerified: u.ninVerified ?? false,
+              bvnVerified: u.bvnVerified ?? false,
+              address: u.address ?? null,
+              defaultAddress: u.defaultAddress ?? null,
+              driverLicenseNumber: u.driverLicenseNumber ?? null,
+              driverLicensePicture: u.driverLicensePicture ?? null,
+              driverLicenseVerified: u.driverLicenseVerified ?? false,
+              vehiclePicture: u.vehiclePicture ?? null,
             });
             registerForPushNotificationsAsync().catch((err) =>
               console.warn("Failed to register push notifications:", err)
@@ -75,9 +85,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const response = await loginUser({ email, password });
       await storeToken(response.token);
-      setUser(response.user);
+      await checkAuthStatus();
       console.log("✅ Login successful");
-      // Register for push notifications after login
       registerForPushNotificationsAsync().catch((err) =>
         console.warn("Failed to register push notifications:", err)
       );
