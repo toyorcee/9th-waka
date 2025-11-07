@@ -384,6 +384,7 @@ export const getCurrentUser = async (req, res, next) => {
         driverLicensePicture: user.driverLicensePicture || null,
         driverLicenseVerified: user.driverLicenseVerified || false,
         vehiclePicture: user.vehiclePicture || null,
+        searchRadiusKm: user.searchRadiusKm || 7,
       },
     });
   } catch (error) {

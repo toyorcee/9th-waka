@@ -239,6 +239,7 @@ export const createOrder = async (req, res) => {
         type: "order_created",
         title: "Order created",
         message: `Order #${order._id} created, awaiting assignment`,
+        metadata: { orderId: order._id.toString() },
       });
     } catch {}
     io.to(`user:${user._id}`).emit(SocketEvents.ORDER_CREATED, {
@@ -281,52 +282,113 @@ export const getAvailableOrders = async (req, res) => {
   try {
     if (req.user.role !== "rider")
       return res.status(403).json({ success: false, error: "Only riders" });
-    const maxRadiusKm = Number(process.env.RIDER_ORDER_RADIUS_KM || 7);
+    
+    const rider = await User.findById(req.user._id).select("searchRadiusKm");
+    const defaultRadius = Number(process.env.RIDER_ORDER_RADIUS_KM || 7);
+    const maxRadiusKm = rider?.searchRadiusKm || defaultRadius;
+    
+    const MAX_ALLOWED_RADIUS = 20;
+    const effectiveRadius = Math.min(maxRadiusKm, MAX_ALLOWED_RADIUS);
 
-    // Get rider's current location
-    const riderLoc = await RiderLocation.findOne({
-      riderId: req.user._id,
-      online: true,
-    });
-
-    let orders = await Order.find({ status: "pending", riderId: null })
-      .sort({ createdAt: 1 })
-      .limit(100);
-
-    // If rider has location, filter by proximity
-    if (riderLoc?.location?.coordinates) {
-      const [riderLng, riderLat] = riderLoc.location.coordinates;
-      const withDistance = orders
-        .map((order) => {
-          if (
-            typeof order.pickup?.lat === "number" &&
-            typeof order.pickup?.lng === "number"
-          ) {
-            const dist = haversineKm(
-              riderLat,
-              riderLng,
-              order.pickup.lat,
-              order.pickup.lng
-            );
-            return { order, distanceKm: dist };
-          }
-          return { order, distanceKm: null };
-        })
-        .filter(
-          (item) => item.distanceKm !== null && item.distanceKm <= maxRadiusKm
-        )
-        .sort((a, b) => a.distanceKm - b.distanceKm)
-        .map((item) => ({
-          ...item.order.toObject(),
-          distanceKm: Math.round(item.distanceKm * 10) / 10,
-        }));
-      return res.json({ success: true, orders: withDistance });
+    let riderLoc = null;
+    try {
+      riderLoc = await RiderLocation.findOne({
+        riderId: req.user._id,
+        online: true,
+      });
+    } catch (error) {
+      console.error("❌ [ORDERS] Error fetching rider location:", error);
     }
 
-    // No location: return empty (rider must be online with location)
-    res.json({ success: true, orders: [] });
+    let orders = [];
+    try {
+      orders = await Order.find({ status: "pending", riderId: null })
+        .sort({ createdAt: 1 })
+        .limit(100)
+        .lean();
+    } catch (error) {
+      console.error("❌ [ORDERS] Error fetching orders:", error);
+      return res.json({ success: true, orders: [] });
+    }
+
+    if (!orders || orders.length === 0) {
+      return res.json({ success: true, orders: [] });
+    }
+
+    if (
+      riderLoc?.location?.coordinates &&
+      Array.isArray(riderLoc.location.coordinates) &&
+      riderLoc.location.coordinates.length >= 2
+    ) {
+      try {
+        const [riderLng, riderLat] = riderLoc.location.coordinates;
+
+        if (
+          typeof riderLat !== "number" ||
+          typeof riderLng !== "number" ||
+          isNaN(riderLat) ||
+          isNaN(riderLng)
+        ) {
+          console.warn("⚠️ [ORDERS] Invalid rider coordinates");
+          return res.json({ success: true, orders: [] });
+        }
+
+        const withDistance = orders
+          .map((order) => {
+            try {
+              if (
+                order?.pickup &&
+                typeof order.pickup.lat === "number" &&
+                typeof order.pickup.lng === "number" &&
+                !isNaN(order.pickup.lat) &&
+                !isNaN(order.pickup.lng)
+              ) {
+                const dist = haversineKm(
+                  riderLat,
+                  riderLng,
+                  order.pickup.lat,
+                  order.pickup.lng
+                );
+                return { order, distanceKm: dist };
+              }
+              return { order, distanceKm: null };
+            } catch (error) {
+              console.warn(
+                "⚠️ [ORDERS] Error calculating distance for order:",
+                order._id,
+                error
+              );
+              return { order, distanceKm: null };
+            }
+          })
+          .filter(
+            (item) =>
+              item.distanceKm !== null &&
+              !isNaN(item.distanceKm) &&
+              item.distanceKm <= effectiveRadius
+          )
+          .sort((a, b) => a.distanceKm - b.distanceKm)
+          .map((item) => ({
+            ...item.order,
+            distanceKm: Math.round(item.distanceKm * 10) / 10,
+          }));
+
+        return res.json({ success: true, orders: withDistance });
+      } catch (error) {
+        console.error(
+          "❌ [ORDERS] Error processing orders with location:",
+          error
+        );
+        // Fall through to return empty array
+      }
+    }
+
+    // No location or error: return empty (rider must be online with location)
+    return res.json({ success: true, orders: [] });
   } catch (e) {
-    res.status(500).json({ success: false, error: e.message });
+    console.error("❌ [ORDERS] Error in getAvailableOrders:", e);
+    // Return empty array instead of 500 error when there are no orders
+    return res.json({ success: true, orders: [] });
   }
 };
 
@@ -395,6 +457,24 @@ export const acceptOrder = async (req, res) => {
       });
     }
 
+    const riderLocation = await RiderLocation.findOne({
+      riderId: req.user._id,
+      online: true,
+    });
+    if (
+      !riderLocation ||
+      !riderLocation.location ||
+      !riderLocation.location.coordinates ||
+      riderLocation.location.coordinates.length < 2
+    ) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Location services must be enabled and you must be online to accept orders. Please turn on your location in the Deliveries tab.",
+        locationRequired: true,
+      });
+    }
+
     const order = await Order.findOneAndUpdate(
       { _id: req.params.id, status: "pending", riderId: null },
       {
@@ -421,6 +501,7 @@ export const acceptOrder = async (req, res) => {
         type: "order_assigned",
         title: "Order assigned",
         message: `A rider has been assigned to your order #${order._id}`,
+        metadata: { orderId: order._id.toString() },
       });
     } catch {}
 
@@ -429,6 +510,7 @@ export const acceptOrder = async (req, res) => {
         type: "order_assigned",
         title: "Order assigned",
         message: `You've been assigned to order #${order._id}`,
+        metadata: { orderId: order._id.toString() },
       });
     } catch {}
 
@@ -503,6 +585,7 @@ export const requestPriceChange = async (req, res) => {
         message: `Rider requested ₦${roundedPrice.toLocaleString()}${
           reason ? ` - ${reason}` : ""
         }`,
+        metadata: { orderId: order._id.toString() },
       });
     } catch {}
 
@@ -564,6 +647,7 @@ export const respondToPriceRequest = async (req, res) => {
           type: "price_change_accepted",
           title: "Price change accepted",
           message: `Customer accepted your requested price of ₦${order.riderRequestedPrice.toLocaleString()}`,
+          metadata: { orderId: order._id.toString() },
         });
       } catch {}
 
@@ -584,6 +668,7 @@ export const respondToPriceRequest = async (req, res) => {
           type: "price_change_rejected",
           title: "Price change rejected",
           message: "Customer rejected your price change request",
+          metadata: { orderId: order._id.toString() },
         });
       } catch {}
 
@@ -633,6 +718,7 @@ export const updateStatus = async (req, res) => {
         type: "order_status_updated",
         title: "Order status updated",
         message: `Order #${order._id} status changed to ${next}`,
+        metadata: { orderId: order._id.toString() },
       });
     } catch {}
 
@@ -643,6 +729,7 @@ export const updateStatus = async (req, res) => {
           type: "order_status_updated",
           title: "Order status updated",
           message: `Order #${order._id} status changed to ${next}`,
+          metadata: { orderId: order._id.toString() },
         });
       } catch {}
     }
@@ -674,7 +761,34 @@ export const getOrder = async (req, res) => {
     const isAdmin = user.role === "admin";
     if (!isOwner && !isRider && !isAdmin)
       return res.status(403).json({ success: false, error: "Forbidden" });
-    res.json({ success: true, order });
+
+    // Include rider location if order is active (assigned, picked_up, or delivering)
+    // and user is customer, admin, or the assigned rider
+    const orderObj = order.toObject();
+    if (
+      order.riderId &&
+      ["assigned", "picked_up", "delivering"].includes(order.status)
+    ) {
+      try {
+        const riderLocation = await RiderLocation.findOne({
+          riderId: order.riderId,
+        }).select("location lastSeen online");
+        if (riderLocation && riderLocation.location?.coordinates) {
+          const [lng, lat] = riderLocation.location.coordinates;
+          orderObj.riderLocation = {
+            lat,
+            lng,
+            lastSeen: riderLocation.lastSeen,
+            online: riderLocation.online,
+          };
+        }
+      } catch (error) {
+        console.error("❌ [ORDERS] Error fetching rider location:", error);
+        // Continue without rider location
+      }
+    }
+
+    res.json({ success: true, order: orderObj });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
   }
@@ -706,6 +820,7 @@ export const generateDeliveryOtp = async (req, res) => {
         type: "delivery_otp",
         title: "Delivery code",
         message: `Your delivery code is ${code}. Share only with the rider.`,
+        metadata: { orderId: order._id.toString() },
       });
     } catch {}
     io.to(`user:${order.customerId}`).emit(SocketEvents.ORDER_STATUS_UPDATED, {
@@ -815,6 +930,7 @@ export const verifyDeliveryOtp = async (req, res) => {
         type: "delivery_verified",
         title: "Delivery verified",
         message: `Order #${order._id} has been delivered and verified`,
+        metadata: { orderId: order._id.toString() },
       });
     } catch {}
 
@@ -824,6 +940,7 @@ export const verifyDeliveryOtp = async (req, res) => {
         type: "delivery_verified",
         title: "Delivery verified",
         message: `Order #${order._id} delivery has been verified`,
+        metadata: { orderId: order._id.toString() },
       });
     } catch {}
 
@@ -838,6 +955,29 @@ export const verifyDeliveryOtp = async (req, res) => {
       id: order._id.toString(),
     });
     res.json({ success: true, order });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+};
+
+export const uploadDeliveryProofPhoto = async (req, res) => {
+  try {
+    if (req.user.role !== "rider")
+      return res.status(403).json({ success: false, error: "Only riders" });
+    if (!req.file)
+      return res.status(400).json({ success: false, error: "No file uploaded" });
+
+    const order = await Order.findById(req.params.id);
+    if (!order)
+      return res.status(404).json({ success: false, error: "Order not found" });
+    if (String(order.riderId) !== String(req.user._id))
+      return res.status(403).json({ success: false, error: "Not your order" });
+
+    const photoUrl = `/api/uploads/profiles/${req.file.filename}`;
+    order.delivery.photoUrl = photoUrl;
+    await order.save();
+
+    res.json({ success: true, photoUrl });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
   }
@@ -866,6 +1006,7 @@ export const updateDeliveryProof = async (req, res) => {
         type: "delivery_proof_updated",
         title: "Delivery proof updated",
         message: `Delivery proof for order #${order._id} has been updated`,
+        metadata: { orderId: order._id.toString() },
       });
     } catch {}
 

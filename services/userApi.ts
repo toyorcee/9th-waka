@@ -143,3 +143,19 @@ export async function updateNotificationPreferences(
   });
   return response.data;
 }
+
+/**
+ * Update search radius for riders (1-20km)
+ */
+export async function updateSearchRadius(
+  searchRadiusKm: number
+): Promise<{
+  success: boolean;
+  searchRadiusKm: number;
+  message: string;
+}> {
+  const response = await apiClient.patch("/user/search-radius", {
+    searchRadiusKm,
+  });
+  return response.data;
+}

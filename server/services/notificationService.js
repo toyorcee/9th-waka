@@ -219,3 +219,11 @@ export const listNotifications = async (
   const total = await Notification.countDocuments({ userId });
   return { items, total };
 };
+
+export const getNotification = async (userId, notificationId) => {
+  const notification = await Notification.findOne({
+    _id: notificationId,
+    userId,
+  }).lean();
+  return notification;
+};

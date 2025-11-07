@@ -303,6 +303,53 @@ export const uploadVehiclePicture = async (req, res) => {
   }
 };
 
+export const updateSearchRadius = async (req, res) => {
+  try {
+    if (req.user.role !== "rider") {
+      return res
+        .status(403)
+        .json({
+          success: false,
+          error: "Only riders can update search radius",
+        });
+    }
+
+    const { searchRadiusKm } = req.body;
+
+    if (typeof searchRadiusKm !== "number") {
+      return res.status(400).json({
+        success: false,
+        error: "searchRadiusKm must be a number",
+      });
+    }
+
+    if (searchRadiusKm < 1 || searchRadiusKm > 20) {
+      return res.status(400).json({
+        success: false,
+        error: "Search radius must be between 1km and 20km",
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { searchRadiusKm },
+      { new: true }
+    ).select("searchRadiusKm");
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: "User not found" });
+    }
+
+    res.json({
+      success: true,
+      searchRadiusKm: user.searchRadiusKm,
+      message: "Search radius updated successfully",
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+};
+
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.user?.userId || req.user?._id;
@@ -331,7 +378,7 @@ export const updateProfile = async (req, res) => {
     if (typeof email !== "undefined" && email !== user.email) {
       const newEmail = email.trim().toLowerCase();
       const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
-      
+
       if (!emailRegex.test(newEmail)) {
         return res.status(400).json({
           success: false,
@@ -361,9 +408,12 @@ export const updateProfile = async (req, res) => {
       ).toString();
       user.verificationCode = verificationCode;
       user.verificationExpires = new Date(Date.now() + 10 * 60 * 1000);
-      
+
       // TODO: Send verification email to new email address
-      console.log("📧 [EMAIL] Email changed, verification code:", verificationCode);
+      console.log(
+        "📧 [EMAIL] Email changed, verification code:",
+        verificationCode
+      );
     }
     // Only riders can update vehicleType
     if (typeof vehicleType !== "undefined" && user.role === "rider") {
@@ -595,7 +645,7 @@ export const checkEmailAvailability = async (req, res) => {
 
     const existingUser = await User.findOne({
       email: email.trim().toLowerCase(),
-      _id: { $ne: userId }, 
+      _id: { $ne: userId },
     });
 
     if (existingUser) {

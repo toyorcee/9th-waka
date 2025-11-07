@@ -5,6 +5,7 @@ import {
   updateNotificationPreferences,
   updateProfile,
   updatePushToken,
+  updateSearchRadius,
   uploadDriverLicense,
   uploadProfilePicture,
   uploadVehiclePicture,
@@ -125,3 +126,6 @@ router.put("/notification-preferences", protect, updateNotificationPreferences);
 
 // GET /api/user/check-email
 router.get("/check-email", protect, checkEmailAvailability);
+
+// PATCH /api/user/search-radius (Riders only)
+router.patch("/search-radius", protect, updateSearchRadius);

@@ -53,6 +53,14 @@
           "photosPermission": "The app accesses your photos to let you upload profile pictures and vehicle images.",
           "cameraPermission": "The app accesses your camera to take a selfie with your driver license for identity verification."
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "9thWaka uses your location to match you with nearby delivery orders when you're online.",
+          "locationAlwaysPermission": "9thWaka uses your location to match you with nearby delivery orders when you're online.",
+          "locationWhenInUsePermission": "9thWaka uses your location to match you with nearby delivery orders when you're online."
+        }
       ]
     ],
     "experiments": {

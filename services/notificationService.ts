@@ -31,8 +31,7 @@ async function ensureNotificationHandler() {
     });
     handlerInitialized = true;
   } catch (error) {
-    // Silently fail - notifications not available
-    handlerInitialized = true; // Prevent retrying
+    handlerInitialized = true;
   }
 }
 
@@ -43,6 +42,10 @@ export interface NotificationItem {
   message: string;
   timestamp: string;
   read?: boolean;
+  metadata?: {
+    orderId?: string;
+    [key: string]: any;
+  };
 }
 
 export interface NotificationListResponse {
@@ -62,6 +65,21 @@ export async function fetchNotifications(skip = 0, limit = 50) {
 export async function markNotificationRead(id: string) {
   const { apiClient } = await import("./apiClient");
   await apiClient.patch(`/notifications/${id}/read`);
+}
+
+export async function getNotification(id: string): Promise<NotificationItem> {
+  const { apiClient } = await import("./apiClient");
+  const response = await apiClient.get(`/notifications/${id}`);
+  const notif = response.data?.notification || response.data;
+  return {
+    id: String(notif.id || notif._id),
+    type: notif.type,
+    title: notif.title,
+    message: notif.message,
+    timestamp: notif.timestamp || notif.createdAt || new Date().toISOString(),
+    read: Boolean(notif.read),
+    metadata: notif.metadata || {},
+  };
 }
 
 async function savePushTokenToBackend(token: string): Promise<void> {

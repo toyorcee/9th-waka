@@ -181,6 +181,16 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
           text2: "The rider has uploaded delivery confirmation",
         });
       });
+      on(SocketEvents.RIDER_LOCATION_UPDATED, (data: any) => {
+        if (
+          typeof window !== "undefined" &&
+          typeof (window as any).CustomEvent !== "undefined"
+        ) {
+          window.dispatchEvent(
+            new CustomEvent("rider-location-updated", { detail: data })
+          );
+        }
+      });
       on(SocketEvents.PAYOUT_GENERATED, () => {
         Toast.show({
           type: "info",

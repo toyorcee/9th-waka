@@ -19,6 +19,7 @@ export interface User {
   vehiclePicture?: string | null;
   ninVerified?: boolean;
   bvnVerified?: boolean;
+  searchRadiusKm?: number; 
 }
 
 export interface AuthResponse {

@@ -56,6 +56,12 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    searchRadiusKm: {
+      type: Number,
+      default: 7, 
+      min: 1,
+      max: 20, 
+    },
     // KYC fields for riders
     nin: {
       type: String,

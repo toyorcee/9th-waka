@@ -63,6 +63,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               driverLicensePicture: u.driverLicensePicture ?? null,
               driverLicenseVerified: u.driverLicenseVerified ?? false,
               vehiclePicture: u.vehiclePicture ?? null,
+              searchRadiusKm: u.searchRadiusKm ?? 7,
             });
             registerForPushNotificationsAsync().catch((err) =>
               console.warn("Failed to register push notifications:", err)

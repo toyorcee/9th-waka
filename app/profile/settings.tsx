@@ -1,15 +1,18 @@
 import { IconNames, Icons } from "@/constants/icons";
 import { useAuth } from "@/contexts/AuthContext";
+import { checkActiveOrders } from "@/services/riderApi";
 import {
   getNotificationPreferences,
   NotificationPreferences,
   updateNotificationPreferences,
-  updateProfile,
 } from "@/services/userApi";
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import * as Location from "expo-location";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
+  Platform,
   ScrollView,
   Switch,
   Text,
@@ -18,7 +21,6 @@ import {
 } from "react-native";
 import Toast from "react-native-toast-message";
 
-// All notification types that should be updated when toggling a global channel
 const ALL_NOTIFICATION_TYPES = [
   "payment_reminder",
   "payment_day",
@@ -39,17 +41,103 @@ const ALL_NOTIFICATION_TYPES = [
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { user, checkAuthStatus } = useAuth();
+  const { user } = useAuth();
   const [preferences, setPreferences] = useState<NotificationPreferences>({});
   const [loading, setLoading] = useState(true);
   const [savingChannel, setSavingChannel] = useState<
     "inApp" | "push" | "email" | null
   >(null);
-  const [savingVehicleType, setSavingVehicleType] = useState(false);
+  const [locationPermissionStatus, setLocationPermissionStatus] =
+    useState<Location.PermissionStatus | null>(null);
+  const [checkingLocation, setCheckingLocation] = useState(false);
+  const [hasActiveOrders, setHasActiveOrders] = useState(false);
+  const [checkingActiveOrders, setCheckingActiveOrders] = useState(false);
 
   useEffect(() => {
     loadPreferences();
+    checkLocationPermission();
   }, []);
+
+  // Refresh active orders when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.role === "rider") {
+        checkActiveOrdersStatus();
+      }
+    }, [user?.role])
+  );
+
+  // Periodically refresh active orders status
+  useEffect(() => {
+    if (user?.role === "rider") {
+      const interval = setInterval(() => {
+        checkActiveOrdersStatus();
+      }, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [user?.role]);
+
+  const checkActiveOrdersStatus = async () => {
+    if (user?.role !== "rider") return;
+    setCheckingActiveOrders(true);
+    try {
+      const result = await checkActiveOrders();
+      setHasActiveOrders(result.hasActiveOrders);
+    } catch (error) {
+      console.error("Error checking active orders:", error);
+    } finally {
+      setCheckingActiveOrders(false);
+    }
+  };
+
+  const checkLocationPermission = async () => {
+    try {
+      const { status } = await Location.getForegroundPermissionsAsync();
+      setLocationPermissionStatus(status);
+    } catch (error) {
+      console.error("Error checking location permission:", error);
+    }
+  };
+
+  const requestLocationPermission = async () => {
+    setCheckingLocation(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      setLocationPermissionStatus(status);
+
+      if (status === Location.PermissionStatus.GRANTED) {
+        Toast.show({
+          type: "success",
+          text1: "Location enabled",
+          text2: "You can now go online and receive delivery requests",
+        });
+      } else if (status === Location.PermissionStatus.DENIED) {
+        Toast.show({
+          type: "error",
+          text1: "Location permission denied",
+          text2: "Please enable location in your device settings",
+        });
+        // Optionally open settings
+        if (Platform.OS !== "web") {
+          Linking.openSettings();
+        }
+      }
+    } catch (error: any) {
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: error?.message || "Failed to request location permission",
+      });
+    } finally {
+      setCheckingLocation(false);
+    }
+  };
+
+  const openLocationSettings = () => {
+    if (Platform.OS !== "web") {
+      Linking.openSettings();
+    }
+  };
 
   const loadPreferences = async () => {
     try {
@@ -251,129 +339,137 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Rider-Specific Settings */}
+        {/* Location Settings (Riders only) */}
         {user?.role === "rider" && (
           <View className="mb-6">
             <Text className="text-light-100 text-xl font-bold mb-2">
-              Rider Settings
+              Location Services
             </Text>
             <Text className="text-light-400 text-sm mb-4">
-              Manage your delivery preferences
+              Enable location to go online and receive delivery requests
             </Text>
 
-            <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
-              {/* Vehicle Type */}
-              <View className="mb-4">
-                <Text className="text-light-100 font-semibold mb-2">
-                  Vehicle Type
-                </Text>
-                <Text className="text-light-400 text-xs mb-3">
-                  Select your delivery vehicle (affects pricing)
-                </Text>
-                <View className="flex-row gap-3">
-                  <TouchableOpacity
-                    onPress={async () => {
-                      if (user?.vehicleType === "motorcycle") return;
-                      setSavingVehicleType(true);
-                      try {
-                        // Update vehicle type via profile update
-                        await updateProfile({ vehicleType: "motorcycle" });
-                        Toast.show({
-                          type: "success",
-                          text1: "Vehicle type updated",
-                          text2: "Motorcycle selected",
-                        });
-                        // Refresh user context
-                        await checkAuthStatus();
-                      } catch (error: any) {
-                        Toast.show({
-                          type: "error",
-                          text1: "Update failed",
-                          text2: error?.response?.data?.error || error?.message,
-                        });
-                      } finally {
-                        setSavingVehicleType(false);
-                      }
-                    }}
-                    disabled={savingVehicleType}
-                    className={`flex-1 rounded-xl p-4 border-2 ${
-                      user?.vehicleType === "motorcycle"
-                        ? "border-accent bg-accent/20"
-                        : "border-neutral-100 bg-dark-100"
-                    }`}
-                  >
-                    <Text
-                      className={`text-center font-bold ${
-                        user?.vehicleType === "motorcycle"
-                          ? "text-accent"
-                          : "text-light-300"
-                      }`}
-                    >
-                      🏍️ Motorcycle
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={async () => {
-                      if (user?.vehicleType === "car") return;
-                      setSavingVehicleType(true);
-                      try {
-                        await updateProfile({ vehicleType: "car" });
-                        Toast.show({
-                          type: "success",
-                          text1: "Vehicle type updated",
-                          text2: "Car/Van selected",
-                        });
-                        // Refresh user context
-                        await checkAuthStatus();
-                      } catch (error: any) {
-                        Toast.show({
-                          type: "error",
-                          text1: "Update failed",
-                          text2: error?.response?.data?.error || error?.message,
-                        });
-                      } finally {
-                        setSavingVehicleType(false);
-                      }
-                    }}
-                    disabled={savingVehicleType}
-                    className={`flex-1 rounded-xl p-4 border-2 ${
-                      user?.vehicleType === "car"
-                        ? "border-accent bg-accent/20"
-                        : "border-neutral-100 bg-dark-100"
-                    }`}
-                  >
-                    <Text
-                      className={`text-center font-bold ${
-                        user?.vehicleType === "car"
-                          ? "text-accent"
-                          : "text-light-300"
-                      }`}
-                    >
-                      🚗 Car/Van
-                    </Text>
-                  </TouchableOpacity>
+            <View
+              className={`bg-secondary rounded-2xl p-5 border border-neutral-100 ${
+                hasActiveOrders ? "opacity-60" : ""
+              }`}
+            >
+              {hasActiveOrders && (
+                <View className="bg-accent/20 border border-accent rounded-xl p-3 mb-4">
+                  <Text className="text-accent font-semibold text-sm mb-1">
+                    Location Locked
+                  </Text>
+                  <Text className="text-light-300 text-xs">
+                    You have active orders. Location services must remain
+                    enabled until all orders are completed or cancelled.
+                  </Text>
                 </View>
-                {savingVehicleType && (
-                  <View className="mt-3 items-center">
-                    <ActivityIndicator size="small" color="#AB8BFF" />
-                  </View>
-                )}
+              )}
+              <View className="flex-row items-center justify-between mb-3">
+                <View className="flex-1">
+                  <Text className="text-light-100 font-semibold mb-1">
+                    Location Permission
+                  </Text>
+                  <Text className="text-light-400 text-xs">
+                    {locationPermissionStatus ===
+                    Location.PermissionStatus.GRANTED
+                      ? "Location access is enabled"
+                      : locationPermissionStatus ===
+                        Location.PermissionStatus.DENIED
+                      ? "Location access is denied"
+                      : "Location permission not granted"}
+                  </Text>
+                </View>
+                <View className="relative">
+                  {checkingLocation && (
+                    <View className="absolute inset-0 items-center justify-center z-10">
+                      <ActivityIndicator size="small" color="#AB8BFF" />
+                    </View>
+                  )}
+                  {locationPermissionStatus ===
+                  Location.PermissionStatus.GRANTED ? (
+                    <View className="w-12 h-6 bg-green-500 rounded-full items-center justify-center">
+                      <Icons.safety
+                        name={IconNames.checkmarkCircle as any}
+                        size={16}
+                        color="#FFFFFF"
+                      />
+                    </View>
+                  ) : (
+                    <View className="w-12 h-6 bg-red-500 rounded-full items-center justify-center">
+                      <Icons.safety
+                        name={IconNames.closeCircle as any}
+                        size={16}
+                        color="#FFFFFF"
+                      />
+                    </View>
+                  )}
+                </View>
               </View>
 
-              {/* Location Settings Info */}
-              <View className="border-t border-neutral-100 pt-4">
-                <Text className="text-light-100 font-semibold mb-2">
-                  Location Services
+              {locationPermissionStatus !==
+                Location.PermissionStatus.GRANTED && (
+                <TouchableOpacity
+                  onPress={requestLocationPermission}
+                  disabled={checkingLocation || hasActiveOrders}
+                  className={`rounded-xl py-3 px-4 items-center mt-2 ${
+                    hasActiveOrders
+                      ? "bg-dark-100 border border-neutral-100 opacity-50"
+                      : "bg-accent"
+                  }`}
+                >
+                  {checkingLocation ? (
+                    <ActivityIndicator size="small" color="#030014" />
+                  ) : (
+                    <Text
+                      className={`font-bold ${
+                        hasActiveOrders ? "text-light-400" : "text-primary"
+                      }`}
+                    >
+                      Enable Location
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
+
+              {locationPermissionStatus ===
+                Location.PermissionStatus.DENIED && (
+                <TouchableOpacity
+                  onPress={openLocationSettings}
+                  disabled={hasActiveOrders}
+                  className={`border border-neutral-100 rounded-xl py-3 px-4 items-center mt-2 ${
+                    hasActiveOrders ? "bg-dark-100 opacity-50" : "bg-dark-100"
+                  }`}
+                >
+                  <Text
+                    className={`font-semibold ${
+                      hasActiveOrders ? "text-light-400" : "text-light-200"
+                    }`}
+                  >
+                    Open Device Settings
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              <View className="mt-4 pt-4 border-t border-neutral-100">
+                <Text className="text-light-300 text-xs mb-2">
+                  📍 How it works:
                 </Text>
-                <Text className="text-light-400 text-xs mb-2">
-                  Location permission is required to go online and receive
-                  delivery requests. You can toggle "Go Online" from the
-                  Deliveries tab.
+                <Text className="text-light-400 text-xs mb-1">
+                  • Location is required to go online and receive orders
                 </Text>
-                <Text className="text-light-300 text-xs">
-                  Your location is shared every 30 seconds while online to help
-                  match you with nearby orders.
+                <Text className="text-light-400 text-xs mb-1">
+                  • Your location is shared every 30 seconds while online
                 </Text>
+                <Text className="text-light-400 text-xs mb-1">
+                  • Toggle "Go Online" from the Deliveries tab to start
+                  receiving orders
+                </Text>
+                {hasActiveOrders && (
+                  <Text className="text-accent text-xs mt-2 font-semibold">
+                    ⚠️ Location cannot be disabled while you have active orders
+                  </Text>
+                )}
               </View>
             </View>
           </View>

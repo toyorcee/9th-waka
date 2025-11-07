@@ -22,7 +22,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-type UnifiedNotification = NotificationItem & { id: string };
+type UnifiedNotification = NotificationItem & { id: string; metadata?: any };
 
 function normalizeNotification(n: any): UnifiedNotification {
   return {
@@ -32,6 +32,7 @@ function normalizeNotification(n: any): UnifiedNotification {
     message: n.message,
     timestamp: n.timestamp || n.createdAt || new Date().toISOString(),
     read: Boolean(n.read),
+    metadata: n.metadata || {},
   };
 }
 
@@ -83,9 +84,8 @@ export default function NotificationsScreen() {
         console.warn("Failed to mark notification as read", error);
       }
 
-      if (notif.type === "order" || notif.type === "order_created") {
-        router.push(Routes.standalone.orderDetail(String(notif.id)) as any);
-      }
+      // Navigate to notification detail page
+      router.push(`/notifications/${notif.id}` as any);
     },
     [refetch, router]
   );
