@@ -282,11 +282,11 @@ export const getAvailableOrders = async (req, res) => {
   try {
     if (req.user.role !== "rider")
       return res.status(403).json({ success: false, error: "Only riders" });
-    
+
     const rider = await User.findById(req.user._id).select("searchRadiusKm");
     const defaultRadius = Number(process.env.RIDER_ORDER_RADIUS_KM || 7);
     const maxRadiusKm = rider?.searchRadiusKm || defaultRadius;
-    
+
     const MAX_ALLOWED_RADIUS = 20;
     const effectiveRadius = Math.min(maxRadiusKm, MAX_ALLOWED_RADIUS);
 
@@ -547,14 +547,14 @@ export const requestPriceChange = async (req, res) => {
     const order = await Order.findById(req.params.id);
     if (!order)
       return res.status(404).json({ success: false, error: "Order not found" });
-    if (String(order.riderId) !== String(req.user._id))
-      return res.status(403).json({ success: false, error: "Not your order" });
-    if (!["assigned", "picked_up", "delivering"].includes(order.status)) {
+    if (order.status !== "pending") {
       return res.status(400).json({
         success: false,
-        error: "Cannot request price change at this stage",
+        error:
+          "Price can only be changed before order acceptance. Once accepted, price is locked.",
       });
     }
+
     if (order.priceNegotiation?.status === "requested") {
       return res
         .status(400)
@@ -708,27 +708,69 @@ export const updateStatus = async (req, res) => {
     const next = transitions[action];
     if (!next)
       return res.status(400).json({ success: false, error: "Invalid action" });
+
+    if (action === "pickup" && order.status !== "assigned") {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Order must be in 'assigned' status (after price agreement) to mark as picked up",
+      });
+    }
+
     order.status = next;
     appendTimeline(order, next, `Status set to ${next}`);
     await order.save();
 
-    // Notify customer
+    // Create user-friendly status messages
+    const statusMessages = {
+      picked_up: {
+        customer: "Order picked up",
+        customerMsg: "Your order has been picked up by the rider",
+        rider: "Order picked up",
+        riderMsg: "You've marked the order as picked up",
+      },
+      delivering: {
+        customer: "Out for delivery",
+        customerMsg: "Your order is on the way to the dropoff location",
+        rider: "Delivery started",
+        riderMsg: "You've started the delivery",
+      },
+      delivered: {
+        customer: "Order delivered",
+        customerMsg: "Your order has been successfully delivered",
+        rider: "Order delivered",
+        riderMsg: "Order has been marked as delivered",
+      },
+      cancelled: {
+        customer: "Order cancelled",
+        customerMsg: "This order has been cancelled",
+        rider: "Order cancelled",
+        riderMsg: "This order has been cancelled",
+      },
+    };
+
+    const statusInfo = statusMessages[next] || {
+      customer: "Order updated",
+      customerMsg: `Order status changed to ${next}`,
+      rider: "Order updated",
+      riderMsg: `Order status changed to ${next}`,
+    };
+
     try {
       await createAndSendNotification(order.customerId, {
         type: "order_status_updated",
-        title: "Order status updated",
-        message: `Order #${order._id} status changed to ${next}`,
+        title: statusInfo.customer,
+        message: statusInfo.customerMsg,
         metadata: { orderId: order._id.toString() },
       });
     } catch {}
 
-    // Notify rider if assigned
     if (order.riderId) {
       try {
         await createAndSendNotification(order.riderId, {
           type: "order_status_updated",
-          title: "Order status updated",
-          message: `Order #${order._id} status changed to ${next}`,
+          title: statusInfo.rider,
+          message: statusInfo.riderMsg,
           metadata: { orderId: order._id.toString() },
         });
       } catch {}
@@ -803,23 +845,26 @@ export const generateDeliveryOtp = async (req, res) => {
       return res.status(404).json({ success: false, error: "Order not found" });
     if (String(order.riderId) !== String(req.user._id))
       return res.status(403).json({ success: false, error: "Not your order" });
-    if (!["assigned", "picked_up", "delivering"].includes(order.status)) {
-      return res
-        .status(400)
-        .json({ success: false, error: "Order not in deliverable state" });
+    // OTP generation only allowed when order is "delivering" (rider has reached destination)
+    if (order.status !== "delivering") {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Order must be in 'delivering' status (rider must have started delivery and reached destination) to generate delivery OTP",
+      });
     }
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     const ttlMinutes = Number(process.env.DELIVERY_OTP_TTL_MIN || 15);
     order.delivery.otpCode = code;
     order.delivery.otpExpiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
-    order.status = order.status === "assigned" ? "delivering" : order.status;
+    // Status remains "delivering" - no status change when OTP is generated
     appendTimeline(order, "delivering", "Delivery OTP generated");
     await order.save();
     try {
       await createAndSendNotification(order.customerId, {
         type: "delivery_otp",
         title: "Delivery code",
-        message: `Your delivery code is ${code}. Share only with the rider.`,
+        message: `Your delivery code is ${code}. Share this code with the recipient at the dropoff location.`,
         metadata: { orderId: order._id.toString() },
       });
     } catch {}
@@ -831,6 +876,12 @@ export const generateDeliveryOtp = async (req, res) => {
       id: order._id.toString(),
       otpExpiresAt: order.delivery.otpExpiresAt,
     });
+    if (order.riderId) {
+      io.to(`user:${order.riderId}`).emit(SocketEvents.DELIVERY_OTP, {
+        id: order._id.toString(),
+        otpExpiresAt: order.delivery.otpExpiresAt,
+      });
+    }
     res.json({
       success: true,
       otp: code,
@@ -965,7 +1016,9 @@ export const uploadDeliveryProofPhoto = async (req, res) => {
     if (req.user.role !== "rider")
       return res.status(403).json({ success: false, error: "Only riders" });
     if (!req.file)
-      return res.status(400).json({ success: false, error: "No file uploaded" });
+      return res
+        .status(400)
+        .json({ success: false, error: "No file uploaded" });
 
     const order = await Order.findById(req.params.id);
     if (!order)
@@ -976,6 +1029,19 @@ export const uploadDeliveryProofPhoto = async (req, res) => {
     const photoUrl = `/api/uploads/profiles/${req.file.filename}`;
     order.delivery.photoUrl = photoUrl;
     await order.save();
+
+    // Emit socket event for photo upload
+    io.to(`user:${order.customerId}`).emit(
+      SocketEvents.DELIVERY_PROOF_UPDATED,
+      {
+        id: order._id.toString(),
+      }
+    );
+    if (order.riderId) {
+      io.to(`user:${order.riderId}`).emit(SocketEvents.DELIVERY_PROOF_UPDATED, {
+        id: order._id.toString(),
+      });
+    }
 
     res.json({ success: true, photoUrl });
   } catch (e) {
@@ -1000,7 +1066,6 @@ export const updateDeliveryProof = async (req, res) => {
     appendTimeline(order, order.status, "Delivery proof updated");
     await order.save();
 
-    // Notify customer
     try {
       await createAndSendNotification(order.customerId, {
         type: "delivery_proof_updated",
@@ -1016,6 +1081,12 @@ export const updateDeliveryProof = async (req, res) => {
         id: order._id.toString(),
       }
     );
+    // Also emit to rider
+    if (order.riderId) {
+      io.to(`user:${order.riderId}`).emit(SocketEvents.DELIVERY_PROOF_UPDATED, {
+        id: order._id.toString(),
+      });
+    }
     res.json({ success: true, order });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });

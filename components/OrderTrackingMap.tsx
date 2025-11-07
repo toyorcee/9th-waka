@@ -66,11 +66,13 @@ export default function OrderTrackingMap({
         handleLocationUpdate(event.detail);
       }
     };
-    if (typeof window !== "undefined") {
+    if (
+      typeof window !== "undefined" &&
+      typeof window.addEventListener === "function"
+    ) {
       window.addEventListener("rider-location-updated", handleCustomEvent);
     }
 
-    // Initial location from order
     if (order.riderLocation) {
       setRiderLocation({
         lat: order.riderLocation.lat,
@@ -80,7 +82,10 @@ export default function OrderTrackingMap({
 
     return () => {
       socket.off(SocketEvents.RIDER_LOCATION_UPDATED, handleLocationUpdate);
-      if (typeof window !== "undefined") {
+      if (
+        typeof window !== "undefined" &&
+        typeof window.removeEventListener === "function"
+      ) {
         window.removeEventListener("rider-location-updated", handleCustomEvent);
       }
     };

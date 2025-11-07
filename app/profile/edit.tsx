@@ -892,8 +892,8 @@ export default function EditProfileScreen() {
           <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
             <Text className="text-light-300 text-sm mb-2">Email</Text>
             <View className="relative">
-              <TextInput
-                value={email}
+            <TextInput
+              value={email}
                 onChangeText={(text) => {
                   setEmail(text);
                   setEmailAvailable(null);
@@ -901,8 +901,8 @@ export default function EditProfileScreen() {
                   setEmailMessage("");
                   checkEmailDebounced(text);
                 }}
-                placeholder="your@email.com"
-                placeholderTextColor="#9CA4AB"
+              placeholder="your@email.com"
+              placeholderTextColor="#9CA4AB"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -934,7 +934,7 @@ export default function EditProfileScreen() {
                     name={IconNames.closeCircle as any}
                     size={20}
                     color="#EF4444"
-                  />
+            />
                 </View>
               )}
             </View>
@@ -952,11 +952,11 @@ export default function EditProfileScreen() {
               </Text>
             )}
             {!emailMessage && (
-              <Text className="text-light-400 text-xs mt-1">
+            <Text className="text-light-400 text-xs mt-1">
                 {email === user?.email
                   ? "Your current email address"
                   : "Enter a new email address to change it"}
-              </Text>
+            </Text>
             )}
           </View>
 
@@ -1002,7 +1002,7 @@ export default function EditProfileScreen() {
                     }`}
                   >
                     🏍️ Motorcycle
-                  </Text>
+                </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setVehicleType("car")}
@@ -1361,25 +1361,25 @@ export default function EditProfileScreen() {
           {/* KYC Fields for Customers */}
           {user?.role === "customer" && (
             <>
-              <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
-                <Text className="text-light-300 text-sm mb-2">
-                  Default Address
-                </Text>
-                <TextInput
-                  value={defaultAddress}
-                  onChangeText={setDefaultAddress}
-                  placeholder="Enter your default delivery address"
-                  placeholderTextColor="#9CA4AB"
-                  multiline
-                  numberOfLines={3}
-                  className="text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base"
-                  textAlignVertical="top"
-                />
-                <Text className="text-light-400 text-xs mt-1">
+            <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
+              <Text className="text-light-300 text-sm mb-2">
+                Default Address
+              </Text>
+              <TextInput
+                value={defaultAddress}
+                onChangeText={setDefaultAddress}
+                placeholder="Enter your default delivery address"
+                placeholderTextColor="#9CA4AB"
+                multiline
+                numberOfLines={3}
+                className="text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base"
+                textAlignVertical="top"
+              />
+              <Text className="text-light-400 text-xs mt-1">
                   💡 Tip: Save your address here to quickly fill it when
                   creating orders. You can use the checkbox when placing an
                   order to auto-fill your pickup address.
-                </Text>
+              </Text>
               </View>
 
               {/* Optional Identity Verification for Customers */}
@@ -1421,8 +1421,8 @@ export default function EditProfileScreen() {
                   {verifyingNin && (
                     <View className="absolute right-4 top-3">
                       <ActivityIndicator size="small" color="#AB8BFF" />
-                    </View>
-                  )}
+            </View>
+          )}
                   {ninVerified && !verifyingNin && (
                     <View className="absolute right-4 top-3">
                       <Icons.safety

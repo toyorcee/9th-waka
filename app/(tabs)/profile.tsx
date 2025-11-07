@@ -13,11 +13,16 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ProfileScreen() {
   const { user, isLoading, logout } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [showLogout, setShowLogout] = React.useState(false);
+  const tabBarHeight = 65;
+  const bottomPadding = insets.bottom > 0 ? insets.bottom : 20;
+  const contentBottomPadding = tabBarHeight + bottomPadding + 32;
 
   const handleLogout = async () => {
     setShowLogout(true);
@@ -32,8 +37,14 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-primary">
-      <View className="pt-20 px-6 pb-8">
+    <ScrollView
+      className="flex-1 bg-primary"
+      contentContainerStyle={{
+        paddingTop: insets.top,
+        paddingBottom: contentBottomPadding,
+      }}
+    >
+      <View className="pt-4 px-6 pb-8">
         <Text className="text-light-100 text-3xl font-bold mb-6">Profile</Text>
 
         {/* Profile Info */}
@@ -164,6 +175,10 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
+      {/* Bottom spacer to prevent content from going under tab bar */}
+      <View
+        style={{ height: contentBottomPadding, backgroundColor: "#030014" }}
+      />
     </ScrollView>
   );
 }

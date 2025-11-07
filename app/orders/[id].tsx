@@ -324,22 +324,26 @@ export default function OrderDetailScreen() {
     const socket = socketClient.socketInstance;
     if (!socket) return;
 
-    // Listen for WebSocket events
     socket.on(SocketEvents.RIDER_LOCATION_UPDATED, handleLocationUpdate);
 
-    // Also listen for custom events (for web compatibility)
     const handleCustomEvent = (event: any) => {
       if (event.detail?.orderId === id) {
         handleLocationUpdate(event.detail);
       }
     };
-    if (typeof window !== "undefined") {
+    if (
+      typeof window !== "undefined" &&
+      typeof window.addEventListener === "function"
+    ) {
       window.addEventListener("rider-location-updated", handleCustomEvent);
     }
 
     return () => {
       socket.off(SocketEvents.RIDER_LOCATION_UPDATED, handleLocationUpdate);
-      if (typeof window !== "undefined") {
+      if (
+        typeof window !== "undefined" &&
+        typeof window.removeEventListener === "function"
+      ) {
         window.removeEventListener("rider-location-updated", handleCustomEvent);
       }
     };
@@ -432,9 +436,9 @@ export default function OrderDetailScreen() {
             </View>
 
             {/* Price Negotiation UI */}
+            {/* Price change can only be requested when order is pending (before acceptance) */}
             {user?.role === "rider" &&
-              String(order.riderId) === String(user.id) &&
-              ["assigned", "picked_up", "delivering"].includes(order.status) &&
+              order.status === "pending" &&
               order.priceNegotiation?.status !== "requested" &&
               order.priceNegotiation?.status !== "accepted" && (
                 <TouchableOpacity
@@ -540,18 +544,16 @@ export default function OrderDetailScreen() {
                 </TouchableOpacity>
               )}
 
-              {/* Generate OTP Button - When assigned, picked_up, or delivering */}
-              {["assigned", "picked_up", "delivering"].includes(order.status) &&
-                !order.delivery?.otpCode && (
-                  <TouchableOpacity
-                    onPress={handleGenerateOtp}
-                    className="bg-info rounded-xl px-4 py-4 mb-3"
-                  >
-                    <Text className="text-primary font-bold text-center text-base">
-                      🔐 Generate Delivery OTP
-                    </Text>
-                  </TouchableOpacity>
-                )}
+              {order.status === "delivering" && !order.delivery?.otpCode && (
+                <TouchableOpacity
+                  onPress={handleGenerateOtp}
+                  className="bg-info rounded-xl px-4 py-4 mb-3"
+                >
+                  <Text className="text-primary font-bold text-center text-base">
+                    🔐 Generate Delivery OTP
+                  </Text>
+                </TouchableOpacity>
+              )}
 
               {/* Show OTP if generated */}
               {order.delivery?.otpCode && (
@@ -629,25 +631,74 @@ export default function OrderDetailScreen() {
           )}
         </View>
 
-        <View className="bg-secondary border border-neutral-100 rounded-2xl p-5 mb-4">
-          <Text className="text-light-100 text-lg font-semibold mb-3">
-            Delivery Proof
-          </Text>
-          {delivery.photoUrl ? (
-            <Image
-              source={{ uri: delivery.photoUrl }}
-              style={{ width: "100%", height: 200, borderRadius: 12 }}
-            />
-          ) : (
-            <Text className="text-light-400">No photo uploaded</Text>
-          )}
-          <View className="mt-3">
-            <Text className="text-light-300 text-sm">Recipient</Text>
-            <Text className="text-light-100">
-              {delivery.recipientName || "—"}
+        {order.status === "delivered" && (
+          <View className="bg-secondary border border-neutral-100 rounded-2xl p-5 mb-4">
+            <Text className="text-light-100 text-lg font-semibold mb-3">
+              Delivery Proof
             </Text>
+            {delivery.photoUrl ? (
+              <Image
+                source={{ uri: delivery.photoUrl }}
+                style={{ width: "100%", height: 200, borderRadius: 12 }}
+                resizeMode="cover"
+              />
+            ) : (
+              <View className="bg-dark-100 rounded-xl p-8 items-center">
+                <Text className="text-light-400 text-center">
+                  No photo uploaded
+                </Text>
+              </View>
+            )}
+            <View className="mt-4 space-y-3">
+              {delivery.recipientName && (
+                <View>
+                  <Text className="text-light-300 text-sm mb-1">
+                    Recipient Name
+                  </Text>
+                  <Text className="text-light-100 font-semibold">
+                    {delivery.recipientName}
+                  </Text>
+                </View>
+              )}
+              {delivery.recipientPhone && (
+                <View>
+                  <Text className="text-light-300 text-sm mb-1">
+                    Recipient Phone
+                  </Text>
+                  <Text className="text-light-100">
+                    {delivery.recipientPhone}
+                  </Text>
+                </View>
+              )}
+              {delivery.note && (
+                <View>
+                  <Text className="text-light-300 text-sm mb-1">Note</Text>
+                  <Text className="text-light-100">{delivery.note}</Text>
+                </View>
+              )}
+              {delivery.deliveredAt && (
+                <View>
+                  <Text className="text-light-300 text-sm mb-1">
+                    Delivered At
+                  </Text>
+                  <Text className="text-light-100">
+                    {new Date(delivery.deliveredAt).toLocaleString()}
+                  </Text>
+                </View>
+              )}
+              {delivery.otpVerifiedAt && (
+                <View>
+                  <Text className="text-light-300 text-sm mb-1">
+                    OTP Verified At
+                  </Text>
+                  <Text className="text-light-100">
+                    {new Date(delivery.otpVerifiedAt).toLocaleString()}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Rider Location Section - Show for customers and admin when order is active */}
         {order.riderLocation &&

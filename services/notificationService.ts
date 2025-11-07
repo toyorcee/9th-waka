@@ -22,7 +22,6 @@ async function ensureNotificationHandler() {
     if (!Notifications) return;
     await Notifications.setNotificationHandler({
       handleNotification: async () => ({
-        shouldShowAlert: true,
         shouldShowBanner: true,
         shouldShowList: true,
         shouldPlaySound: true,

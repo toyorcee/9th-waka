@@ -58,11 +58,12 @@ export default function SettingsScreen() {
     checkLocationPermission();
   }, []);
 
-  // Refresh active orders when screen comes into focus
+  // Refresh active orders and location permission when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       if (user?.role === "rider") {
         checkActiveOrdersStatus();
+        checkLocationPermission();
       }
     }, [user?.role])
   );
@@ -386,24 +387,40 @@ export default function SettingsScreen() {
                       <ActivityIndicator size="small" color="#AB8BFF" />
                     </View>
                   )}
-                  {locationPermissionStatus ===
-                  Location.PermissionStatus.GRANTED ? (
-                    <View className="w-12 h-6 bg-green-500 rounded-full items-center justify-center">
-                      <Icons.safety
-                        name={IconNames.checkmarkCircle as any}
-                        size={16}
-                        color="#FFFFFF"
-                      />
-                    </View>
-                  ) : (
-                    <View className="w-12 h-6 bg-red-500 rounded-full items-center justify-center">
-                      <Icons.safety
-                        name={IconNames.closeCircle as any}
-                        size={16}
-                        color="#FFFFFF"
-                      />
-                    </View>
-                  )}
+                  <Switch
+                    value={
+                      locationPermissionStatus ===
+                      Location.PermissionStatus.GRANTED
+                    }
+                    onValueChange={async (value) => {
+                      if (value) {
+                        await requestLocationPermission();
+                      } else {
+                        if (hasActiveOrders) {
+                          Toast.show({
+                            type: "error",
+                            text1: "Cannot disable location",
+                            text2:
+                              "You have active orders. Complete or cancel them first.",
+                          });
+                        } else {
+                          Toast.show({
+                            type: "info",
+                            text1: "Disable in settings",
+                            text2:
+                              "Open device settings to disable location permission",
+                          });
+                          openLocationSettings();
+                        }
+                      }
+                    }}
+                    trackColor={{ false: "#2A2D3A", true: "#AB8BFF" }}
+                    thumbColor="#E6E6F0"
+                    disabled={checkingLocation || hasActiveOrders}
+                    style={{
+                      opacity: checkingLocation || hasActiveOrders ? 0.5 : 1,
+                    }}
+                  />
                 </View>
               </View>
 

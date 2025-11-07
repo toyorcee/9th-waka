@@ -105,9 +105,9 @@ export default function HomeLanding() {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [showMapModal, setShowMapModal] = useState(false);
 
-  const TAB_BAR_HEIGHT = 65;
-  const TAB_BAR_MARGIN = 16;
-  const bottomPad = TAB_BAR_HEIGHT + TAB_BAR_MARGIN + insets.bottom;
+  const tabBarHeight = 65;
+  const bottomPadding = insets.bottom > 0 ? insets.bottom : 20;
+  const contentBottomPadding = tabBarHeight + bottomPadding + 32;
 
   useEffect(() => {
     if (
@@ -138,7 +138,15 @@ export default function HomeLanding() {
     }
   };
 
-  const handleAction = async (actionType: "request" | "track" | "sos") => {
+  const handleAction = async (
+    actionType:
+      | "request"
+      | "track"
+      | "sos"
+      | "orders"
+      | "deliveries"
+      | "earnings"
+  ) => {
     if (!isAuthenticated) {
       await navigationHelper.setPendingAction(actionType);
       router.push(Routes.standalone.auth);
@@ -146,16 +154,22 @@ export default function HomeLanding() {
       if (actionType === "request") router.push(Routes.standalone.newOrder);
       else if (actionType === "track") router.push(Routes.tabs.track);
       else if (actionType === "sos") router.push(Routes.standalone.sos);
+      else if (actionType === "orders") router.push(Routes.tabs.orders);
+      else if (actionType === "deliveries") router.push(Routes.tabs.deliveries);
+      else if (actionType === "earnings") router.push(Routes.tabs.earnings);
     }
   };
 
   return (
     <ScrollView
       className="flex-1 bg-primary"
-      contentContainerStyle={{ paddingBottom: bottomPad, flexGrow: 1 }}
+      contentContainerStyle={{
+        paddingTop: insets.top,
+        paddingBottom: contentBottomPadding,
+      }}
     >
       <View className="flex-1">
-        <View className="pt-20 px-6 pb-8">
+        <View className="pt-4 px-6 pb-8">
           <View className="flex-row items-center justify-between mb-4">
             <View className="flex-1">
               <Image
@@ -306,28 +320,68 @@ export default function HomeLanding() {
           </Text>
         </View>
 
+        {/* Quick Actions - Role Based */}
         <View className="mx-6 mb-6">
           <Text className="text-light-200 text-base font-semibold mb-4">
             Quick Actions
           </Text>
-          <View className="flex-row flex-wrap gap-3">
-            <TouchableOpacity
-              onPress={() => handleAction("request")}
-              className="bg-accent px-6 py-4 rounded-xl flex-1 min-w-[45%]"
-            >
-              <Text className="text-primary font-bold text-center text-base">
-                Request Delivery
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => handleAction("track")}
-              className="bg-accentWarm px-6 py-4 rounded-xl flex-1 min-w-[45%]"
-            >
-              <Text className="text-primary font-bold text-center text-base">
-                Track Order
-              </Text>
-            </TouchableOpacity>
-          </View>
+          {isAuthenticated && user?.role === "rider" ? (
+            /* Rider Quick Actions */
+            <View className="flex-row flex-wrap gap-3">
+              <TouchableOpacity
+                onPress={() => handleAction("deliveries")}
+                className="bg-accent px-6 py-4 rounded-xl flex-1 min-w-[45%]"
+              >
+                <Text className="text-primary font-bold text-center text-base">
+                  Available Orders
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleAction("track")}
+                className="bg-accentWarm px-6 py-4 rounded-xl flex-1 min-w-[45%]"
+              >
+                <Text className="text-primary font-bold text-center text-base">
+                  My Deliveries
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleAction("earnings")}
+                className="bg-secondary border border-accent px-6 py-4 rounded-xl flex-1 min-w-[45%]"
+              >
+                <Text className="text-accent font-bold text-center text-base">
+                  Earnings
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            /* Customer/Admin Quick Actions */
+            <View className="flex-row flex-wrap gap-3">
+              <TouchableOpacity
+                onPress={() => handleAction("request")}
+                className="bg-accent px-6 py-4 rounded-xl flex-1 min-w-[45%]"
+              >
+                <Text className="text-primary font-bold text-center text-base">
+                  Request Delivery
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleAction("track")}
+                className="bg-accentWarm px-6 py-4 rounded-xl flex-1 min-w-[45%]"
+              >
+                <Text className="text-primary font-bold text-center text-base">
+                  Track Order
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleAction("orders")}
+                className="bg-secondary border border-accent px-6 py-4 rounded-xl flex-1 min-w-[45%]"
+              >
+                <Text className="text-accent font-bold text-center text-base">
+                  My Orders
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* SOS Button - Only for Riders */}
@@ -406,6 +460,11 @@ export default function HomeLanding() {
           </Text>
         </View>
       </View>
+
+      {/* Bottom spacer to prevent content from going under tab bar */}
+      <View
+        style={{ height: contentBottomPadding, backgroundColor: "#030014" }}
+      />
 
       {/* Map Modal */}
       <Modal

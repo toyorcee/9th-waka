@@ -11,16 +11,21 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 export default function EarningsScreen() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [earnings, setEarnings] = useState<EarningsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const isRider = user?.role === "rider";
+  const tabBarHeight = 65;
+  const bottomPadding = insets.bottom > 0 ? insets.bottom : 20;
+  const contentBottomPadding = tabBarHeight + bottomPadding + 32;
 
   const loadEarnings = async (showRefreshing = false) => {
     if (!isRider) return;
@@ -99,8 +104,14 @@ export default function EarningsScreen() {
   const isFriday = dayOfWeek === 5; // Friday = day before Saturday payment
 
   return (
-    <ScrollView className="flex-1 bg-primary">
-      <View className="pt-20 px-6 pb-10">
+    <ScrollView
+      className="flex-1 bg-primary"
+      contentContainerStyle={{
+        paddingTop: insets.top,
+        paddingBottom: contentBottomPadding,
+      }}
+    >
+      <View className="pt-4 px-6 pb-10">
         <View className="flex-row items-center justify-between mb-4">
           <Text className="text-light-100 text-3xl font-bold">Earnings</Text>
           <TouchableOpacity
@@ -259,6 +270,10 @@ export default function EarningsScreen() {
           )}
         </View>
       </View>
+      {/* Bottom spacer to prevent content from going under tab bar */}
+      <View
+        style={{ height: contentBottomPadding, backgroundColor: "#030014" }}
+      />
     </ScrollView>
   );
 }

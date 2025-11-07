@@ -14,12 +14,17 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 export default function DeliveriesScreen() {
   const { user, isLoading, updateUser } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const isRider = user?.role === "rider";
+  const tabBarHeight = 65;
+  const bottomPadding = insets.bottom > 0 ? insets.bottom : 20;
+  const contentBottomPadding = tabBarHeight + bottomPadding + 32;
   const [online, setOnline] = React.useState(false);
   const [availableOrders, setAvailableOrders] = React.useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = React.useState(false);
@@ -180,8 +185,14 @@ export default function DeliveriesScreen() {
   }, [isRider, user]);
 
   return (
-    <ScrollView className="flex-1 bg-primary">
-      <View className="pt-20 px-6 pb-8">
+    <ScrollView
+      className="flex-1 bg-primary"
+      contentContainerStyle={{
+        paddingTop: insets.top,
+        paddingBottom: contentBottomPadding,
+      }}
+    >
+      <View className="pt-4 px-6 pb-8">
         <Text className="text-light-100 text-3xl font-bold mb-6">
           Deliveries
         </Text>
@@ -394,7 +405,7 @@ export default function DeliveriesScreen() {
               {updatingRadius ? (
                 <ActivityIndicator size="small" color="#030014" />
               ) : (
-                <Text className="text-primary font-bold">
+                <Text className="text-white font-bold">
                   {searchRadius === (user?.searchRadiusKm || 7)
                     ? "Current Radius"
                     : "Save Radius"}
@@ -458,35 +469,53 @@ export default function DeliveriesScreen() {
               </View>
             ) : (
               <View className="gap-3">
-                {availableOrders.map((order) => (
-                  <View
-                    key={order._id || order.id}
-                    className="bg-secondary rounded-2xl p-5 border border-neutral-100"
-                  >
-                    <View className="flex-row items-start justify-between mb-3">
-                      <View className="flex-1">
-                        <Text className="text-light-100 font-semibold text-base mb-1">
-                          {order.items}
-                        </Text>
-                        <Text className="text-light-300 text-sm">
-                          {order.pickup.address}
-                        </Text>
-                        <Text className="text-light-300 text-sm">
-                          → {order.dropoff.address}
-                        </Text>
-                      </View>
-                      {order.distanceKm && (
-                        <View className="bg-accent/20 px-3 py-1 rounded-lg">
-                          <Text className="text-accent text-xs font-semibold">
-                            {order.distanceKm} km
+                {availableOrders.map((order) => {
+                  const orderId = order._id || order.id || "";
+                  return (
+                    <View
+                      key={orderId}
+                      className="bg-secondary rounded-2xl p-5 border border-neutral-100 mb-3"
+                    >
+                      <View className="flex-row items-start justify-between mb-3">
+                        <View className="flex-1">
+                          <Text className="text-light-100 font-semibold text-base mb-1">
+                            {order.items}
+                          </Text>
+                          <Text className="text-light-300 text-sm">
+                            {order.pickup?.address || "N/A"}
+                          </Text>
+                          <Text className="text-light-300 text-sm">
+                            → {order.dropoff?.address || "N/A"}
                           </Text>
                         </View>
-                      )}
-                    </View>
-                    <View className="flex-row items-center justify-between">
-                      <Text className="text-light-200 font-bold">
-                        ₦{Number(order.price || 0).toLocaleString()}
-                      </Text>
+                        {order.distanceKm && (
+                          <View className="bg-accent/20 px-3 py-1 rounded-lg">
+                            <Text className="text-accent text-xs font-semibold">
+                              {order.distanceKm} km
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <View className="flex-row items-center justify-between mb-3 pb-3 border-b border-neutral-100/50">
+                        <View>
+                          <Text className="text-light-400 text-xs mb-1">
+                            Price
+                          </Text>
+                          <Text className="text-light-200 font-bold text-lg">
+                            ₦{Number(order.price || 0).toLocaleString()}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          onPress={() => {
+                            router.push(`/orders/${orderId}` as any);
+                          }}
+                          className="bg-dark-100 border border-neutral-100 px-4 py-2 rounded-xl"
+                        >
+                          <Text className="text-light-200 font-semibold text-sm">
+                            View Details
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
                       <TouchableOpacity
                         onPress={() => {
                           if (!isKycComplete) {
@@ -501,10 +530,10 @@ export default function DeliveriesScreen() {
                             }, 1500);
                             return;
                           }
-                          handleAcceptOrder(order._id || order.id!);
+                          handleAcceptOrder(orderId);
                         }}
                         disabled={!isKycComplete}
-                        className={`px-4 py-2 rounded-xl ${
+                        className={`px-4 py-3 rounded-xl items-center ${
                           isKycComplete
                             ? "bg-accent"
                             : "bg-neutral-100/50 opacity-60"
@@ -515,12 +544,12 @@ export default function DeliveriesScreen() {
                             isKycComplete ? "text-primary" : "text-light-400"
                           }`}
                         >
-                          {isKycComplete ? "Accept" : "Complete KYC"}
+                          {isKycComplete ? "Accept Order" : "Complete KYC"}
                         </Text>
                       </TouchableOpacity>
                     </View>
-                  </View>
-                ))}
+                  );
+                })}
               </View>
             )}
           </View>
@@ -538,6 +567,10 @@ export default function DeliveriesScreen() {
           </View>
         </View>
       </View>
+      {/* Bottom spacer to prevent content from going under tab bar */}
+      <View
+        style={{ height: contentBottomPadding, backgroundColor: "#030014" }}
+      />
     </ScrollView>
   );
 }

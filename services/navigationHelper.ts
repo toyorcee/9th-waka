@@ -2,7 +2,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const PENDING_ACTION_KEY = "pendingAction";
 
-export type PendingAction = "request" | "track" | "sos" | null;
+export type PendingAction =
+  | "request"
+  | "track"
+  | "sos"
+  | "orders"
+  | "deliveries"
+  | "earnings"
+  | null;
 
 export const navigationHelper = {
   setPendingAction: async (action: PendingAction): Promise<void> => {

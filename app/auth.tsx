@@ -4,9 +4,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { navigationHelper, Routes } from "@/services/navigationHelper";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  BackHandler,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -86,15 +87,23 @@ export default function AuthScreen() {
         const pendingAction = await navigationHelper.getPendingAction();
         await navigationHelper.clearPendingAction();
 
-        if (pendingAction === "request") {
-          router.replace(Routes.standalone.newOrder);
-        } else if (pendingAction === "track") {
-          router.replace(Routes.tabs.track);
-        } else if (pendingAction === "sos") {
-          router.replace(Routes.standalone.sos);
-        } else {
-          router.replace(Routes.tabs.home);
-        }
+        router.replace(Routes.tabs.home);
+
+        setTimeout(() => {
+          if (pendingAction === "request") {
+            router.push(Routes.standalone.newOrder);
+          } else if (pendingAction === "track") {
+            router.push(Routes.tabs.track);
+          } else if (pendingAction === "sos") {
+            router.push(Routes.standalone.sos);
+          } else if (pendingAction === "orders") {
+            router.push(Routes.tabs.orders);
+          } else if (pendingAction === "deliveries") {
+            router.push(Routes.tabs.deliveries);
+          } else if (pendingAction === "earnings") {
+            router.push(Routes.tabs.earnings);
+          }
+        }, 100);
         setEmail("");
         setPassword("");
         setConfirmPassword("");
@@ -153,16 +162,36 @@ export default function AuthScreen() {
     }
   };
 
-  // Auto-switch to signup mode if user came from "Get Started"
+  const handleGoBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace(Routes.tabs.home);
+    }
+  }, [router]);
+
   useEffect(() => {
     const checkPendingAction = async () => {
       const pendingAction = await navigationHelper.getPendingAction();
       if (pendingAction === "request") {
-        setMode("signup"); // Switch to signup for new users from "Get Started"
+        setMode("signup");
       }
     };
     checkPendingAction();
   }, []);
+
+  // Handle Android back button
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        handleGoBack();
+        return true; // Prevent default back behavior
+      }
+    );
+
+    return () => backHandler.remove();
+  }, [handleGoBack]);
 
   return (
     <KeyboardAvoidingView
@@ -190,6 +219,19 @@ export default function AuthScreen() {
         </View>
 
         <View className="flex-1 justify-center px-6 py-12">
+          {/* Back Button */}
+          <TouchableOpacity
+            onPress={handleGoBack}
+            className="absolute top-0 left-6 z-10 bg-secondary/80 rounded-full p-2"
+            style={{ marginTop: insets.top + 8 }}
+          >
+            <Icons.navigation
+              name={IconNames.arrowBack as any}
+              size={24}
+              color="#AB8BFF"
+            />
+          </TouchableOpacity>
+
           {/* Logo/Branding Section */}
           <View className="items-center mb-8">
             <Image

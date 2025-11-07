@@ -1,5 +1,7 @@
+import { IconNames, Icons } from "@/constants/icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/services/apiClient";
+import { Routes } from "@/services/navigationHelper";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -11,11 +13,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 export default function NewOrderScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [pickupAddress, setPickupAddress] = useState("");
   const [dropoffAddress, setDropoffAddress] = useState("");
   const [items, setItems] = useState("");
@@ -102,7 +106,7 @@ export default function NewOrderScreen() {
         });
       } else {
         if (router.canGoBack()) {
-        router.back();
+          router.back();
         } else {
           router.replace("/(tabs)/orders");
         }
@@ -117,11 +121,37 @@ export default function NewOrderScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-primary">
-      <View className="pt-20 px-6 pb-10">
-        <Text className="text-light-100 text-3xl font-bold mb-6">
-          New Delivery
-        </Text>
+    <ScrollView
+      className="flex-1 bg-primary"
+      contentContainerStyle={{
+        paddingTop: insets.top,
+        paddingBottom: insets.bottom + 24,
+      }}
+    >
+      <View className="pt-4 px-6 pb-10">
+        {/* Header with Back Button */}
+        <View className="flex-row items-center justify-between mb-6">
+          <TouchableOpacity
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace(Routes.tabs.home);
+              }
+            }}
+            className="w-10 h-10 rounded-full bg-dark-200 items-center justify-center"
+          >
+            <Icons.navigation
+              name={IconNames.arrowBack as any}
+              size={20}
+              color="#FFFFFF"
+            />
+          </TouchableOpacity>
+          <Text className="text-light-100 text-3xl font-bold flex-1 text-center -ml-10">
+            New Delivery
+          </Text>
+          <View className="w-10" />
+        </View>
 
         {/* Use Default Address Checkbox */}
         {user?.defaultAddress ? (
@@ -270,7 +300,16 @@ export default function NewOrderScreen() {
                       : "text-light-300"
                   }`}
                 >
-                  🚗 Car/Van
+                  🚗
+                </Text>
+                <Text
+                  className={`text-center font-bold text-lg mb-1 ${
+                    preferredVehicleType === "car"
+                      ? "text-accent"
+                      : "text-light-300"
+                  }`}
+                >
+                  Car/Van
                 </Text>
                 <Text
                   className={`text-center font-semibold ${
@@ -282,9 +321,6 @@ export default function NewOrderScreen() {
                   ₦
                   {carPrice?.toLocaleString() ||
                     Math.round(estimatedPrice * 1.25).toLocaleString()}
-                </Text>
-                <Text className="text-light-400 text-xs text-center mt-1">
-                  +25% more
                 </Text>
               </TouchableOpacity>
             </View>
@@ -325,9 +361,8 @@ export default function NewOrderScreen() {
                   Distance: {distanceKm} km • Tiered pricing applied
                 </Text>
               )}
-              <Text className="text-light-400 text-xs mt-2">
-                Price calculated using tiered rates (₦130/km for 0-8km, ₦160/km
-                for 9-20km, ₦200/km for 21km+)
+              <Text className="text-light-400 text-xs mt-2 text-center">
+                Competitive rates • Fast delivery • Secure handling
               </Text>
             </>
           ) : (
