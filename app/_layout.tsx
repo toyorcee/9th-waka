@@ -1,3 +1,4 @@
+import FloatingSupportBot from "@/components/FloatingSupportBot";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SocketProvider } from "@/contexts/SocketContext";
 import { Stack } from "expo-router";
@@ -49,7 +50,14 @@ export default function RootLayout() {
             <Stack.Screen name="orders/new" options={{ headerShown: false }} />
             <Stack.Screen name="orders/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="sos" options={{ headerShown: false }} />
+            <Stack.Screen name="support" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="legal/privacy"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen name="legal/terms" options={{ headerShown: false }} />
           </Stack>
+          <FloatingSupportBot />
           <Toast topOffset={12} config={toastConfig} />
         </SocketProvider>
       </AuthProvider>

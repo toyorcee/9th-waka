@@ -191,36 +191,69 @@ export default function DeliveriesScreen() {
         paddingTop: insets.top,
         paddingBottom: contentBottomPadding,
       }}
+      showsVerticalScrollIndicator={false}
     >
-      <View className="pt-4 px-6 pb-8">
-        <Text className="text-light-100 text-3xl font-bold mb-6">
-          Deliveries
-        </Text>
+      <View className="pt-6 px-5 pb-8">
+        {/* Modern Header with Icon */}
+        <View className="flex-row items-center mb-6">
+          <View className="bg-accent/20 rounded-xl p-2.5 mr-3">
+            <Icons.delivery
+              name={MCIconNames.delivery as any}
+              size={22}
+              color="#AB8BFF"
+            />
+          </View>
+          <View className="flex-1">
+            <Text className="text-light-100 text-xl font-bold mb-0.5">
+              Deliveries
+            </Text>
+            <Text className="text-light-400 text-xs">
+              {isRider
+                ? online
+                  ? "Active and ready"
+                  : "Manage your deliveries"
+                : "Track your orders"}
+            </Text>
+          </View>
+        </View>
 
-        {/* KYC Completion Banner (Riders only) */}
+        {/* KYC Completion Banner (Riders only) - Modern Design */}
         {isRider && !isKycComplete && (
-          <View className="bg-accent/20 border border-accent rounded-2xl p-5 mb-6">
-            <View className="flex-row items-start mb-3">
-              <View className="bg-accent/30 rounded-full p-2 mr-3">
+          <View className="bg-accent/20 border border-accent/30 rounded-3xl p-6 mb-6 shadow-lg">
+            <View className="flex-row items-start">
+              <View className="bg-accent/30 rounded-2xl p-3 mr-4">
                 <Icons.safety
                   name={IconNames.securityOutline as any}
-                  size={24}
+                  size={28}
                   color="#AB8BFF"
                 />
               </View>
               <View className="flex-1">
-                <Text className="text-accent font-bold text-lg mb-1">
+                <Text className="text-accent font-bold text-xl mb-2">
                   Complete Your KYC Verification
                 </Text>
-                <Text className="text-light-300 text-sm mb-3">
+                <Text className="text-light-300 text-sm mb-4 leading-5">
                   To start accepting delivery orders, you need to complete your
-                  profile verification.
+                  profile verification with identity documents.
                 </Text>
                 <TouchableOpacity
                   onPress={() => router.push("/profile/edit" as any)}
-                  className="bg-accent rounded-xl py-3 px-4 items-center"
+                  className="bg-accent rounded-2xl py-4 px-5 items-center flex-row justify-center shadow-lg"
+                  style={{
+                    shadowColor: "#AB8BFF",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 8,
+                    elevation: 8,
+                  }}
                 >
-                  <Text className="text-primary font-bold">
+                  <Icons.action
+                    name={IconNames.arrowForward as any}
+                    size={18}
+                    color="#030014"
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text className="text-primary font-bold text-base">
                     Complete KYC Now
                   </Text>
                 </TouchableOpacity>
@@ -229,25 +262,67 @@ export default function DeliveriesScreen() {
           </View>
         )}
 
-        {/* Go Online Section - Only show if KYC is complete */}
+        {/* Go Online Section - Modern Card Design */}
         {isRider && isKycComplete && (
-          <View className="bg-secondary rounded-2xl p-6 mb-6 border border-neutral-100 items-center">
-            <Text className="text-light-100 text-xl font-bold mb-2">
-              {online ? "You're Online" : "Go Online"}
-            </Text>
-            <Text className="text-light-400 text-sm text-center mb-4">
-              {online
-                ? "You're receiving delivery requests nearby"
-                : "Turn on to start receiving delivery requests"}
-            </Text>
-            <View className="flex-row items-center gap-4">
-              <Text
-                className={`text-base font-semibold ${
-                  online ? "text-green-400" : "text-light-400"
-                }`}
-              >
-                {online ? "Online" : "Offline"}
-              </Text>
+          <View
+            className={`rounded-3xl p-6 mb-6 border ${
+              online
+                ? "bg-active/20 border-active/30"
+                : "bg-secondary border-neutral-100"
+            }`}
+            style={{
+              shadowColor: online ? "#30D158" : "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: online ? 0.2 : 0.1,
+              shadowRadius: 12,
+              elevation: 8,
+            }}
+          >
+            <View className="flex-row items-center justify-between mb-4">
+              <View className="flex-row items-center flex-1">
+                <View
+                  className={`rounded-2xl p-3 mr-4 ${
+                    online ? "bg-active/30" : "bg-dark-100"
+                  }`}
+                >
+                  <Icons.status
+                    name={
+                      online
+                        ? (IconNames.radioButtonOn as any)
+                        : (IconNames.radioButtonOff as any)
+                    }
+                    size={24}
+                    color={online ? "#30D158" : "#9CA4AB"}
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-light-100 text-xl font-bold mb-1">
+                    {online ? "You're Online" : "Go Online"}
+                  </Text>
+                  <Text className="text-light-400 text-sm">
+                    {online
+                      ? "Receiving delivery requests nearby"
+                      : "Turn on to start receiving requests"}
+                  </Text>
+                </View>
+              </View>
+            </View>
+            <View className="flex-row items-center justify-between bg-dark-100/50 rounded-2xl p-4">
+              <View className="flex-row items-center">
+                <Icons.location
+                  name={IconNames.locationOutline as any}
+                  size={20}
+                  color={online ? "#30D158" : "#9CA4AB"}
+                  style={{ marginRight: 8 }}
+                />
+                <Text
+                  className={`text-base font-semibold ${
+                    online ? "text-active" : "text-light-400"
+                  }`}
+                >
+                  {online ? "Active" : "Inactive"}
+                </Text>
+              </View>
               <Switch
                 value={online}
                 onValueChange={async (val) => {
@@ -313,55 +388,94 @@ export default function DeliveriesScreen() {
                     }
                   }
                 }}
-                trackColor={{ false: "#3A3A3C", true: "#AB8BFF" }}
+                trackColor={{ false: "#3A3A3C", true: "#30D158" }}
                 thumbColor={online ? "#030014" : "#9CA4AB"}
+                ios_backgroundColor="#3A3A3C"
               />
             </View>
           </View>
         )}
 
-        {/* Search Radius Settings - Only show if KYC is complete */}
+        {/* Search Radius Settings - Modern Design */}
         {isRider && isKycComplete && (
-          <View className="bg-secondary rounded-2xl p-5 mb-6 border border-neutral-100">
-            <Text className="text-light-100 text-lg font-semibold mb-2">
-              Search Radius
-            </Text>
-            <Text className="text-light-400 text-sm mb-4">
-              Adjust how far you want to see delivery requests (1-20 km)
-            </Text>
-            <View className="flex-row items-center gap-4 mb-2">
-              <Text className="text-light-300 text-sm flex-1">
-                {searchRadius} km
-              </Text>
-              <View className="flex-1 flex-row items-center gap-2">
-                <TouchableOpacity
-                  onPress={() => {
-                    const newRadius = Math.max(1, searchRadius - 1);
-                    setSearchRadius(newRadius);
-                  }}
-                  disabled={searchRadius <= 1 || updatingRadius}
-                  className={`w-10 h-10 rounded-lg items-center justify-center ${
-                    searchRadius <= 1
-                      ? "bg-dark-100 opacity-50"
-                      : "bg-dark-100 border border-neutral-100"
-                  }`}
-                >
-                  <Text className="text-light-100 text-lg">−</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    const newRadius = Math.min(20, searchRadius + 1);
-                    setSearchRadius(newRadius);
-                  }}
-                  disabled={searchRadius >= 20 || updatingRadius}
-                  className={`w-10 h-10 rounded-lg items-center justify-center ${
-                    searchRadius >= 20
-                      ? "bg-dark-100 opacity-50"
-                      : "bg-dark-100 border border-neutral-100"
-                  }`}
-                >
-                  <Text className="text-light-100 text-lg">+</Text>
-                </TouchableOpacity>
+          <View
+            className="bg-secondary rounded-3xl p-6 mb-6 border border-neutral-100"
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 8,
+              elevation: 4,
+            }}
+          >
+            <View className="flex-row items-center mb-4">
+              <View className="bg-accent/20 rounded-2xl p-2.5 mr-3">
+                <Icons.map
+                  name={IconNames.mapOutline as any}
+                  size={22}
+                  color="#AB8BFF"
+                />
+              </View>
+              <View className="flex-1">
+                <Text className="text-light-100 text-lg font-bold mb-1">
+                  Search Radius
+                </Text>
+                <Text className="text-light-400 text-xs">
+                  Adjust delivery request range (1-20 km)
+                </Text>
+              </View>
+            </View>
+            <View className="bg-dark-100/50 rounded-2xl p-4 mb-4">
+              <View className="flex-row items-center justify-between mb-3">
+                <View className="flex-row items-center">
+                  <Icons.compass
+                    name={IconNames.compassOutline as any}
+                    size={20}
+                    color="#AB8BFF"
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text className="text-light-200 text-2xl font-bold">
+                    {searchRadius} km
+                  </Text>
+                </View>
+                <View className="flex-row items-center gap-2">
+                  <TouchableOpacity
+                    onPress={() => {
+                      const newRadius = Math.max(1, searchRadius - 1);
+                      setSearchRadius(newRadius);
+                    }}
+                    disabled={searchRadius <= 1 || updatingRadius}
+                    className={`w-11 h-11 rounded-xl items-center justify-center ${
+                      searchRadius <= 1
+                        ? "bg-dark-200 opacity-40"
+                        : "bg-accent/20 border border-accent/30 active:bg-accent/30"
+                    }`}
+                  >
+                    <Icons.action
+                      name={IconNames.removeCircle as any}
+                      size={22}
+                      color={searchRadius <= 1 ? "#636366" : "#AB8BFF"}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => {
+                      const newRadius = Math.min(20, searchRadius + 1);
+                      setSearchRadius(newRadius);
+                    }}
+                    disabled={searchRadius >= 20 || updatingRadius}
+                    className={`w-11 h-11 rounded-xl items-center justify-center ${
+                      searchRadius >= 20
+                        ? "bg-dark-200 opacity-40"
+                        : "bg-accent/20 border border-accent/30 active:bg-accent/30"
+                    }`}
+                  >
+                    <Icons.action
+                      name={IconNames.addCircle as any}
+                      size={22}
+                      color={searchRadius >= 20 ? "#636366" : "#AB8BFF"}
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
             <TouchableOpacity
@@ -396,70 +510,129 @@ export default function DeliveriesScreen() {
               disabled={
                 updatingRadius || searchRadius === (user?.searchRadiusKm || 7)
               }
-              className={`rounded-xl py-3 px-4 items-center ${
+              className={`rounded-2xl py-4 px-5 items-center flex-row justify-center ${
                 updatingRadius || searchRadius === (user?.searchRadiusKm || 7)
                   ? "bg-dark-100 opacity-50"
                   : "bg-accent"
               }`}
+              style={
+                !updatingRadius && searchRadius !== (user?.searchRadiusKm || 7)
+                  ? {
+                      shadowColor: "#AB8BFF",
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 8,
+                      elevation: 6,
+                    }
+                  : {}
+              }
             >
               {updatingRadius ? (
                 <ActivityIndicator size="small" color="#030014" />
               ) : (
-                <Text className="text-white font-bold">
-                  {searchRadius === (user?.searchRadiusKm || 7)
-                    ? "Current Radius"
-                    : "Save Radius"}
-                </Text>
+                <>
+                  {searchRadius !== (user?.searchRadiusKm || 7) && (
+                    <Icons.action
+                      name={IconNames.saveOutline as any}
+                      size={18}
+                      color="#030014"
+                      style={{ marginRight: 8 }}
+                    />
+                  )}
+                  <Text className="text-primary font-bold text-base">
+                    {searchRadius === (user?.searchRadiusKm || 7)
+                      ? "Current Radius"
+                      : "Save Radius"}
+                  </Text>
+                </>
               )}
             </TouchableOpacity>
           </View>
         )}
 
-        {/* Available Deliveries - Only show if KYC is complete */}
+        {/* Available Deliveries - Modern Section */}
         {isRider && isKycComplete && (
           <View className="mb-6">
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-light-200 text-lg font-semibold">
-                Available Deliveries
-              </Text>
+            <View className="flex-row items-center justify-between mb-5">
+              <View className="flex-row items-center">
+                <View className="bg-accent/20 rounded-xl p-2 mr-3">
+                  <Icons.package
+                    name={MCIconNames.packageVariant as any}
+                    size={20}
+                    color="#AB8BFF"
+                  />
+                </View>
+                <Text className="text-light-100 text-xl font-bold">
+                  Available Deliveries
+                </Text>
+                {availableOrders.length > 0 && (
+                  <View className="bg-accent/20 rounded-full px-3 py-1 ml-3">
+                    <Text className="text-accent text-xs font-bold">
+                      {availableOrders.length}
+                    </Text>
+                  </View>
+                )}
+              </View>
               <TouchableOpacity
                 disabled={!online || loadingOrders}
                 onPress={fetchAvailableOrders}
-                className={`px-3 py-2 rounded-xl border ${
-                  online ? "border-accent" : "border-neutral-100/50"
+                className={`rounded-xl p-2.5 ${
+                  online
+                    ? "bg-accent/20 border border-accent/30"
+                    : "bg-dark-100 opacity-50"
                 }`}
               >
                 {loadingOrders ? (
                   <ActivityIndicator size="small" color="#AB8BFF" />
                 ) : (
-                  <Text
-                    className={`${
-                      online ? "text-accent" : "text-light-400"
-                    } text-sm`}
-                  >
-                    Refresh
-                  </Text>
+                  <Icons.action
+                    name={IconNames.refreshCircle as any}
+                    size={22}
+                    color={online ? "#AB8BFF" : "#636366"}
+                  />
                 )}
               </TouchableOpacity>
             </View>
             {loadingOrders ? (
-              <View className="bg-secondary rounded-2xl p-8 items-center border border-neutral-100">
+              <View
+                className="bg-secondary rounded-3xl p-12 items-center border border-neutral-100"
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 8,
+                  elevation: 4,
+                }}
+              >
                 <ActivityIndicator size="large" color="#AB8BFF" />
-                <Text className="text-light-300 mt-4">Loading orders...</Text>
+                <Text className="text-light-300 mt-4 text-sm">
+                  Loading orders...
+                </Text>
               </View>
             ) : availableOrders.length === 0 ? (
-              <View className="bg-secondary rounded-2xl p-6 items-center border border-neutral-100">
-                <Icons.delivery
-                  name={MCIconNames.delivery as any}
-                  size={64}
-                  color="#9CA4AB"
-                />
-                <Text className="text-light-200 text-lg font-semibold mt-4 mb-2">
+              <View
+                className="bg-secondary rounded-3xl p-10 items-center border border-neutral-100"
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 8,
+                  elevation: 4,
+                }}
+              >
+                <View className="bg-dark-100 rounded-full p-6 mb-4">
+                  <Icons.delivery
+                    name={MCIconNames.delivery as any}
+                    size={48}
+                    color="#9CA4AB"
+                  />
+                </View>
+                <Text className="text-light-200 text-lg font-bold mb-2">
                   {online
                     ? "No deliveries nearby"
                     : "Go online to see deliveries"}
                 </Text>
-                <Text className="text-light-400 text-sm text-center">
+                <Text className="text-light-400 text-sm text-center leading-5">
                   {online
                     ? `New delivery requests within ${
                         user?.searchRadiusKm || 7
@@ -468,85 +641,163 @@ export default function DeliveriesScreen() {
                 </Text>
               </View>
             ) : (
-              <View className="gap-3">
+              <View className="gap-4">
                 {availableOrders.map((order) => {
                   const orderId = order._id || order.id || "";
                   return (
                     <View
                       key={orderId}
-                      className="bg-secondary rounded-2xl p-5 border border-neutral-100 mb-3"
+                      className="bg-secondary rounded-3xl p-5 border border-neutral-100"
+                      style={{
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.15,
+                        shadowRadius: 12,
+                        elevation: 6,
+                      }}
                     >
-                      <View className="flex-row items-start justify-between mb-3">
-                        <View className="flex-1">
-                          <Text className="text-light-100 font-semibold text-base mb-1">
-                            {order.items}
-                          </Text>
-                          <Text className="text-light-300 text-sm">
-                            {order.pickup?.address || "N/A"}
-                          </Text>
-                          <Text className="text-light-300 text-sm">
-                            → {order.dropoff?.address || "N/A"}
-                          </Text>
+                      {/* Order Header */}
+                      <View className="flex-row items-start justify-between mb-4">
+                        <View className="flex-1 mr-3">
+                          <View className="flex-row items-center mb-2">
+                            <View className="bg-accent/20 rounded-lg p-1.5 mr-2">
+                              <Icons.package
+                                name={MCIconNames.packageVariant as any}
+                                size={16}
+                                color="#AB8BFF"
+                              />
+                            </View>
+                            <Text className="text-light-100 font-bold text-base flex-1">
+                              {order.items}
+                            </Text>
+                          </View>
+                          <View className="flex-row items-start mb-2">
+                            <Icons.location
+                              name={IconNames.locationOutline as any}
+                              size={14}
+                              color="#5AC8FA"
+                              style={{ marginRight: 6, marginTop: 2 }}
+                            />
+                            <Text className="text-light-300 text-sm flex-1">
+                              {order.pickup?.address || "N/A"}
+                            </Text>
+                          </View>
+                          <View className="flex-row items-start">
+                            <Icons.location
+                              name={IconNames.locationOutline as any}
+                              size={14}
+                              color="#FF9500"
+                              style={{ marginRight: 6, marginTop: 2 }}
+                            />
+                            <Text className="text-light-300 text-sm flex-1">
+                              {order.dropoff?.address || "N/A"}
+                            </Text>
+                          </View>
                         </View>
                         {order.distanceKm && (
-                          <View className="bg-accent/20 px-3 py-1 rounded-lg">
-                            <Text className="text-accent text-xs font-semibold">
-                              {order.distanceKm} km
-                            </Text>
+                          <View className="bg-info/20 border border-info/30 px-3 py-2 rounded-xl">
+                            <View className="flex-row items-center">
+                              <Icons.map
+                                name={IconNames.navigateOutline as any}
+                                size={14}
+                                color="#5AC8FA"
+                                style={{ marginRight: 4 }}
+                              />
+                              <Text className="text-info text-xs font-bold">
+                                {order.distanceKm} km
+                              </Text>
+                            </View>
                           </View>
                         )}
                       </View>
-                      <View className="flex-row items-center justify-between mb-3 pb-3 border-b border-neutral-100/50">
+
+                      {/* Price and Actions */}
+                      <View className="flex-row items-center justify-between pt-4 border-t border-neutral-100/50">
                         <View>
                           <Text className="text-light-400 text-xs mb-1">
-                            Price
+                            Delivery Fee
                           </Text>
-                          <Text className="text-light-200 font-bold text-lg">
-                            ₦{Number(order.price || 0).toLocaleString()}
-                          </Text>
+                          <View className="flex-row items-center">
+                            <Icons.money
+                              name={MCIconNames.cash as any}
+                              size={18}
+                              color="#30D158"
+                              style={{ marginRight: 6 }}
+                            />
+                            <Text className="text-light-100 font-bold text-xl">
+                              ₦{Number(order.price || 0).toLocaleString()}
+                            </Text>
+                          </View>
                         </View>
-                        <TouchableOpacity
-                          onPress={() => {
-                            router.push(`/orders/${orderId}` as any);
-                          }}
-                          className="bg-dark-100 border border-neutral-100 px-4 py-2 rounded-xl"
-                        >
-                          <Text className="text-light-200 font-semibold text-sm">
-                            View Details
-                          </Text>
-                        </TouchableOpacity>
+                        <View className="flex-row gap-2">
+                          <TouchableOpacity
+                            onPress={() => {
+                              router.push(`/orders/${orderId}` as any);
+                            }}
+                            className="bg-dark-100 border border-neutral-100 px-4 py-2.5 rounded-xl flex-row items-center"
+                          >
+                            <Icons.info
+                              name={IconNames.informationOutline as any}
+                              size={16}
+                              color="#D6C6FF"
+                              style={{ marginRight: 6 }}
+                            />
+                            <Text className="text-light-200 font-semibold text-sm">
+                              Details
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => {
+                              if (!isKycComplete) {
+                                Toast.show({
+                                  type: "error",
+                                  text1: "KYC Verification Required",
+                                  text2:
+                                    "Please complete your profile with NIN or BVN to accept orders",
+                                });
+                                setTimeout(() => {
+                                  router.push("/profile/edit" as any);
+                                }, 1500);
+                                return;
+                              }
+                              handleAcceptOrder(orderId);
+                            }}
+                            disabled={!isKycComplete}
+                            className={`px-5 py-2.5 rounded-xl flex-row items-center ${
+                              isKycComplete
+                                ? "bg-accent"
+                                : "bg-neutral-100/50 opacity-60"
+                            }`}
+                            style={
+                              isKycComplete
+                                ? {
+                                    shadowColor: "#AB8BFF",
+                                    shadowOffset: { width: 0, height: 4 },
+                                    shadowOpacity: 0.3,
+                                    shadowRadius: 8,
+                                    elevation: 6,
+                                  }
+                                : {}
+                            }
+                          >
+                            <Icons.action
+                              name={IconNames.checkmarkCircle as any}
+                              size={18}
+                              color={isKycComplete ? "#030014" : "#9CA4AB"}
+                              style={{ marginRight: 6 }}
+                            />
+                            <Text
+                              className={`font-bold text-sm ${
+                                isKycComplete
+                                  ? "text-primary"
+                                  : "text-light-400"
+                              }`}
+                            >
+                              Accept
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
-                      <TouchableOpacity
-                        onPress={() => {
-                          if (!isKycComplete) {
-                            Toast.show({
-                              type: "error",
-                              text1: "KYC Verification Required",
-                              text2:
-                                "Please complete your profile with NIN or BVN to accept orders",
-                            });
-                            setTimeout(() => {
-                              router.push("/profile/edit" as any);
-                            }, 1500);
-                            return;
-                          }
-                          handleAcceptOrder(orderId);
-                        }}
-                        disabled={!isKycComplete}
-                        className={`px-4 py-3 rounded-xl items-center ${
-                          isKycComplete
-                            ? "bg-accent"
-                            : "bg-neutral-100/50 opacity-60"
-                        }`}
-                      >
-                        <Text
-                          className={`font-bold ${
-                            isKycComplete ? "text-primary" : "text-light-400"
-                          }`}
-                        >
-                          {isKycComplete ? "Accept Order" : "Complete KYC"}
-                        </Text>
-                      </TouchableOpacity>
                     </View>
                   );
                 })}
@@ -555,14 +806,42 @@ export default function DeliveriesScreen() {
           </View>
         )}
 
-        {/* Active Deliveries */}
+        {/* Active Deliveries - Modern Section */}
         <View className="mb-6">
-          <Text className="text-light-200 text-lg font-semibold mb-4">
-            Active Deliveries
-          </Text>
-          <View className="bg-secondary rounded-2xl p-6 items-center border border-neutral-100">
-            <Text className="text-light-300 text-sm">
-              No active deliveries at the moment
+          <View className="flex-row items-center mb-5">
+            <View className="bg-info/20 rounded-xl p-2 mr-3">
+              <Icons.time
+                name={IconNames.timeOutline as any}
+                size={20}
+                color="#5AC8FA"
+              />
+            </View>
+            <Text className="text-light-100 text-xl font-bold">
+              Active Deliveries
+            </Text>
+          </View>
+          <View
+            className="bg-secondary rounded-3xl p-10 items-center border border-neutral-100"
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 8,
+              elevation: 4,
+            }}
+          >
+            <View className="bg-dark-100 rounded-full p-6 mb-4">
+              <Icons.time
+                name={IconNames.timeOutline as any}
+                size={48}
+                color="#9CA4AB"
+              />
+            </View>
+            <Text className="text-light-200 text-lg font-bold mb-2">
+              No active deliveries
+            </Text>
+            <Text className="text-light-400 text-sm text-center">
+              Your active delivery orders will appear here
             </Text>
           </View>
         </View>

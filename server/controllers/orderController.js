@@ -104,7 +104,7 @@ export const estimatePrice = async (req, res) => {
       dropoffData.lat &&
       dropoffData.lng
     ) {
-      distanceKm = haversineKm(
+      distanceKm = calculateDistance(
         pickupData.lat,
         pickupData.lng,
         dropoffData.lat,
@@ -113,7 +113,7 @@ export const estimatePrice = async (req, res) => {
       // Calculate for both vehicle types
       const bikePrice = calculateDeliveryPrice(distanceKm, "motorcycle");
       const carPrice = calculateDeliveryPrice(distanceKm, "car");
-      estimatedPrice = bikePrice; // Default to bike
+      estimatedPrice = bikePrice;
       res.json({
         success: true,
         estimatedPrice: Math.round(estimatedPrice),
@@ -201,7 +201,7 @@ export const createOrder = async (req, res) => {
       dropoffData.lat &&
       dropoffData.lng
     ) {
-      distanceKm = haversineKm(
+      distanceKm = calculateDistance(
         pickupData.lat,
         pickupData.lng,
         dropoffData.lat,
@@ -253,29 +253,47 @@ export const createOrder = async (req, res) => {
 
 export const getMyOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ customerId: req.user._id }).sort({
-      createdAt: -1,
+    const page = Math.max(1, Number(req.query.page || 1));
+    const limit = Math.min(50, Math.max(10, Number(req.query.limit || 20)));
+    const skip = (page - 1) * limit;
+    const search = req.query.search?.toString().trim() || "";
+
+    const query = { customerId: req.user._id };
+
+    if (search) {
+      const searchRegex = new RegExp(search, "i");
+      query.$or = [
+        { items: searchRegex },
+        { "pickup.address": searchRegex },
+        { "dropoff.address": searchRegex },
+      ];
+    }
+
+    const total = await Order.countDocuments(query);
+
+    const orders = await Order.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    const totalPages = Math.ceil(total / limit);
+
+    res.json({
+      success: true,
+      orders,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
     });
-    res.json({ success: true, orders });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
   }
-};
-
-// Haversine distance in km
-const haversineKm = (lat1, lon1, lat2, lon2) => {
-  const toRad = (d) => (d * Math.PI) / 180;
-  const R = 6371;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
 };
 
 export const getAvailableOrders = async (req, res) => {
@@ -343,7 +361,7 @@ export const getAvailableOrders = async (req, res) => {
                 !isNaN(order.pickup.lat) &&
                 !isNaN(order.pickup.lng)
               ) {
-                const dist = haversineKm(
+                const dist = calculateDistance(
                   riderLat,
                   riderLng,
                   order.pickup.lat,
@@ -684,6 +702,117 @@ export const respondToPriceRequest = async (req, res) => {
   }
 };
 
+// Cancel order endpoint - handles cancellation properly without affecting riders/admins
+export const cancelOrder = async (req, res) => {
+  try {
+    const { reason } = req.body || {};
+    const order = await Order.findById(req.params.id);
+    if (!order)
+      return res.status(404).json({ success: false, error: "Order not found" });
+
+    const user = req.user;
+    const isCustomer = String(order.customerId) === String(user._id);
+    const isRider = order.riderId && String(order.riderId) === String(user._id);
+    const isAdmin = user.role === "admin";
+
+    // Only customer, assigned rider, or admin can cancel
+    if (!isCustomer && !isRider && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: "You don't have permission to cancel this order",
+      });
+    }
+
+    // Prevent cancellation after pickup - order is already in progress
+    if (["picked_up", "delivering", "delivered"].includes(order.status)) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Cannot cancel order after pickup. Order is already in progress.",
+      });
+    }
+
+    // If order is already cancelled
+    if (order.status === "cancelled") {
+      return res.status(400).json({
+        success: false,
+        error: "Order is already cancelled",
+      });
+    }
+
+    // Cancel the order
+    order.status = "cancelled";
+    const cancelNote = reason
+      ? `Cancelled by ${
+          user.role === "customer"
+            ? "customer"
+            : user.role === "rider"
+            ? "rider"
+            : "admin"
+        }. Reason: ${reason}`
+      : `Cancelled by ${
+          user.role === "customer"
+            ? "customer"
+            : user.role === "rider"
+            ? "rider"
+            : "admin"
+        }`;
+    appendTimeline(order, "cancelled", cancelNote);
+
+    const previousRiderId = order.riderId;
+
+    if (order.riderId) {
+      order.riderId = null;
+    }
+
+    await order.save();
+
+    // Send notifications
+    try {
+      await createAndSendNotification(order.customerId, {
+        type: "order_cancelled",
+        title: "Order Cancelled",
+        message: `Order #${String(order._id).slice(-6)} has been cancelled`,
+        metadata: { orderId: order._id.toString() },
+      });
+    } catch {}
+
+    // Notify rider if there was one assigned
+    if (previousRiderId) {
+      try {
+        await createAndSendNotification(previousRiderId, {
+          type: "order_cancelled",
+          title: "Order Cancelled",
+          message: `Order #${String(order._id).slice(
+            -6
+          )} has been cancelled. You can now accept other orders.`,
+          metadata: { orderId: order._id.toString() },
+        });
+      } catch {}
+    }
+
+    // Emit socket events
+    io.to(`user:${order.customerId}`).emit(SocketEvents.ORDER_STATUS_UPDATED, {
+      id: order._id.toString(),
+      status: "cancelled",
+    });
+    if (previousRiderId) {
+      io.to(`user:${previousRiderId}`).emit(SocketEvents.ORDER_STATUS_UPDATED, {
+        id: order._id.toString(),
+        status: "cancelled",
+      });
+    }
+
+    res.json({
+      success: true,
+      order,
+      message: "Order cancelled successfully",
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+};
+
 export const updateStatus = async (req, res) => {
   try {
     const { action } = req.body || {};
@@ -703,7 +832,7 @@ export const updateStatus = async (req, res) => {
       pickup: "picked_up",
       deliver: "delivered",
       start: "delivering",
-      cancel: "cancelled",
+      // Remove cancel from here - use dedicated cancelOrder endpoint instead
     };
     const next = transitions[action];
     if (!next)
@@ -826,7 +955,6 @@ export const getOrder = async (req, res) => {
         }
       } catch (error) {
         console.error("❌ [ORDERS] Error fetching rider location:", error);
-        // Continue without rider location
       }
     }
 
@@ -845,7 +973,6 @@ export const generateDeliveryOtp = async (req, res) => {
       return res.status(404).json({ success: false, error: "Order not found" });
     if (String(order.riderId) !== String(req.user._id))
       return res.status(403).json({ success: false, error: "Not your order" });
-    // OTP generation only allowed when order is "delivering" (rider has reached destination)
     if (order.status !== "delivering") {
       return res.status(400).json({
         success: false,
@@ -857,7 +984,6 @@ export const generateDeliveryOtp = async (req, res) => {
     const ttlMinutes = Number(process.env.DELIVERY_OTP_TTL_MIN || 15);
     order.delivery.otpCode = code;
     order.delivery.otpExpiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
-    // Status remains "delivering" - no status change when OTP is generated
     appendTimeline(order, "delivering", "Delivery OTP generated");
     await order.save();
     try {

@@ -13,6 +13,8 @@ export const SocketEvents = {
   PRICE_CHANGE_ACCEPTED: "price.change_accepted",
   PRICE_CHANGE_REJECTED: "price.change_rejected",
   RIDER_LOCATION_UPDATED: "rider.location_updated",
+  CHAT_MESSAGE: "chat.message",
+  CHAT_MESSAGE_READ: "chat.message_read",
 } as const;
 
 export type SocketEventName = (typeof SocketEvents)[keyof typeof SocketEvents];

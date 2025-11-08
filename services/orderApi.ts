@@ -34,6 +34,9 @@ export interface Order {
     riderNetAmount: number;
   };
   distanceKm?: number;
+  meta?: {
+    distanceKm?: number;
+  };
   riderLocation?: {
     lat: number;
     lng: number;
@@ -56,9 +59,42 @@ export async function getAvailableOrders(): Promise<Order[]> {
   }
 }
 
-export async function getMyOrders(): Promise<Order[]> {
-  const response = await apiClient.get("/orders/mine");
-  return response.data?.orders || [];
+export interface OrdersResponse {
+  orders: Order[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
+}
+
+export async function getMyOrders(
+  page: number = 1,
+  limit: number = 20,
+  search?: string
+): Promise<OrdersResponse> {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+  });
+  if (search && search.trim()) {
+    params.append("search", search.trim());
+  }
+  const response = await apiClient.get(`/orders/mine?${params.toString()}`);
+  return {
+    orders: response.data?.orders || [],
+    pagination: response.data?.pagination || {
+      page: 1,
+      limit: 20,
+      total: 0,
+      totalPages: 1,
+      hasNextPage: false,
+      hasPrevPage: false,
+    },
+  };
 }
 
 export async function getOrder(id: string): Promise<Order> {
@@ -73,9 +109,14 @@ export async function acceptOrder(id: string): Promise<Order> {
 
 export async function updateOrderStatus(
   id: string,
-  action: "pickup" | "start" | "deliver" | "cancel"
+  action: "pickup" | "start" | "deliver"
 ): Promise<Order> {
   const response = await apiClient.patch(`/orders/${id}/status`, { action });
+  return response.data?.order || response.data;
+}
+
+export async function cancelOrder(id: string, reason?: string): Promise<Order> {
+  const response = await apiClient.patch(`/orders/${id}/cancel`, { reason });
   return response.data?.order || response.data;
 }
 

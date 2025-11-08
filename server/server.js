@@ -10,9 +10,12 @@ import { fileURLToPath } from "url";
 import { errorHandler } from "./middleware/index.js";
 import analyticsRoutes from "./routes/analytics.js";
 import authRoutes from "./routes/auth.js";
+import chatRoutes from "./routes/chat.js";
+import geocodingRoutes from "./routes/geocoding.js";
 import notificationRoutes from "./routes/notifications.js";
 import orderRoutes from "./routes/orders.js";
 import payoutRoutes from "./routes/payouts.js";
+import presenceRoutes from "./routes/presence.js";
 import riderRoutes from "./routes/riders.js";
 import userRoutes from "./routes/user.js";
 import {
@@ -121,6 +124,9 @@ app.use("/api/payouts", payoutRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/riders", riderRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/chat", chatRoutes);
+app.use("/api/presence", presenceRoutes);
+app.use("/api/geocoding", geocodingRoutes);
 // Add more routes as you build them
 // app.use("/api/delivery", deliveryRoutes);
 // app.use("/api/rider", riderRoutes);

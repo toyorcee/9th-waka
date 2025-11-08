@@ -1,6 +1,7 @@
 import express from "express";
 import {
   acceptOrder,
+  cancelOrder,
   createOrder,
   estimatePrice,
   generateDeliveryOtp,
@@ -24,6 +25,7 @@ router.post("/estimate", protect, estimatePrice);
 router.post("/", protect, createOrder);
 router.get("/mine", protect, getMyOrders);
 router.post("/:id/price/respond", protect, respondToPriceRequest);
+router.patch("/:id/cancel", protect, cancelOrder);
 
 // Rider
 router.get("/available", protect, getAvailableOrders);

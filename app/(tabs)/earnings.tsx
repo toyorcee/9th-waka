@@ -1,3 +1,4 @@
+import { IconNames, Icons, MCIconNames } from "@/constants/icons";
 import { SocketEvents } from "@/constants/socketEvents";
 import { useAuth } from "@/contexts/AuthContext";
 import { EarningsData, getRiderEarnings } from "@/services/riderApi";
@@ -110,81 +111,196 @@ export default function EarningsScreen() {
         paddingTop: insets.top,
         paddingBottom: contentBottomPadding,
       }}
+      showsVerticalScrollIndicator={false}
     >
-      <View className="pt-4 px-6 pb-10">
-        <View className="flex-row items-center justify-between mb-4">
-          <Text className="text-light-100 text-3xl font-bold">Earnings</Text>
+      <View className="pt-6 px-5 pb-10">
+        {/* Modern Header with Icon */}
+        <View className="flex-row items-center justify-between mb-6">
+          <View className="flex-row items-center flex-1">
+            <View className="bg-accent/20 rounded-xl p-2.5 mr-3">
+              <Icons.money
+                name={MCIconNames.cash as any}
+                size={22}
+                color="#AB8BFF"
+              />
+            </View>
+            <View className="flex-1">
+              <Text className="text-light-100 text-xl font-bold mb-0.5">
+                Earnings
+              </Text>
+              <Text className="text-light-400 text-xs">
+                Track your delivery income
+              </Text>
+            </View>
+          </View>
           <TouchableOpacity
             onPress={() => loadEarnings(true)}
             disabled={refreshing}
-            className="bg-secondary border border-neutral-100 rounded-xl px-3 py-2"
+            className="bg-accent/20 border border-accent/30 rounded-xl p-2.5"
           >
             {refreshing ? (
               <ActivityIndicator size="small" color="#AB8BFF" />
             ) : (
-              <Text className="text-light-200">Refresh</Text>
+              <Icons.action
+                name={IconNames.refreshCircle as any}
+                size={22}
+                color="#AB8BFF"
+              />
             )}
           </TouchableOpacity>
         </View>
 
         {/* Payment Reminder */}
         {isFriday && currentWeek.totals.riderNet > 0 && (
-          <View className="bg-yellow-500/20 border border-yellow-500/50 rounded-2xl p-4 mb-4">
-            <Text className="text-yellow-400 font-bold mb-1">
-              💰 Payment Tomorrow!
-            </Text>
-            <Text className="text-light-200 text-sm">
-              Your weekly earnings of ₦
-              {currentWeek.totals.riderNet.toLocaleString()} will be paid on
-              Saturday
-            </Text>
+          <View
+            className="bg-warning/20 border border-warning/30 rounded-3xl p-5 mb-6"
+            style={{
+              shadowColor: "#FF9500",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.2,
+              shadowRadius: 8,
+              elevation: 6,
+            }}
+          >
+            <View className="flex-row items-start">
+              <View className="bg-warning/30 rounded-2xl p-2.5 mr-3">
+                <Icons.money
+                  name={MCIconNames.cashMultiple as any}
+                  size={24}
+                  color="#FF9500"
+                />
+              </View>
+              <View className="flex-1">
+                <Text className="text-warning font-bold text-lg mb-1">
+                  Payment Tomorrow!
+                </Text>
+                <Text className="text-light-200 text-sm leading-5">
+                  Your weekly earnings of ₦
+                  {currentWeek.totals.riderNet.toLocaleString()} will be paid on
+                  Saturday
+                </Text>
+              </View>
+            </View>
           </View>
         )}
 
         {/* Current Week Summary */}
-        <View className="bg-secondary border border-neutral-100 rounded-2xl p-6 mb-4">
-          <Text className="text-light-300 text-sm mb-1">This Week</Text>
-          <Text className="text-light-400 text-xs mb-4">
-            {weekStart.toLocaleDateString()} -{" "}
-            {new Date(weekEnd.getTime() - 1).toLocaleDateString()} (Sun-Sat)
-          </Text>
-          <Text className="text-accent text-4xl font-bold mb-4">
-            ₦{currentWeek.totals.riderNet.toLocaleString()}
-          </Text>
+        <View
+          className="bg-secondary border border-neutral-100 rounded-3xl p-6 mb-6"
+          style={{
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.15,
+            shadowRadius: 12,
+            elevation: 6,
+          }}
+        >
+          <View className="flex-row items-center mb-4">
+            <View className="bg-accent/20 rounded-xl p-2 mr-3">
+              <Icons.time
+                name={IconNames.calendarOutline as any}
+                size={20}
+                color="#AB8BFF"
+              />
+            </View>
+            <View className="flex-1">
+              <Text className="text-light-100 text-lg font-bold mb-1">
+                This Week
+              </Text>
+              <Text className="text-light-400 text-xs">
+                {weekStart.toLocaleDateString()} -{" "}
+                {new Date(weekEnd.getTime() - 1).toLocaleDateString()} (Sun-Sat)
+              </Text>
+            </View>
+          </View>
+          <View className="bg-dark-100/50 rounded-2xl p-4 mb-4">
+            <Text className="text-light-400 text-xs mb-2">Net Earnings</Text>
+            <View className="flex-row items-center">
+              <Icons.money
+                name={MCIconNames.cash as any}
+                size={28}
+                color="#30D158"
+                style={{ marginRight: 8 }}
+              />
+              <Text className="text-accent text-4xl font-bold">
+                ₦{currentWeek.totals.riderNet.toLocaleString()}
+              </Text>
+            </View>
+          </View>
           <View className="pt-4 border-t border-neutral-100">
-            <View className="flex-row justify-between mb-2">
-              <Text className="text-light-400 text-xs">Total Trips</Text>
-              <Text className="text-light-200 font-semibold">
+            <View className="flex-row justify-between items-center mb-3">
+              <View className="flex-row items-center">
+                <Icons.delivery
+                  name={MCIconNames.delivery as any}
+                  size={16}
+                  color="#5AC8FA"
+                  style={{ marginRight: 8 }}
+                />
+                <Text className="text-light-400 text-sm">Total Trips</Text>
+              </View>
+              <Text className="text-light-100 font-bold text-base">
                 {currentWeek.totals.count}
               </Text>
             </View>
-            <View className="flex-row justify-between mb-2">
-              <Text className="text-light-400 text-xs">Gross Earnings</Text>
-              <Text className="text-light-200 font-semibold">
+            <View className="flex-row justify-between items-center mb-3">
+              <View className="flex-row items-center">
+                <Icons.money
+                  name={MCIconNames.cashMultiple as any}
+                  size={16}
+                  color="#AB8BFF"
+                  style={{ marginRight: 8 }}
+                />
+                <Text className="text-light-400 text-sm">Gross Earnings</Text>
+              </View>
+              <Text className="text-light-200 font-semibold text-base">
                 ₦{currentWeek.totals.gross.toLocaleString()}
               </Text>
             </View>
-            <View className="flex-row justify-between mb-2">
-              <Text className="text-light-400 text-xs">Commission (10%)</Text>
-              <Text className="text-red-400 font-semibold">
+            <View className="flex-row justify-between items-center mb-3">
+              <View className="flex-row items-center">
+                <Icons.money
+                  name={MCIconNames.cash as any}
+                  size={16}
+                  color="#FF3B30"
+                  style={{ marginRight: 8 }}
+                />
+                <Text className="text-light-400 text-sm">Commission (10%)</Text>
+              </View>
+              <Text className="text-danger font-semibold text-base">
                 -₦{currentWeek.totals.commission.toLocaleString()}
               </Text>
             </View>
-            <View className="flex-row justify-between pt-2 border-t border-neutral-100 mt-2">
-              <Text className="text-light-200 font-bold">Your Net</Text>
-              <Text className="text-accent font-bold text-lg">
+            <View className="flex-row justify-between items-center pt-3 border-t border-neutral-100 mt-2">
+              <Text className="text-light-100 font-bold text-base">
+                Your Net
+              </Text>
+              <Text className="text-accent font-bold text-xl">
                 ₦{currentWeek.totals.riderNet.toLocaleString()}
               </Text>
             </View>
           </View>
           {currentWeek.payout && (
             <View className="mt-4 pt-4 border-t border-neutral-100">
-              <Text className="text-light-400 text-xs mb-1">Payout Status</Text>
+              <View className="flex-row items-center mb-2">
+                <Icons.status
+                  name={
+                    currentWeek.payout.status === "paid"
+                      ? (IconNames.checkmarkCircle as any)
+                      : (IconNames.timeOutline as any)
+                  }
+                  size={16}
+                  color={
+                    currentWeek.payout.status === "paid" ? "#30D158" : "#FF9500"
+                  }
+                  style={{ marginRight: 8 }}
+                />
+                <Text className="text-light-400 text-xs">Payout Status</Text>
+              </View>
               <Text
-                className={`font-semibold ${
+                className={`font-bold text-base ${
                   currentWeek.payout.status === "paid"
-                    ? "text-green-400"
-                    : "text-yellow-400"
+                    ? "text-active"
+                    : "text-warning"
                 }`}
               >
                 {currentWeek.payout.status === "paid" ? "✓ Paid" : "⏳ Pending"}
@@ -200,26 +316,68 @@ export default function EarningsScreen() {
         </View>
 
         {/* All-Time Stats */}
-        <View className="bg-secondary border border-neutral-100 rounded-2xl p-5 mb-4">
-          <Text className="text-light-200 text-lg font-semibold mb-4">
-            All-Time Stats
-          </Text>
-          <View className="gap-3">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-light-300">Total Deliveries</Text>
-              <Text className="text-light-100 font-bold">
+        <View
+          className="bg-secondary border border-neutral-100 rounded-3xl p-6 mb-6"
+          style={{
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 8,
+            elevation: 4,
+          }}
+        >
+          <View className="flex-row items-center mb-5">
+            <View className="bg-info/20 rounded-xl p-2 mr-3">
+              <Icons.status
+                name={IconNames.starOutline as any}
+                size={20}
+                color="#5AC8FA"
+              />
+            </View>
+            <Text className="text-light-100 text-xl font-bold">
+              All-Time Stats
+            </Text>
+          </View>
+          <View className="gap-4">
+            <View className="flex-row items-center justify-between bg-dark-100/50 rounded-xl p-3">
+              <View className="flex-row items-center">
+                <Icons.delivery
+                  name={MCIconNames.delivery as any}
+                  size={18}
+                  color="#5AC8FA"
+                  style={{ marginRight: 10 }}
+                />
+                <Text className="text-light-300 text-sm">Total Deliveries</Text>
+              </View>
+              <Text className="text-light-100 font-bold text-base">
                 {allTime.totals.count}
               </Text>
             </View>
-            <View className="flex-row items-center justify-between">
-              <Text className="text-light-300">Total Earnings</Text>
-              <Text className="text-accent font-bold">
+            <View className="flex-row items-center justify-between bg-dark-100/50 rounded-xl p-3">
+              <View className="flex-row items-center">
+                <Icons.money
+                  name={MCIconNames.cashMultiple as any}
+                  size={18}
+                  color="#30D158"
+                  style={{ marginRight: 10 }}
+                />
+                <Text className="text-light-300 text-sm">Total Earnings</Text>
+              </View>
+              <Text className="text-accent font-bold text-base">
                 ₦{allTime.totals.riderNet.toLocaleString()}
               </Text>
             </View>
-            <View className="flex-row items-center justify-between">
-              <Text className="text-light-300">Total Commission</Text>
-              <Text className="text-light-400">
+            <View className="flex-row items-center justify-between bg-dark-100/50 rounded-xl p-3">
+              <View className="flex-row items-center">
+                <Icons.money
+                  name={MCIconNames.cash as any}
+                  size={18}
+                  color="#FF3B30"
+                  style={{ marginRight: 10 }}
+                />
+                <Text className="text-light-300 text-sm">Total Commission</Text>
+              </View>
+              <Text className="text-light-400 font-semibold text-sm">
                 ₦{allTime.totals.commission.toLocaleString()}
               </Text>
             </View>
@@ -227,42 +385,117 @@ export default function EarningsScreen() {
         </View>
 
         {/* Trip Breakdown */}
-        <View className="bg-secondary border border-neutral-100 rounded-2xl p-5 mb-4">
-          <Text className="text-light-200 text-lg font-semibold mb-4">
-            This Week's Trips ({currentWeek.trips.length})
-          </Text>
-          {currentWeek.trips.length === 0 ? (
-            <Text className="text-light-400 text-center py-4">
-              No deliveries this week yet
+        <View
+          className="bg-secondary border border-neutral-100 rounded-3xl p-6 mb-4"
+          style={{
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 8,
+            elevation: 4,
+          }}
+        >
+          <View className="flex-row items-center mb-5">
+            <View className="bg-accent/20 rounded-xl p-2 mr-3">
+              <Icons.package
+                name={MCIconNames.packageVariant as any}
+                size={20}
+                color="#AB8BFF"
+              />
+            </View>
+            <Text className="text-light-100 text-xl font-bold">
+              This Week's Trips
             </Text>
+            {currentWeek.trips.length > 0 && (
+              <View className="bg-accent/20 rounded-full px-3 py-1 ml-3">
+                <Text className="text-accent text-xs font-bold">
+                  {currentWeek.trips.length}
+                </Text>
+              </View>
+            )}
+          </View>
+          {currentWeek.trips.length === 0 ? (
+            <View className="items-center py-6">
+              <View className="bg-dark-100 rounded-full p-4 mb-3">
+                <Icons.delivery
+                  name={MCIconNames.delivery as any}
+                  size={32}
+                  color="#9CA4AB"
+                />
+              </View>
+              <Text className="text-light-400 text-sm text-center">
+                No deliveries this week yet
+              </Text>
+            </View>
           ) : (
             <View className="gap-3">
               {currentWeek.trips.map((trip) => (
                 <TouchableOpacity
                   key={trip.orderId}
                   onPress={() => router.push(`/orders/${trip.orderId}` as any)}
-                  className="bg-dark-100 rounded-xl p-4 border border-neutral-100"
+                  className="bg-dark-100 rounded-2xl p-4 border border-neutral-100 active:opacity-80"
+                  style={{
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 4,
+                    elevation: 3,
+                  }}
                 >
-                  <View className="flex-row items-start justify-between mb-2">
-                    <View className="flex-1">
-                      <Text className="text-light-200 font-semibold mb-1">
-                        {trip.pickup} → {trip.dropoff}
-                      </Text>
-                      <Text className="text-light-400 text-xs">
-                        {new Date(trip.deliveredAt).toLocaleString()}
+                  <View className="flex-row items-start justify-between mb-3">
+                    <View className="flex-1 mr-3">
+                      <View className="flex-row items-center mb-2">
+                        <Icons.location
+                          name={IconNames.locationOutline as any}
+                          size={14}
+                          color="#5AC8FA"
+                          style={{ marginRight: 6 }}
+                        />
+                        <Text className="text-light-200 font-semibold text-sm flex-1">
+                          {trip.pickup} → {trip.dropoff}
+                        </Text>
+                      </View>
+                      <View className="flex-row items-center">
+                        <Icons.time
+                          name={IconNames.timeOutline as any}
+                          size={12}
+                          color="#9CA4AB"
+                          style={{ marginRight: 6 }}
+                        />
+                        <Text className="text-light-400 text-xs">
+                          {new Date(trip.deliveredAt).toLocaleString()}
+                        </Text>
+                      </View>
+                    </View>
+                    <View className="bg-accent/20 border border-accent/30 rounded-xl px-3 py-2">
+                      <Text className="text-accent font-bold text-base">
+                        ₦{trip.riderNetAmount.toLocaleString()}
                       </Text>
                     </View>
-                    <Text className="text-accent font-bold">
-                      ₦{trip.riderNetAmount.toLocaleString()}
-                    </Text>
                   </View>
-                  <View className="flex-row items-center justify-between pt-2 border-t border-neutral-100 mt-2">
-                    <Text className="text-light-400 text-xs">
-                      Gross: ₦{trip.grossAmount.toLocaleString()}
-                    </Text>
-                    <Text className="text-red-400 text-xs">
-                      Commission: -₦{trip.commissionAmount.toLocaleString()}
-                    </Text>
+                  <View className="flex-row items-center justify-between pt-3 border-t border-neutral-100">
+                    <View className="flex-row items-center">
+                      <Icons.money
+                        name={MCIconNames.cashMultiple as any}
+                        size={14}
+                        color="#AB8BFF"
+                        style={{ marginRight: 6 }}
+                      />
+                      <Text className="text-light-400 text-xs">
+                        Gross: ₦{trip.grossAmount.toLocaleString()}
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center">
+                      <Icons.money
+                        name={MCIconNames.cash as any}
+                        size={14}
+                        color="#FF3B30"
+                        style={{ marginRight: 6 }}
+                      />
+                      <Text className="text-danger text-xs">
+                        -₦{trip.commissionAmount.toLocaleString()}
+                      </Text>
+                    </View>
                   </View>
                 </TouchableOpacity>
               ))}

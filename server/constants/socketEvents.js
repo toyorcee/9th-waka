@@ -24,4 +24,8 @@ export const SocketEvents = {
 
   // Location tracking
   RIDER_LOCATION_UPDATED: "rider.location_updated",
+
+  // Chat
+  CHAT_MESSAGE: "chat.message",
+  CHAT_MESSAGE_READ: "chat.message_read",
 };

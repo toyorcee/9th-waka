@@ -46,20 +46,20 @@ export default function TabsLayout() {
         },
         tabBarStyle: isAuthenticated
           ? {
-          backgroundColor: "#030014",
-          borderRadius: 25,
-          marginHorizontal: 16,
-          marginBottom: bottomPadding,
-          position: "absolute",
-          overflow: "hidden",
-          borderWidth: 1,
-          borderColor: "#3A3A3C",
-          height: tabBarHeight,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
-          elevation: 8,
+              backgroundColor: "#030014",
+              borderRadius: 25,
+              marginHorizontal: 16,
+              marginBottom: bottomPadding,
+              position: "absolute",
+              overflow: "hidden",
+              borderWidth: 1,
+              borderColor: "#3A3A3C",
+              height: tabBarHeight,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 8,
             }
           : { display: "none" },
       }}
@@ -80,64 +80,80 @@ export default function TabsLayout() {
       />
 
       {/* Customer-specific tabs (shown when role is customer; hidden otherwise) */}
-          <Tabs.Screen
-            name="orders"
-            options={{
-              title: "My Orders",
+      <Tabs.Screen
+        name="orders"
+        options={{
+          title: "My Orders",
           href: userRole === "customer" ? undefined : null,
           tabBarIcon: ({ focused }) => (
             <TabIcon
               focused={focused}
               IconComp={Icons.package}
               name={MCIconNames.packageVariant}
-                />
-              ),
-            }}
-          />
-          <Tabs.Screen
-            name="track"
-            options={{
-              title: "Track",
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="track"
+        options={{
+          title: "Track",
           href: userRole === "customer" ? undefined : null,
           tabBarIcon: ({ focused }) => (
             <TabIcon
               focused={focused}
               IconComp={Icons.map}
               name={IconNames.mapOutline}
-                />
-              ),
-            }}
-          />
+            />
+          ),
+        }}
+      />
 
       {/* Rider-specific tabs (shown when role is rider; hidden otherwise) */}
-          <Tabs.Screen
-            name="deliveries"
-            options={{
-              title: "Deliveries",
+      <Tabs.Screen
+        name="deliveries"
+        options={{
+          title: "Deliveries",
           href: userRole === "rider" ? undefined : null,
           tabBarIcon: ({ focused }) => (
             <TabIcon
               focused={focused}
               IconComp={Icons.delivery}
               name={MCIconNames.delivery}
-                />
-              ),
-            }}
-          />
-          <Tabs.Screen
-            name="earnings"
-            options={{
-              title: "Earnings",
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="earnings"
+        options={{
+          title: "Earnings",
           href: userRole === "rider" ? undefined : null,
           tabBarIcon: ({ focused }) => (
             <TabIcon
               focused={focused}
               IconComp={Icons.money}
               name={MCIconNames.cash}
-                />
-              ),
-            }}
-          />
+            />
+          ),
+        }}
+      />
+
+      {/* Core Tab - Messages (All Users) - Always visible */}
+      <Tabs.Screen
+        name="messages"
+        options={{
+          title: "Messages",
+          href: undefined, // Always show
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              focused={focused}
+              IconComp={Icons.communication}
+              name={IconNames.chatbubbleOutline}
+            />
+          ),
+        }}
+      />
 
       {/* Core Tab - Profile (All Users) */}
       <Tabs.Screen
