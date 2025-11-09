@@ -24,7 +24,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Linking,
   Modal,
@@ -85,6 +84,17 @@ export default function OrderDetailScreen() {
     try {
       const orderData = await getOrder(id);
       setOrder(orderData);
+      // Sync otpData with order data if OTP exists in order but not in otpData
+      if (
+        orderData?.delivery?.otpCode &&
+        !otpData &&
+        orderData.delivery.otpExpiresAt
+      ) {
+        setOtpData({
+          otp: orderData.delivery.otpCode,
+          expiresAt: orderData.delivery.otpExpiresAt,
+        });
+      }
     } catch (e: any) {
       const msg =
         e?.response?.data?.error || e?.message || "Failed to load order";
@@ -184,15 +194,10 @@ export default function OrderDetailScreen() {
       setOtpData(result);
       Toast.show({
         type: "success",
-        text1: "OTP Generated",
-        text2: `Code: ${result.otp} - Valid for 15 minutes`,
+        text1: "OTP Sent to Customer",
+        text2:
+          "The delivery code has been sent to the customer. Ask the recipient to get the code from the customer.",
       });
-      // Show OTP to rider (they'll share with customer)
-      Alert.alert(
-        "Delivery OTP Generated",
-        `Your delivery code is: ${result.otp}\n\nShare this code with the customer. It expires in 15 minutes.`,
-        [{ text: "OK" }]
-      );
       await load();
     } catch (e: any) {
       Toast.show({
@@ -218,6 +223,7 @@ export default function OrderDetailScreen() {
       });
       setShowOtpModal(false);
       setOtpCode("");
+      setOtpData(null); // Clear OTP data after verification
       // After OTP verification, show proof upload modal
       setShowProofModal(true);
       await load();
@@ -1156,59 +1162,63 @@ export default function OrderDetailScreen() {
                   </TouchableOpacity>
                 )}
 
-                {order.status === "delivering" && !order.delivery?.otpCode && (
-                  <TouchableOpacity
-                    onPress={handleGenerateOtp}
-                    className="bg-info rounded-xl px-4 py-4 mb-3"
-                  >
-                    <Text className="text-primary font-bold text-center text-base">
-                      🔐 Generate Delivery OTP
-                    </Text>
-                  </TouchableOpacity>
-                )}
+                {order.status === "delivering" &&
+                  !otpData &&
+                  !order.delivery?.otpCode && (
+                    <TouchableOpacity
+                      onPress={handleGenerateOtp}
+                      className="bg-info rounded-xl px-4 py-4 mb-3"
+                    >
+                      <Text className="text-primary font-bold text-center text-base">
+                        🔐 Generate Delivery OTP
+                      </Text>
+                    </TouchableOpacity>
+                  )}
 
-                {/* Show OTP if generated */}
-                {order.delivery?.otpCode && (
-                  <View
-                    className={`rounded-xl p-4 mb-3 ${
-                      isDark ? "bg-dark-100" : "bg-gray-100"
-                    }`}
-                  >
-                    <Text
-                      className={`text-sm mb-2 ${
-                        isDark ? "text-light-300" : "text-gray-600"
+                {/* Show confirmation when OTP is generated - Rider doesn't see the code */}
+                {(otpData || order.delivery?.otpCode) &&
+                  !order.delivery?.otpVerifiedAt && (
+                    <View
+                      className={`rounded-xl p-4 mb-3 ${
+                        isDark
+                          ? "bg-info/20 border border-info/30"
+                          : "bg-blue-50 border border-blue-200"
                       }`}
                     >
-                      Delivery OTP Code
-                    </Text>
-                    <Text className="text-accent text-2xl font-bold text-center mb-2">
-                      {order.delivery.otpCode}
-                    </Text>
-                    <Text
-                      className={`text-xs text-center ${
-                        isDark ? "text-light-400" : "text-gray-500"
-                      }`}
-                    >
-                      Share this code with the customer
-                    </Text>
-                    {order.delivery.otpExpiresAt && (
                       <Text
-                        className={`text-xs text-center mt-1 ${
-                          isDark ? "text-light-400" : "text-gray-500"
+                        className={`text-sm mb-1 ${
+                          isDark ? "text-info" : "text-blue-700"
+                        } font-semibold`}
+                      >
+                        ✓ OTP Sent to Customer
+                      </Text>
+                      <Text
+                        className={`text-xs ${
+                          isDark ? "text-light-400" : "text-gray-600"
                         }`}
                       >
-                        Expires:{" "}
-                        {new Date(
-                          order.delivery.otpExpiresAt
-                        ).toLocaleTimeString()}
+                        The delivery code has been sent to the customer. Ask the
+                        recipient to contact the customer for the code, then
+                        enter it below to verify delivery.
                       </Text>
-                    )}
-                  </View>
-                )}
+                      {(otpData?.expiresAt || order.delivery?.otpExpiresAt) && (
+                        <Text
+                          className={`text-xs mt-2 ${
+                            isDark ? "text-light-400" : "text-gray-500"
+                          }`}
+                        >
+                          Code expires:{" "}
+                          {new Date(
+                            otpData?.expiresAt || order.delivery?.otpExpiresAt
+                          ).toLocaleTimeString()}
+                        </Text>
+                      )}
+                    </View>
+                  )}
 
                 {/* Verify OTP Button - When delivering and OTP exists */}
                 {order.status === "delivering" &&
-                  order.delivery?.otpCode &&
+                  (otpData || order.delivery?.otpCode) &&
                   !order.delivery?.otpVerifiedAt && (
                     <TouchableOpacity
                       onPress={() => setShowOtpModal(true)}
