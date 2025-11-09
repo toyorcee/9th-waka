@@ -8,6 +8,7 @@ import {
   getAvailableOrders,
   getMyOrders,
   getOrder,
+  getRiderOrders,
   requestPriceChange,
   respondToPriceRequest,
   updateDeliveryProof,
@@ -29,6 +30,7 @@ router.patch("/:id/cancel", protect, cancelOrder);
 
 // Rider
 router.get("/available", protect, getAvailableOrders);
+router.get("/rider", protect, getRiderOrders);
 router.patch("/:id/accept", protect, acceptOrder);
 router.patch("/:id/status", protect, updateStatus);
 router.post("/:id/price/request", protect, requestPriceChange);

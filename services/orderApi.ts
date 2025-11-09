@@ -47,15 +47,55 @@ export interface Order {
   updatedAt: string | Date;
 }
 
-export async function getAvailableOrders(): Promise<Order[]> {
+export async function getAvailableOrders(
+  showAll: boolean = false
+): Promise<Order[]> {
   try {
-    const response = await apiClient.get("/orders/available");
+    const params = showAll ? "?showAll=true" : "";
+    const response = await apiClient.get(`/orders/available${params}`);
 
     const orders = response.data?.orders ?? response.data ?? [];
     return Array.isArray(orders) ? orders : [];
   } catch (error: any) {
     console.error("Error fetching available orders:", error);
     return [];
+  }
+}
+
+export async function getRiderOrders(
+  page: number = 1,
+  limit: number = 50
+): Promise<OrdersResponse> {
+  try {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    });
+    const response = await apiClient.get(`/orders/rider?${params.toString()}`);
+    return {
+      orders: response.data?.orders || [],
+      pagination: response.data?.pagination || {
+        page: 1,
+        limit: 50,
+        total: 0,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPrevPage: false,
+      },
+    };
+  } catch (error: any) {
+    console.error("Error fetching rider orders:", error);
+    return {
+      orders: [],
+      pagination: {
+        page: 1,
+        limit: 50,
+        total: 0,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPrevPage: false,
+      },
+    };
   }
 }
 

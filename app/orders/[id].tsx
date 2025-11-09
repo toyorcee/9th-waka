@@ -150,7 +150,10 @@ export default function OrderDetailScreen() {
   const handleUpdateStatus = async (action: "pickup" | "start" | "deliver") => {
     setUpdatingStatus(true);
     try {
-      await updateOrderStatus(id, action);
+      const updatedOrder = await updateOrderStatus(id, action);
+      if (updatedOrder) {
+        setOrder(updatedOrder);
+      }
       Toast.show({
         type: "success",
         text1: "Status updated",
@@ -162,7 +165,8 @@ export default function OrderDetailScreen() {
             : "delivered"
         }`,
       });
-      await load();
+      // Also refresh to get any additional updates (non-blocking)
+      load().catch(() => {});
     } catch (e: any) {
       Toast.show({
         type: "error",
@@ -265,10 +269,8 @@ export default function OrderDetailScreen() {
     }
     setUploadingProof(true);
     try {
-      // Upload photo first
       const { photoUrl } = await uploadDeliveryProofPhoto(id, proofPhoto);
 
-      // Then update delivery proof with recipient details
       await updateDeliveryProof(id, {
         photoUrl,
         recipientName: recipientName || undefined,
@@ -343,7 +345,6 @@ export default function OrderDetailScreen() {
           lng: data.lng,
           timestamp: data.timestamp,
         });
-        // Also update the order's riderLocation
         setOrder((prev: any) => ({
           ...prev,
           riderLocation: {
@@ -356,10 +357,21 @@ export default function OrderDetailScreen() {
       }
     };
 
+    const handleStatusUpdate = (data: any) => {
+      if (data.id === id || data.orderId === id) {
+        setOrder((prev: any) => ({
+          ...prev,
+          status: data.status,
+        }));
+        load().catch(() => {});
+      }
+    };
+
     const socket = socketClient.socketInstance;
     if (!socket) return;
 
     socket.on(SocketEvents.RIDER_LOCATION_UPDATED, handleLocationUpdate);
+    socket.on(SocketEvents.ORDER_STATUS_UPDATED, handleStatusUpdate);
 
     const handleCustomEvent = (event: any) => {
       if (event.detail?.orderId === id) {
@@ -375,6 +387,7 @@ export default function OrderDetailScreen() {
 
     return () => {
       socket.off(SocketEvents.RIDER_LOCATION_UPDATED, handleLocationUpdate);
+      socket.off(SocketEvents.ORDER_STATUS_UPDATED, handleStatusUpdate);
       if (
         typeof window !== "undefined" &&
         typeof window.removeEventListener === "function"
@@ -489,13 +502,12 @@ export default function OrderDetailScreen() {
       <ScrollView
         className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
         contentContainerStyle={{
-          paddingTop: insets.top + 20,
+          paddingTop: insets.top,
           paddingBottom: insets.bottom + 40,
-          paddingHorizontal: 24,
         }}
         showsVerticalScrollIndicator={false}
       >
-        <View>
+        <View className="pt-6 px-6 pb-8">
           {/* Header */}
           <View className="flex-row items-center justify-between mb-6">
             <View className="flex-1">
@@ -738,19 +750,6 @@ export default function OrderDetailScreen() {
                   >
                     {order.pickup?.address || "N/A"}
                   </Text>
-                  {order.pickup?.lat && order.pickup?.lng && (
-                    <TouchableOpacity
-                      onPress={() => {
-                        const url = `https://www.google.com/maps?q=${order.pickup.lat},${order.pickup.lng}`;
-                        Linking.openURL(url).catch((err: any) =>
-                          console.error("Failed to open maps", err)
-                        );
-                      }}
-                      className="mt-1"
-                    >
-                      <Text className="text-info text-xs">View on Map</Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
               </View>
 
@@ -777,19 +776,6 @@ export default function OrderDetailScreen() {
                   >
                     {order.dropoff?.address || "N/A"}
                   </Text>
-                  {order.dropoff?.lat && order.dropoff?.lng && (
-                    <TouchableOpacity
-                      onPress={() => {
-                        const url = `https://www.google.com/maps?q=${order.dropoff.lat},${order.dropoff.lng}`;
-                        Linking.openURL(url).catch((err: any) =>
-                          console.error("Failed to open maps", err)
-                        );
-                      }}
-                      className="mt-1"
-                    >
-                      <Text className="text-warning text-xs">View on Map</Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
               </View>
 

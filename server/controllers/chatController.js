@@ -164,19 +164,24 @@ export const sendOrderMessage = async (req, res) => {
       });
     }
 
-    await createAndSendNotification({
-      userId: receiverId,
-      type: "order_status_updated",
-      title: "New message",
-      message: `You have a new message for order #${String(orderId)
-        .slice(-6)
-        .toUpperCase()}`,
-      metadata: {
-        orderId: orderId.toString(),
-        chatMessageId: chatMessage._id.toString(),
-        type: "chat",
-      },
-    });
+    // Send notification (don't fail message send if notification fails)
+    try {
+      await createAndSendNotification(receiverId, {
+        type: "order_status_updated",
+        title: "New message",
+        message: `You have a new message for order #${String(orderId)
+          .slice(-6)
+          .toUpperCase()}`,
+        metadata: {
+          orderId: orderId.toString(),
+          chatMessageId: chatMessage._id.toString(),
+          type: "chat",
+        },
+      });
+    } catch (notificationError) {
+      console.error("[CHAT] Error sending notification:", notificationError);
+      // Continue even if notification fails
+    }
 
     res.json({
       success: true,

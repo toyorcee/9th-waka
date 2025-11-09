@@ -569,51 +569,6 @@ export default function MessagesScreen() {
     );
   };
 
-  if (!isAuthenticated) {
-    return (
-      <View
-        className={`flex-1 items-center justify-center px-6 ${
-          isDark ? "bg-primary" : "bg-white"
-        }`}
-      >
-        <View className="bg-warning/20 rounded-full p-6 mb-4">
-          <Icons.communication
-            name={IconNames.chatbubbleOutline as any}
-            size={48}
-            color="#FF9500"
-          />
-        </View>
-        <Text
-          className={`text-xl font-bold mb-2 text-center ${
-            isDark ? "text-light-100" : "text-black"
-          }`}
-        >
-          Sign in required
-        </Text>
-        <Text
-          className={`text-sm text-center mb-6 leading-5 ${
-            isDark ? "text-light-400" : "text-gray-500"
-          }`}
-        >
-          Please sign in to view your messages
-        </Text>
-        <TouchableOpacity
-          onPress={() => router.push(Routes.standalone.auth as any)}
-          className="bg-accent rounded-2xl px-8 py-4"
-          style={{
-            shadowColor: "#AB8BFF",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
-            elevation: 6,
-          }}
-        >
-          <Text className="text-primary font-bold text-base">Sign In</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   const currentConversations =
     activeTab === "chats" ? conversations : archivedConversations;
 

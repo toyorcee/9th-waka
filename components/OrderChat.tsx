@@ -168,7 +168,24 @@ export default function OrderChat({
         setTimeout(() => {
           scrollViewRef.current?.scrollToEnd({ animated: true });
         }, 100);
-        if (message.receiverId === user?.id) {
+        // Normalize receiverId for comparison
+        let receiverIdStr: string;
+        if (typeof message.receiverId === "string") {
+          receiverIdStr = message.receiverId;
+        } else if (
+          message.receiverId &&
+          typeof message.receiverId === "object"
+        ) {
+          const idValue = (message.receiverId as any)._id;
+          receiverIdStr =
+            typeof idValue === "string"
+              ? idValue
+              : idValue?.toString() || String(message.receiverId);
+        } else {
+          receiverIdStr = String(message.receiverId);
+        }
+        const userIdStr = user?.id ? String(user.id) : "";
+        if (receiverIdStr === userIdStr && userIdStr !== "") {
           markAsRead();
         }
       }
@@ -177,11 +194,41 @@ export default function OrderChat({
     socket.on(SocketEvents.CHAT_MESSAGE_READ, (data: any) => {
       if (data?.orderId === orderId && data?.readBy === otherPartyId) {
         setMessages((prev) =>
-          prev.map((msg) =>
-            msg.senderId === user?.id && msg.receiverId === otherPartyId
+          prev.map((msg) => {
+            // Normalize IDs for comparison
+            let msgSenderIdStr: string;
+            if (typeof msg.senderId === "string") {
+              msgSenderIdStr = msg.senderId;
+            } else if (msg.senderId && typeof msg.senderId === "object") {
+              const idValue = (msg.senderId as any)._id;
+              msgSenderIdStr =
+                typeof idValue === "string"
+                  ? idValue
+                  : idValue?.toString() || String(msg.senderId);
+            } else {
+              msgSenderIdStr = String(msg.senderId);
+            }
+
+            let msgReceiverIdStr: string;
+            if (typeof msg.receiverId === "string") {
+              msgReceiverIdStr = msg.receiverId;
+            } else if (msg.receiverId && typeof msg.receiverId === "object") {
+              const idValue = (msg.receiverId as any)._id;
+              msgReceiverIdStr =
+                typeof idValue === "string"
+                  ? idValue
+                  : idValue?.toString() || String(msg.receiverId);
+            } else {
+              msgReceiverIdStr = String(msg.receiverId);
+            }
+
+            const userIdStr = user?.id ? String(user.id) : "";
+            const otherPartyIdStr = otherPartyId ? String(otherPartyId) : "";
+            return msgSenderIdStr === userIdStr &&
+              msgReceiverIdStr === otherPartyIdStr
               ? { ...msg, read: true }
-              : msg
-          )
+              : msg;
+          })
         );
       }
     });
@@ -457,17 +504,53 @@ export default function OrderChat({
                 </View>
               ) : (
                 messages.map((message, index) => {
-                  const isMe = message.senderId === user?.id;
+                  // Normalize senderId: handle string, ObjectId, or populated object with _id
+                  let senderIdStr: string;
+                  if (typeof message.senderId === "string") {
+                    senderIdStr = message.senderId;
+                  } else if (
+                    message.senderId &&
+                    typeof message.senderId === "object"
+                  ) {
+                    // Handle populated object: { _id: "...", fullName: "...", email: "..." }
+                    const idValue = (message.senderId as any)._id;
+                    senderIdStr =
+                      typeof idValue === "string"
+                        ? idValue
+                        : idValue?.toString() || String(message.senderId);
+                  } else {
+                    senderIdStr = String(message.senderId);
+                  }
+                  // Normalize userId (always string from AuthContext, but be safe)
+                  const userIdStr = user?.id ? String(user.id) : "";
+                  const isMe = senderIdStr === userIdStr && userIdStr !== "";
                   const prevMessage = index > 0 ? messages[index - 1] : null;
                   const showDateSeparator =
                     !prevMessage ||
                     new Date(message.createdAt).toDateString() !==
                       new Date(prevMessage.createdAt).toDateString();
 
-                  // Group messages sent within 5 minutes
+                  // Group messages sent within 5 minutes - normalize prev senderId
+                  let prevSenderIdStr: string | null = null;
+                  if (prevMessage) {
+                    if (typeof prevMessage.senderId === "string") {
+                      prevSenderIdStr = prevMessage.senderId;
+                    } else if (
+                      prevMessage.senderId &&
+                      typeof prevMessage.senderId === "object"
+                    ) {
+                      const idValue = (prevMessage.senderId as any)._id;
+                      prevSenderIdStr =
+                        typeof idValue === "string"
+                          ? idValue
+                          : idValue?.toString() || String(prevMessage.senderId);
+                    } else {
+                      prevSenderIdStr = String(prevMessage.senderId);
+                    }
+                  }
                   const isGrouped =
                     prevMessage &&
-                    prevMessage.senderId === message.senderId &&
+                    prevSenderIdStr === senderIdStr &&
                     new Date(message.createdAt).getTime() -
                       new Date(prevMessage.createdAt).getTime() <
                       300000; // 5 minutes

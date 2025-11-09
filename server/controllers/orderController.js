@@ -432,17 +432,63 @@ export const getMyOrders = async (req, res) => {
   }
 };
 
+export const getRiderOrders = async (req, res) => {
+  try {
+    if (req.user.role !== "rider")
+      return res.status(403).json({ success: false, error: "Only riders" });
+
+    const page = Math.max(1, Number(req.query.page || 1));
+    const limit = Math.min(50, Math.max(10, Number(req.query.limit || 20)));
+    const skip = (page - 1) * limit;
+
+    // Get orders assigned to this rider with active statuses
+    const query = {
+      riderId: req.user._id,
+      status: { $in: ["assigned", "picked_up", "delivering"] },
+    };
+
+    const total = await Order.countDocuments(query);
+
+    const orders = await Order.find(query)
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    const totalPages = Math.ceil(total / limit);
+
+    res.json({
+      success: true,
+      orders,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+};
+
 export const getAvailableOrders = async (req, res) => {
   try {
     if (req.user.role !== "rider")
       return res.status(403).json({ success: false, error: "Only riders" });
+
+    const showAll = req.query.showAll === "true" || req.query.showAll === true;
 
     const rider = await User.findById(req.user._id).select("searchRadiusKm");
     const defaultRadius = Number(process.env.RIDER_ORDER_RADIUS_KM || 7);
     const maxRadiusKm = rider?.searchRadiusKm || defaultRadius;
 
     const MAX_ALLOWED_RADIUS = 20;
-    const effectiveRadius = Math.min(maxRadiusKm, MAX_ALLOWED_RADIUS);
+    const effectiveRadius = showAll
+      ? Infinity
+      : Math.min(maxRadiusKm, MAX_ALLOWED_RADIUS);
 
     let riderLoc = null;
     try {

@@ -301,7 +301,27 @@ export default function HomeLanding() {
                 color={isDark ? "#FFFFFF" : "#000000"}
               />
             </TouchableOpacity>
-            {isAuthenticated && (
+            {!isAuthenticated ? (
+              <TouchableOpacity
+                onPress={() => router.push(Routes.standalone.auth)}
+                className="bg-accent rounded-xl px-4 py-2.5 flex-row items-center"
+                style={{
+                  shadowColor: "#AB8BFF",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 4,
+                  elevation: 4,
+                }}
+              >
+                <Icons.action
+                  name={IconNames.arrowForward as any}
+                  size={18}
+                  color="#030014"
+                  style={{ marginRight: 6 }}
+                />
+                <Text className="text-primary font-bold text-sm">Sign In</Text>
+              </TouchableOpacity>
+            ) : (
               <>
                 <NotificationBell />
                 <TouchableOpacity
