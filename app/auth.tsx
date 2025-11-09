@@ -1,6 +1,7 @@
 import { IconNames, Icons } from "@/constants/icons";
 import { images } from "@/constants/images";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { navigationHelper, Routes } from "@/services/navigationHelper";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -39,9 +40,11 @@ export default function AuthScreen() {
     "weak" | "medium" | "strong" | null
   >(null);
 
-  const { login, register } = useAuth();
+  const { login, register, user } = useAuth();
+  const { theme } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const isDark = theme === "dark";
 
   const evaluatePassword = (value: string): "weak" | "medium" | "strong" => {
     const lengthScore = value.length >= 8;
@@ -84,6 +87,10 @@ export default function AuthScreen() {
     try {
       if (mode === "login") {
         await login(email, password);
+
+        // Check if user has accepted terms - need to wait for auth state to update
+        // We'll check this after checkAuthStatus completes in the login function
+        // For now, redirect to home and let the tabs layout handle it
         const pendingAction = await navigationHelper.getPendingAction();
         await navigationHelper.clearPendingAction();
 
@@ -215,14 +222,20 @@ export default function AuthScreen() {
             style={{ width: "100%", height: "100%" }}
             contentFit="cover"
           />
-          <View className="absolute inset-0 bg-primary/10" />
+          <View
+            className={`absolute inset-0 ${
+              isDark ? "bg-primary/10" : "bg-gray-100/10"
+            }`}
+          />
         </View>
 
         <View className="flex-1 justify-center px-6 py-12">
           {/* Back Button */}
           <TouchableOpacity
             onPress={handleGoBack}
-            className="absolute top-0 left-6 z-10 bg-secondary/80 rounded-full p-2"
+            className={`absolute top-0 left-6 z-10 rounded-full p-2 ${
+              isDark ? "bg-secondary/80" : "bg-white/80"
+            }`}
             style={{ marginTop: insets.top + 8 }}
           >
             <Icons.navigation
@@ -246,7 +259,13 @@ export default function AuthScreen() {
           </View>
 
           {/* Auth Card */}
-          <View className="bg-secondary/95 rounded-3xl p-6 border border-neutral-100/50 backdrop-blur">
+          <View
+            className={`rounded-3xl p-6 border backdrop-blur ${
+              isDark
+                ? "bg-secondary/95 border-neutral-100/50"
+                : "bg-white/95 border-gray-200/50"
+            }`}
+          >
             {/* Mode Toggle */}
             <View className="flex-row bg-dark-100 rounded-2xl p-1 mb-6">
               <TouchableOpacity
@@ -282,7 +301,11 @@ export default function AuthScreen() {
             {/* Role Selection (Signup only) */}
             {mode === "signup" && (
               <View className="mb-6">
-                <Text className="text-light-200 text-sm mb-3 font-medium">
+                <Text
+                  className={`text-sm mb-3 font-medium ${
+                    isDark ? "text-light-200" : "text-black"
+                  }`}
+                >
                   I want to register as
                 </Text>
                 <View className="flex-row bg-dark-100 rounded-2xl p-1">
@@ -361,7 +384,9 @@ export default function AuthScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
-                  className="flex-1 px-4 py-4 text-light-100"
+                  className={`flex-1 px-4 py-4 ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
                 />
               </View>
             </View>
@@ -398,7 +423,9 @@ export default function AuthScreen() {
                   placeholderTextColor="#9CA4AB"
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
-                  className="flex-1 px-4 py-4 text-light-100"
+                  className={`flex-1 px-4 py-4 ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
@@ -428,11 +455,19 @@ export default function AuthScreen() {
                         : "bg-red-500"
                     }`}
                   />
-                  <Text className="ml-3 text-light-300 text-xs">
+                  <Text
+                    className={`ml-3 text-xs ${
+                      isDark ? "text-light-300" : "text-gray-600"
+                    }`}
+                  >
                     {passwordStrength ? passwordStrength.toUpperCase() : "WEAK"}
                   </Text>
                 </View>
-                <Text className="text-light-400 text-xs mt-2">
+                <Text
+                  className={`text-xs mt-2 ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
                   Use at least 8 characters with a mix of upper, lower, numbers,
                   and symbols.
                 </Text>
@@ -473,7 +508,9 @@ export default function AuthScreen() {
                     placeholderTextColor="#9CA4AB"
                     secureTextEntry={!showConfirmPassword}
                     autoCapitalize="none"
-                    className="flex-1 px-4 py-4 text-light-100"
+                    className={`flex-1 px-4 py-4 ${
+                      isDark ? "text-light-100" : "text-black"
+                    }`}
                   />
                   <TouchableOpacity
                     onPress={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -506,7 +543,11 @@ export default function AuthScreen() {
             {/* Rider: Vehicle Type (Signup only) */}
             {mode === "signup" && selectedRole === "rider" && (
               <View className="mb-6">
-                <Text className="text-light-200 text-sm mb-3 font-medium">
+                <Text
+                  className={`text-sm mb-3 font-medium ${
+                    isDark ? "text-light-200" : "text-black"
+                  }`}
+                >
                   Vehicle Type
                 </Text>
                 <View className="flex-row bg-dark-100 rounded-2xl p-1">
@@ -586,6 +627,19 @@ export default function AuthScreen() {
                 </TouchableOpacity>
               );
             })()}
+
+            {/* Forgot Password Link (Login only) */}
+            {mode === "login" && (
+              <TouchableOpacity
+                onPress={() => router.push("/auth/forgot-password" as any)}
+                className="py-2 items-center mb-3"
+              >
+                <Text className="text-light-300 text-sm">
+                  Forgot password?{" "}
+                  <Text className="text-accent font-semibold">Reset it</Text>
+                </Text>
+              </TouchableOpacity>
+            )}
 
             {/* Toggle Text */}
             <View className="flex-row justify-center items-center">

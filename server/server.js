@@ -46,7 +46,7 @@ io.on("connection", (socket) => {
   console.log("🔌 [SOCKET] Client connected:", socket.id);
   console.log("👤 [SOCKET] User ID:", socket.userId);
 
-  joinUserRoom(socket);
+  joinUserRoom(socket, io);
 
   socket.on("disconnect", () => {
     handleDisconnect(socket);

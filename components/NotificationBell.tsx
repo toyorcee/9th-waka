@@ -1,4 +1,5 @@
 import { IconNames, Icons } from "@/constants/icons";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Routes } from "@/services/navigationHelper";
 import { fetchNotifications } from "@/services/notificationService";
 import useFetch from "@/services/useFetch";
@@ -7,6 +8,8 @@ import { useEffect, useMemo } from "react";
 import { TouchableOpacity, View } from "react-native";
 
 export default function NotificationBell() {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const router = useRouter();
   const pathname = usePathname();
   const { data, refetch } = useFetch(() => fetchNotifications(0, 20), true);
@@ -34,7 +37,7 @@ export default function NotificationBell() {
       <Icons.notification
         name={IconNames.notificationsOutline as any}
         size={24}
-        color="#FFFFFF"
+        color={isDark ? "#FFFFFF" : "#000000"}
       />
       {hasUnread && (
         <View

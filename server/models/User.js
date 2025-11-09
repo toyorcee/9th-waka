@@ -113,9 +113,26 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    resetPasswordCode: {
+      type: String,
+      default: null,
+    },
+    resetPasswordCodeExpires: {
+      type: Date,
+      default: null,
+    },
     // Expo push notification token
     expoPushToken: {
       type: String,
+      default: null,
+    },
+    // Terms acceptance
+    termsAccepted: {
+      type: Boolean,
+      default: false,
+    },
+    termsAcceptedAt: {
+      type: Date,
       default: null,
     },
     // Notification preferences

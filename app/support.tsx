@@ -1,4 +1,6 @@
 import { IconNames, Icons } from "@/constants/icons";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useTabBarPadding } from "@/hooks/useTabBarPadding";
 import { Routes } from "@/services/navigationHelper";
 import Constants from "expo-constants";
 import * as Linking from "expo-linking";
@@ -79,7 +81,10 @@ const FAQ_DATA = [
 
 export default function SupportScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const { tabBarPadding } = useTabBarPadding();
+  const isDark = theme === "dark";
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
 
   const whatsappNumber =
@@ -116,10 +121,10 @@ export default function SupportScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-primary"
+      className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
       contentContainerStyle={{
         paddingTop: insets.top + 20,
-        paddingBottom: insets.bottom + 40,
+        paddingBottom: tabBarPadding,
         paddingHorizontal: 24,
       }}
       showsVerticalScrollIndicator={false}
@@ -135,11 +140,15 @@ export default function SupportScreen() {
                 router.replace(Routes.tabs.profile);
               }
             }}
-            className="w-11 h-11 rounded-full bg-secondary border border-neutral-100 items-center justify-center"
+            className={`w-11 h-11 rounded-full border items-center justify-center ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            }`}
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
+              shadowOpacity: isDark ? 0.1 : 0.05,
               shadowRadius: 4,
               elevation: 3,
             }}
@@ -147,7 +156,7 @@ export default function SupportScreen() {
             <Icons.navigation
               name={IconNames.arrowBack as any}
               size={22}
-              color="#FFFFFF"
+              color={isDark ? "#FFFFFF" : "#000000"}
             />
           </TouchableOpacity>
           <View className="flex-1 items-center">
@@ -159,7 +168,11 @@ export default function SupportScreen() {
                   color="#AB8BFF"
                 />
               </View>
-              <Text className="text-light-100 text-2xl font-bold">
+              <Text
+                className={`text-2xl font-bold ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
                 Support & FAQ
               </Text>
             </View>
@@ -169,11 +182,15 @@ export default function SupportScreen() {
 
         {/* Customer Care Section */}
         <View
-          className="bg-secondary rounded-3xl p-6 mb-6 border border-neutral-100"
+          className={`rounded-3xl p-6 mb-6 border ${
+            isDark
+              ? "bg-secondary border-neutral-100"
+              : "bg-white border-gray-200"
+          }`}
           style={{
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.15,
+            shadowOpacity: isDark ? 0.15 : 0.08,
             shadowRadius: 12,
             elevation: 8,
           }}
@@ -186,10 +203,18 @@ export default function SupportScreen() {
                 color="#AB8BFF"
               />
             </View>
-            <Text className="text-light-100 text-xl font-bold mb-2 text-center">
+            <Text
+              className={`text-xl font-bold mb-2 text-center ${
+                isDark ? "text-light-100" : "text-black"
+              }`}
+            >
               Need Help?
             </Text>
-            <Text className="text-light-400 text-sm text-center leading-5">
+            <Text
+              className={`text-sm text-center leading-5 ${
+                isDark ? "text-light-400" : "text-gray-500"
+              }`}
+            >
               Our customer care team is available 24/7 to assist you. Chat with
               us on WhatsApp for instant support.
             </Text>
@@ -227,7 +252,11 @@ export default function SupportScreen() {
                 color="#5AC8FA"
               />
             </View>
-            <Text className="text-light-100 text-lg font-bold">
+            <Text
+              className={`text-lg font-bold ${
+                isDark ? "text-light-100" : "text-black"
+              }`}
+            >
               Frequently Asked Questions
             </Text>
           </View>
@@ -236,11 +265,15 @@ export default function SupportScreen() {
             {FAQ_DATA.map((faq) => (
               <View
                 key={faq.id}
-                className="bg-secondary rounded-2xl border border-neutral-100 overflow-hidden"
+                className={`rounded-2xl border overflow-hidden ${
+                  isDark
+                    ? "bg-secondary border-neutral-100"
+                    : "bg-white border-gray-200"
+                }`}
                 style={{
                   shadowColor: "#000",
                   shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
+                  shadowOpacity: isDark ? 0.1 : 0.05,
                   shadowRadius: 4,
                   elevation: 3,
                 }}
@@ -250,7 +283,11 @@ export default function SupportScreen() {
                   className="p-5 flex-row items-center justify-between active:opacity-80"
                 >
                   <View className="flex-1 mr-3">
-                    <Text className="text-light-100 font-bold text-base mb-1">
+                    <Text
+                      className={`font-bold text-base mb-1 ${
+                        isDark ? "text-light-100" : "text-black"
+                      }`}
+                    >
                       {faq.question}
                     </Text>
                   </View>
@@ -268,8 +305,16 @@ export default function SupportScreen() {
                 </TouchableOpacity>
                 {expandedFAQ === faq.id && (
                   <View className="px-5 pb-5 pt-0">
-                    <View className="h-px bg-neutral-100 mb-4" />
-                    <Text className="text-light-300 text-sm leading-6">
+                    <View
+                      className={`h-px mb-4 ${
+                        isDark ? "bg-neutral-100" : "bg-gray-200"
+                      }`}
+                    />
+                    <Text
+                      className={`text-sm leading-6 ${
+                        isDark ? "text-light-300" : "text-gray-600"
+                      }`}
+                    >
                       {faq.answer}
                     </Text>
                   </View>
@@ -281,44 +326,60 @@ export default function SupportScreen() {
 
         {/* Additional Help */}
         <View
-          className="bg-info/10 rounded-3xl p-5 border border-info/20 mb-6"
+          className={`rounded-3xl p-6 mb-6 ${
+            isDark ? "bg-secondary" : "bg-white"
+          }`}
           style={{
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.05,
-            shadowRadius: 4,
-            elevation: 2,
+            shadowOpacity: isDark ? 0.08 : 0.04,
+            shadowRadius: 12,
+            elevation: 3,
           }}
         >
-          <View className="flex-row items-start">
-            <View className="bg-info/20 rounded-lg p-1.5 mr-3">
+          <View className="flex-row items-start mb-4">
+            <View className="bg-info/10 rounded-2xl p-3 mr-4">
               <Icons.info
                 name={IconNames.informationOutline as any}
-                size={18}
+                size={24}
                 color="#5AC8FA"
               />
             </View>
-            <View className="flex-1">
-              <Text className="text-light-100 font-bold text-base mb-2">
+            <View className="flex-1 pt-0.5">
+              <Text
+                className={`font-bold text-lg mb-2 ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
                 Still need help?
               </Text>
-              <Text className="text-light-400 text-sm mb-3 leading-5">
+              <Text
+                className={`text-sm leading-6 mb-5 ${
+                  isDark ? "text-light-400" : "text-gray-600"
+                }`}
+              >
                 If you couldn't find the answer you're looking for, don't
                 hesitate to reach out to our support team via WhatsApp. We're
                 here to help!
               </Text>
               <TouchableOpacity
                 onPress={handleWhatsApp}
-                className="bg-info/20 border border-info/30 rounded-xl py-2.5 px-4 self-start"
+                className="bg-info rounded-2xl py-3.5 px-5 flex-row items-center justify-center"
                 style={{
                   shadowColor: "#5AC8FA",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 4,
-                  elevation: 3,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 8,
+                  elevation: 5,
                 }}
               >
-                <Text className="text-info font-bold text-xs">
+                <Icons.communication
+                  name={IconNames.chatbubbleOutline as any}
+                  size={18}
+                  color="#FFFFFF"
+                  style={{ marginRight: 8 }}
+                />
+                <Text className="text-white font-bold text-sm">
                   Contact Support
                 </Text>
               </TouchableOpacity>
@@ -328,13 +389,21 @@ export default function SupportScreen() {
 
         {/* Legal & App Review Section */}
         <View className="mb-6">
-          <Text className="text-light-400 text-xs font-semibold mb-3 px-1">
+          <Text
+            className={`text-xs font-semibold mb-3 px-1 ${
+              isDark ? "text-light-400" : "text-gray-500"
+            }`}
+          >
             Legal & Information
           </Text>
           <View className="gap-2 mb-4">
             <TouchableOpacity
               onPress={() => router.push("/legal/privacy" as any)}
-              className="bg-secondary rounded-2xl p-4 flex-row items-center justify-between border border-neutral-100 active:opacity-80"
+              className={`rounded-2xl p-4 flex-row items-center justify-between border active:opacity-80 ${
+                isDark
+                  ? "bg-secondary border-neutral-100"
+                  : "bg-white border-gray-200"
+              }`}
             >
               <View className="flex-row items-center flex-1">
                 <View className="bg-info/20 rounded-lg p-1.5 mr-3">
@@ -344,20 +413,28 @@ export default function SupportScreen() {
                     color="#5AC8FA"
                   />
                 </View>
-                <Text className="text-light-100 font-medium text-sm">
+                <Text
+                  className={`font-medium text-sm ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
                   Privacy Policy
                 </Text>
               </View>
               <Icons.navigation
                 name={IconNames.arrowForward as any}
                 size={16}
-                color="#9CA4AB"
+                color={isDark ? "#9CA4AB" : "#6E6E73"}
               />
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => router.push("/legal/terms" as any)}
-              className="bg-secondary rounded-2xl p-4 flex-row items-center justify-between border border-neutral-100 active:opacity-80"
+              className={`rounded-2xl p-4 flex-row items-center justify-between border active:opacity-80 ${
+                isDark
+                  ? "bg-secondary border-neutral-100"
+                  : "bg-white border-gray-200"
+              }`}
             >
               <View className="flex-row items-center flex-1">
                 <View className="bg-info/20 rounded-lg p-1.5 mr-3">
@@ -367,42 +444,56 @@ export default function SupportScreen() {
                     color="#5AC8FA"
                   />
                 </View>
-                <Text className="text-light-100 font-medium text-sm">
+                <Text
+                  className={`font-medium text-sm ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
                   Terms & Conditions
                 </Text>
               </View>
               <Icons.navigation
                 name={IconNames.arrowForward as any}
                 size={16}
-                color="#9CA4AB"
+                color={isDark ? "#9CA4AB" : "#6E6E73"}
               />
             </TouchableOpacity>
           </View>
 
           {/* App Review Section */}
           <View
-            className="bg-accent/10 rounded-2xl p-6 border border-accent/20"
+            className={`rounded-3xl p-6 ${
+              isDark ? "bg-secondary" : "bg-white"
+            }`}
             style={{
-              shadowColor: "#AB8BFF",
+              shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
+              shadowOpacity: isDark ? 0.08 : 0.04,
+              shadowRadius: 12,
               elevation: 3,
             }}
           >
             <View className="flex-row items-start mb-4">
-              <View className="bg-accent/20 rounded-lg p-1.5 mr-3">
+              <View className="bg-accent/10 rounded-2xl p-3 mr-4">
                 <Icons.status
                   name={IconNames.starOutline as any}
-                  size={18}
+                  size={24}
                   color="#AB8BFF"
                 />
               </View>
-              <View className="flex-1">
-                <Text className="text-light-100 font-bold text-base mb-2">
+              <View className="flex-1 pt-0.5">
+                <Text
+                  className={`font-bold text-lg mb-2 ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
                   Enjoying 9thWaka?
                 </Text>
-                <Text className="text-light-400 text-xs mb-4 leading-5">
+                <Text
+                  className={`text-sm leading-6 mb-5 ${
+                    isDark ? "text-light-400" : "text-gray-600"
+                  }`}
+                >
                   Your feedback helps us improve! Please rate and review the app
                   on the App Store or Google Play Store.
                 </Text>
@@ -434,16 +525,22 @@ export default function SupportScreen() {
                       );
                     }
                   }}
-                  className="bg-accent rounded-xl py-3 px-5 self-start"
+                  className="bg-accent rounded-2xl py-3.5 px-5 flex-row items-center justify-center"
                   style={{
                     shadowColor: "#AB8BFF",
-                    shadowOffset: { width: 0, height: 2 },
+                    shadowOffset: { width: 0, height: 4 },
                     shadowOpacity: 0.3,
-                    shadowRadius: 4,
-                    elevation: 4,
+                    shadowRadius: 8,
+                    elevation: 5,
                   }}
                 >
-                  <Text className="text-primary font-bold text-xs">
+                  <Icons.status
+                    name={IconNames.starOutline as any}
+                    size={18}
+                    color="#030014"
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text className="text-primary font-bold text-sm">
                     Rate & Review
                   </Text>
                 </TouchableOpacity>

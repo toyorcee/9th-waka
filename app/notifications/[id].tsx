@@ -1,24 +1,29 @@
 import { IconNames, Icons } from "@/constants/icons";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Routes } from "@/services/navigationHelper";
 import {
-    getNotification,
-    markNotificationRead,
-    NotificationItem,
+  getNotification,
+  markNotificationRead,
+  NotificationItem,
 } from "@/services/notificationService";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 export default function NotificationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const isDark = theme === "dark";
   const [notification, setNotification] = useState<NotificationItem | null>(
     null
   );
@@ -68,7 +73,10 @@ export default function NotificationDetailScreen() {
       router.push(Routes.standalone.orderDetail(orderId) as any);
     } else {
       // For other notification types, navigate to relevant pages
-      if (notification.type === "payout_generated" || notification.type === "payout_paid") {
+      if (
+        notification.type === "payout_generated" ||
+        notification.type === "payout_paid"
+      ) {
         router.push(Routes.tabs.earnings as any);
       } else if (notification.type === "profile_updated") {
         router.push(Routes.standalone.profileEdit as any);
@@ -81,7 +89,11 @@ export default function NotificationDetailScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-primary items-center justify-center">
+      <View
+        className={`flex-1 items-center justify-center ${
+          isDark ? "bg-primary" : "bg-white"
+        }`}
+      >
         <ActivityIndicator size="large" color="#AB8BFF" />
       </View>
     );
@@ -89,8 +101,17 @@ export default function NotificationDetailScreen() {
 
   if (!notification) {
     return (
-      <View className="flex-1 bg-primary items-center justify-center px-6">
-        <Text className="text-light-300 text-center mb-4">
+      <View
+        className={`flex-1 items-center justify-center px-6 ${
+          isDark ? "bg-primary" : "bg-white"
+        }`}
+        style={{ paddingTop: insets.top }}
+      >
+        <Text
+          className={`text-center mb-4 ${
+            isDark ? "text-light-300" : "text-gray-600"
+          }`}
+        >
           Notification not found
         </Text>
         <TouchableOpacity
@@ -106,14 +127,18 @@ export default function NotificationDetailScreen() {
   const orderId =
     notification.metadata?.orderId ||
     (notification.type.includes("order") ? notification.id : null);
-  const hasRelatedContent = Boolean(orderId) || 
+  const hasRelatedContent =
+    Boolean(orderId) ||
     notification.type === "payout_generated" ||
     notification.type === "payout_paid" ||
     notification.type === "profile_updated";
 
   return (
-    <ScrollView className="flex-1 bg-primary">
-      <View className="pt-20 px-6 pb-10">
+    <ScrollView
+      className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
+      contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+    >
+      <View className="px-6 pb-10" style={{ paddingTop: insets.top + 20 }}>
         {/* Header */}
         <View className="flex-row items-center justify-between mb-6">
           <TouchableOpacity
@@ -123,37 +148,63 @@ export default function NotificationDetailScreen() {
             <Icons.navigation
               name={IconNames.arrowBack as any}
               size={24}
-              color="#E6E6F0"
+              color={isDark ? "#E6E6F0" : "#000000"}
             />
           </TouchableOpacity>
-          <Text className="text-light-100 text-2xl font-bold">Notification</Text>
+          <Text
+            className={`text-2xl font-bold ${
+              isDark ? "text-light-100" : "text-black"
+            }`}
+          >
+            Notification
+          </Text>
           <View className="w-10" />
         </View>
 
         {/* Notification Details */}
-        <View className="bg-secondary border border-neutral-100 rounded-2xl p-6 mb-4">
+        <View
+          className={`rounded-2xl p-6 mb-4 border ${
+            isDark
+              ? "bg-secondary border-neutral-100"
+              : "bg-white border-gray-200"
+          }`}
+        >
           <View className="flex-row items-start justify-between mb-4">
             <View className="flex-1">
-              <Text className="text-light-100 text-xl font-bold mb-2">
+              <Text
+                className={`text-xl font-bold mb-2 ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
                 {notification.title}
               </Text>
               <View className="flex-row items-center gap-2 mb-3">
                 <View
                   className={`px-3 py-1 rounded-lg ${
                     notification.read
-                      ? "bg-dark-100"
+                      ? isDark
+                        ? "bg-dark-100"
+                        : "bg-gray-100"
                       : "bg-accent/20 border border-accent"
                   }`}
                 >
                   <Text
                     className={`text-xs font-semibold ${
-                      notification.read ? "text-light-400" : "text-accent"
+                      notification.read
+                        ? isDark
+                          ? "text-light-400"
+                          : "text-gray-500"
+                        : "text-accent"
                     }`}
                   >
                     {notification.read ? "Read" : "Unread"}
                   </Text>
                 </View>
-                <Text className="text-light-400 text-xs">
+                <Text
+                  className={`text-xs ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
                   {new Date(notification.timestamp).toLocaleString()}
                 </Text>
               </View>
@@ -161,14 +212,32 @@ export default function NotificationDetailScreen() {
           </View>
 
           <View className="mb-4">
-            <Text className="text-light-300 text-base leading-6">
+            <Text
+              className={`text-base leading-6 ${
+                isDark ? "text-light-300" : "text-gray-600"
+              }`}
+            >
               {notification.message}
             </Text>
           </View>
 
-          <View className="pt-4 border-t border-neutral-100">
-            <Text className="text-light-400 text-xs mb-2">Type</Text>
-            <Text className="text-light-200 text-sm capitalize">
+          <View
+            className={`pt-4 border-t ${
+              isDark ? "border-neutral-100" : "border-gray-200"
+            }`}
+          >
+            <Text
+              className={`text-xs mb-2 ${
+                isDark ? "text-light-400" : "text-gray-500"
+              }`}
+            >
+              Type
+            </Text>
+            <Text
+              className={`text-sm capitalize ${
+                isDark ? "text-light-200" : "text-black"
+              }`}
+            >
               {notification.type.replace(/_/g, " ")}
             </Text>
           </View>
@@ -214,9 +283,17 @@ export default function NotificationDetailScreen() {
         {/* Back to List Button */}
         <TouchableOpacity
           onPress={() => router.back()}
-          className="bg-dark-100 border border-neutral-100 rounded-xl px-6 py-4"
+          className={`border rounded-xl px-6 py-4 ${
+            isDark
+              ? "bg-dark-100 border-neutral-100"
+              : "bg-white border-gray-200"
+          }`}
         >
-          <Text className="text-light-200 font-semibold text-center">
+          <Text
+            className={`font-semibold text-center ${
+              isDark ? "text-light-200" : "text-black"
+            }`}
+          >
             Back to Notifications
           </Text>
         </TouchableOpacity>
@@ -224,4 +301,3 @@ export default function NotificationDetailScreen() {
     </ScrollView>
   );
 }
-

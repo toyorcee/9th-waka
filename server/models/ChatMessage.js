@@ -23,6 +23,14 @@ const chatMessageSchema = new mongoose.Schema(
       required: true,
       maxlength: 500,
     },
+    delivered: {
+      type: Boolean,
+      default: false,
+    },
+    deliveredAt: {
+      type: Date,
+      default: null,
+    },
     read: {
       type: Boolean,
       default: false,
@@ -39,6 +47,7 @@ const chatMessageSchema = new mongoose.Schema(
 chatMessageSchema.index({ orderId: 1, createdAt: -1 });
 chatMessageSchema.index({ senderId: 1, receiverId: 1 });
 chatMessageSchema.index({ read: 1, receiverId: 1 });
+chatMessageSchema.index({ delivered: 1, receiverId: 1 });
 
 const ChatMessage = mongoose.model("ChatMessage", chatMessageSchema);
 

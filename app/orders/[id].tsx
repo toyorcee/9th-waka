@@ -2,6 +2,7 @@ import OrderChat from "@/components/OrderChat";
 import { IconNames, Icons, MCIconNames } from "@/constants/icons";
 import { SocketEvents } from "@/constants/socketEvents";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import {
   cancelOrder,
   generateDeliveryOtp,
@@ -40,7 +41,9 @@ export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
+  const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const isDark = theme === "dark";
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showPriceModal, setShowPriceModal] = useState(false);
@@ -397,7 +400,11 @@ export default function OrderDetailScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-primary items-center justify-center">
+      <View
+        className={`flex-1 ${
+          isDark ? "bg-primary" : "bg-white"
+        } items-center justify-center`}
+      >
         <ActivityIndicator size="large" color="#AB8BFF" />
       </View>
     );
@@ -405,8 +412,14 @@ export default function OrderDetailScreen() {
 
   if (!order) {
     return (
-      <View className="flex-1 bg-primary items-center justify-center">
-        <Text className="text-light-300">Order not found</Text>
+      <View
+        className={`flex-1 ${
+          isDark ? "bg-primary" : "bg-white"
+        } items-center justify-center`}
+      >
+        <Text className={isDark ? "text-light-300" : "text-gray-600"}>
+          Order not found
+        </Text>
       </View>
     );
   }
@@ -474,7 +487,7 @@ export default function OrderDetailScreen() {
   return (
     <>
       <ScrollView
-        className="flex-1 bg-primary"
+        className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
         contentContainerStyle={{
           paddingTop: insets.top + 20,
           paddingBottom: insets.bottom + 40,
@@ -495,13 +508,21 @@ export default function OrderDetailScreen() {
                   />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-light-100 text-xl font-bold">
+                  <Text
+                    className={`text-xl font-bold ${
+                      isDark ? "text-light-100" : "text-black"
+                    }`}
+                  >
                     Order #
                     {String(order._id || order.id)
                       .slice(-6)
                       .toUpperCase()}
                   </Text>
-                  <Text className="text-light-400 text-xs mt-0.5">
+                  <Text
+                    className={`text-xs mt-0.5 ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
                     Created {formatDate(order.createdAt)}
                   </Text>
                 </View>
@@ -529,11 +550,15 @@ export default function OrderDetailScreen() {
               )}
               <TouchableOpacity
                 onPress={load}
-                className="bg-secondary border border-neutral-100 rounded-xl px-4 py-2.5"
+                className={`border rounded-xl px-4 py-2.5 ${
+                  isDark
+                    ? "bg-secondary border-neutral-100"
+                    : "bg-white border-gray-200"
+                }`}
                 style={{
                   shadowColor: "#000",
                   shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
+                  shadowOpacity: isDark ? 0.1 : 0.05,
                   shadowRadius: 4,
                   elevation: 3,
                 }}
@@ -549,11 +574,15 @@ export default function OrderDetailScreen() {
 
           {/* Order Summary Section */}
           <View
-            className="bg-secondary rounded-3xl p-5 mb-4 border border-neutral-100"
+            className={`rounded-3xl p-5 mb-4 border ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            }`}
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
+              shadowOpacity: isDark ? 0.1 : 0.05,
               shadowRadius: 8,
               elevation: 4,
             }}
@@ -566,14 +595,28 @@ export default function OrderDetailScreen() {
                   color="#AB8BFF"
                 />
               </View>
-              <Text className="text-light-100 text-lg font-bold">
+              <Text
+                className={`text-lg font-bold ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
                 Order Summary
               </Text>
             </View>
 
             <View className="flex-row gap-3 mb-3">
-              <View className="flex-1 bg-dark-100 rounded-2xl p-3">
-                <Text className="text-light-400 text-xs mb-1">Status</Text>
+              <View
+                className={`flex-1 rounded-2xl p-3 ${
+                  isDark ? "bg-dark-100" : "bg-gray-100"
+                }`}
+              >
+                <Text
+                  className={`text-xs mb-1 ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
+                  Status
+                </Text>
                 <View
                   className={`${statusInfo.bg} ${statusInfo.border} border px-2 py-1 rounded-lg`}
                 >
@@ -585,8 +628,18 @@ export default function OrderDetailScreen() {
                 </View>
               </View>
               {order.meta?.distanceKm && (
-                <View className="flex-1 bg-dark-100 rounded-2xl p-3">
-                  <Text className="text-light-400 text-xs mb-1">Distance</Text>
+                <View
+                  className={`flex-1 rounded-2xl p-3 ${
+                    isDark ? "bg-dark-100" : "bg-gray-100"
+                  }`}
+                >
+                  <Text
+                    className={`text-xs mb-1 ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
+                    Distance
+                  </Text>
                   <View className="flex-row items-center">
                     <Icons.map
                       name={IconNames.navigateOutline as any}
@@ -594,16 +647,34 @@ export default function OrderDetailScreen() {
                       color="#5AC8FA"
                       style={{ marginRight: 4 }}
                     />
-                    <Text className="text-light-100 text-sm font-semibold">
+                    <Text
+                      className={`text-sm font-semibold ${
+                        isDark ? "text-light-100" : "text-black"
+                      }`}
+                    >
                       {order.meta.distanceKm.toFixed(1)} km
                     </Text>
                   </View>
                 </View>
               )}
               {order.preferredVehicleType && (
-                <View className="flex-1 bg-dark-100 rounded-2xl p-3">
-                  <Text className="text-light-400 text-xs mb-1">Vehicle</Text>
-                  <Text className="text-light-100 text-sm font-semibold capitalize">
+                <View
+                  className={`flex-1 rounded-2xl p-3 ${
+                    isDark ? "bg-dark-100" : "bg-gray-100"
+                  }`}
+                >
+                  <Text
+                    className={`text-xs mb-1 ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
+                    Vehicle
+                  </Text>
+                  <Text
+                    className={`text-sm font-semibold capitalize ${
+                      isDark ? "text-light-100" : "text-black"
+                    }`}
+                  >
                     {order.preferredVehicleType}
                   </Text>
                 </View>
@@ -613,11 +684,15 @@ export default function OrderDetailScreen() {
 
           {/* Route Information Section */}
           <View
-            className="bg-secondary rounded-3xl p-5 mb-4 border border-neutral-100"
+            className={`rounded-3xl p-5 mb-4 border ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            }`}
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
+              shadowOpacity: isDark ? 0.1 : 0.05,
               shadowRadius: 8,
               elevation: 4,
             }}
@@ -630,7 +705,11 @@ export default function OrderDetailScreen() {
                   color="#5AC8FA"
                 />
               </View>
-              <Text className="text-light-100 text-lg font-bold">
+              <Text
+                className={`text-lg font-bold ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
                 Route Details
               </Text>
             </View>
@@ -645,10 +724,18 @@ export default function OrderDetailScreen() {
                   />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-light-400 text-xs mb-1 font-medium">
+                  <Text
+                    className={`text-xs mb-1 font-medium ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
                     Pickup Location
                   </Text>
-                  <Text className="text-light-100 text-sm">
+                  <Text
+                    className={`text-sm ${
+                      isDark ? "text-light-100" : "text-black"
+                    }`}
+                  >
                     {order.pickup?.address || "N/A"}
                   </Text>
                   {order.pickup?.lat && order.pickup?.lng && (
@@ -676,10 +763,18 @@ export default function OrderDetailScreen() {
                   />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-light-400 text-xs mb-1 font-medium">
+                  <Text
+                    className={`text-xs mb-1 font-medium ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
                     Dropoff Location
                   </Text>
-                  <Text className="text-light-100 text-sm">
+                  <Text
+                    className={`text-sm ${
+                      isDark ? "text-light-100" : "text-black"
+                    }`}
+                  >
                     {order.dropoff?.address || "N/A"}
                   </Text>
                   {order.dropoff?.lat && order.dropoff?.lng && (
@@ -698,7 +793,11 @@ export default function OrderDetailScreen() {
                 </View>
               </View>
 
-              <View className="flex-row items-start pt-3 border-t border-neutral-100/50">
+              <View
+                className={`flex-row items-start pt-3 border-t ${
+                  isDark ? "border-neutral-100/50" : "border-gray-200"
+                }`}
+              >
                 <View className="bg-accent/20 rounded-xl p-2 mr-3">
                   <Icons.package
                     name={IconNames.boxOutline as any}
@@ -707,10 +806,18 @@ export default function OrderDetailScreen() {
                   />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-light-400 text-xs mb-1 font-medium">
+                  <Text
+                    className={`text-xs mb-1 font-medium ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
                     Items
                   </Text>
-                  <Text className="text-light-100 text-sm">
+                  <Text
+                    className={`text-sm ${
+                      isDark ? "text-light-100" : "text-black"
+                    }`}
+                  >
                     {order.items || "No items specified"}
                   </Text>
                 </View>
@@ -721,11 +828,15 @@ export default function OrderDetailScreen() {
           {/* Financial Breakdown Section */}
           {order.financial && (
             <View
-              className="bg-secondary rounded-3xl p-5 mb-4 border border-neutral-100"
+              className={`rounded-3xl p-5 mb-4 border ${
+                isDark
+                  ? "bg-secondary border-neutral-100"
+                  : "bg-white border-gray-200"
+              }`}
               style={{
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
+                shadowOpacity: isDark ? 0.1 : 0.05,
                 shadowRadius: 8,
                 elevation: 4,
               }}
@@ -738,31 +849,57 @@ export default function OrderDetailScreen() {
                     color="#30D158"
                   />
                 </View>
-                <Text className="text-light-100 text-lg font-bold">
+                <Text
+                  className={`text-lg font-bold ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
                   Financial Breakdown
                 </Text>
               </View>
 
               <View className="space-y-3">
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-light-400 text-sm">Gross Amount</Text>
-                  <Text className="text-light-200 font-semibold">
+                  <Text
+                    className={`text-sm ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
+                    Gross Amount
+                  </Text>
+                  <Text
+                    className={`font-semibold ${
+                      isDark ? "text-light-200" : "text-black"
+                    }`}
+                  >
                     ₦{Number(order.financial.grossAmount || 0).toLocaleString()}
                   </Text>
                 </View>
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-light-400 text-sm">
+                  <Text
+                    className={`text-sm ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
                     Commission ({order.financial.commissionRatePct || 0}%)
                   </Text>
-                  <Text className="text-light-300">
+                  <Text className={isDark ? "text-light-300" : "text-gray-600"}>
                     ₦
                     {Number(
                       order.financial.commissionAmount || 0
                     ).toLocaleString()}
                   </Text>
                 </View>
-                <View className="pt-3 border-t border-neutral-100/50 flex-row items-center justify-between">
-                  <Text className="text-light-200 font-bold">
+                <View
+                  className={`pt-3 border-t flex-row items-center justify-between ${
+                    isDark ? "border-neutral-100/50" : "border-gray-200"
+                  }`}
+                >
+                  <Text
+                    className={`font-bold ${
+                      isDark ? "text-light-200" : "text-black"
+                    }`}
+                  >
                     Rider Earnings
                   </Text>
                   <Text className="text-active text-lg font-bold">
@@ -778,11 +915,15 @@ export default function OrderDetailScreen() {
 
           {/* Pricing Section */}
           <View
-            className="bg-secondary rounded-3xl p-5 mb-4 border border-neutral-100"
+            className={`rounded-3xl p-5 mb-4 border ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            }`}
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
+              shadowOpacity: isDark ? 0.1 : 0.05,
               shadowRadius: 8,
               elevation: 4,
             }}
@@ -795,13 +936,29 @@ export default function OrderDetailScreen() {
                   color="#AB8BFF"
                 />
               </View>
-              <Text className="text-light-100 text-lg font-bold">Pricing</Text>
+              <Text
+                className={`text-lg font-bold ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
+                Pricing
+              </Text>
             </View>
 
             <View className="space-y-3">
               <View className="flex-row items-center justify-between">
-                <Text className="text-light-400 text-sm">Original Price</Text>
-                <Text className="text-light-300 text-sm">
+                <Text
+                  className={`text-sm ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
+                  Original Price
+                </Text>
+                <Text
+                  className={`text-sm ${
+                    isDark ? "text-light-300" : "text-gray-600"
+                  }`}
+                >
                   ₦
                   {Number(
                     order.originalPrice || order.price || 0
@@ -811,7 +968,11 @@ export default function OrderDetailScreen() {
               {order.priceNegotiation?.status === "accepted" &&
                 order.price !== order.originalPrice && (
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-light-400 text-sm">
+                    <Text
+                      className={`text-sm ${
+                        isDark ? "text-light-400" : "text-gray-500"
+                      }`}
+                    >
                       Negotiated Price
                     </Text>
                     <Text className="text-accent font-bold">
@@ -819,8 +980,16 @@ export default function OrderDetailScreen() {
                     </Text>
                   </View>
                 )}
-              <View className="pt-3 border-t border-neutral-100/50 flex-row items-center justify-between">
-                <Text className="text-light-200 font-bold text-base">
+              <View
+                className={`pt-3 border-t flex-row items-center justify-between ${
+                  isDark ? "border-neutral-100/50" : "border-gray-200"
+                }`}
+              >
+                <Text
+                  className={`font-bold text-base ${
+                    isDark ? "text-light-200" : "text-black"
+                  }`}
+                >
                   Final Price
                 </Text>
                 <Text className="text-accent text-xl font-bold">
@@ -847,13 +1016,25 @@ export default function OrderDetailScreen() {
             {user?.role === "customer" &&
               String(order.customerId) === String(user.id) &&
               order.priceNegotiation?.status === "requested" && (
-                <View className="mt-4 p-3 bg-dark-100 rounded-xl">
-                  <Text className="text-light-200 text-sm mb-2">
+                <View
+                  className={`mt-4 p-3 rounded-xl ${
+                    isDark ? "bg-dark-100" : "bg-gray-100"
+                  }`}
+                >
+                  <Text
+                    className={`text-sm mb-2 ${
+                      isDark ? "text-light-200" : "text-black"
+                    }`}
+                  >
                     Rider requested: ₦
                     {Number(order.riderRequestedPrice || 0).toLocaleString()}
                   </Text>
                   {order.priceNegotiation?.reason && (
-                    <Text className="text-light-400 text-xs mb-3">
+                    <Text
+                      className={`text-xs mb-3 ${
+                        isDark ? "text-light-400" : "text-gray-500"
+                      }`}
+                    >
                       Reason: {order.priceNegotiation.reason}
                     </Text>
                   )}
@@ -889,33 +1070,48 @@ export default function OrderDetailScreen() {
               )}
 
             {/* Cancel Order Button */}
-            {order.status !== "cancelled" &&
-              order.status !== "delivered" &&
-              !["picked_up", "delivering"].includes(order.status) &&
-              (user?.role === "customer" ||
-                user?.role === "rider" ||
-                user?.role === "admin") &&
-              (user?.role === "customer"
-                ? String(order.customerId) === String(user.id)
-                : user?.role === "rider"
-                ? String(order.riderId) === String(user.id)
-                : true) && (
-                <TouchableOpacity
-                  onPress={() => setShowCancelModal(true)}
-                  className="bg-danger/20 border border-danger/30 rounded-xl px-4 py-3 mt-4 items-center flex-row justify-center"
-                >
-                  <Text className="text-danger font-bold text-center text-base">
-                    Cancel Order
-                  </Text>
-                </TouchableOpacity>
-              )}
+            {(() => {
+              const cancellableStatuses = ["pending", "assigned"];
+              const isCancellable = cancellableStatuses.includes(order.status);
+
+              const isCustomer =
+                user?.role === "customer" &&
+                String(order.customerId) === String(user.id);
+              const isRider =
+                user?.role === "rider" &&
+                order.riderId &&
+                String(order.riderId) === String(user.id);
+              const isAdmin = user?.role === "admin";
+              const hasPermission = isCustomer || isRider || isAdmin;
+
+              return isCancellable && hasPermission;
+            })() && (
+              <TouchableOpacity
+                onPress={() => setShowCancelModal(true)}
+                className="bg-danger/20 border border-danger/30 rounded-xl px-4 py-3 mt-4 items-center flex-row justify-center"
+              >
+                <Text className="text-danger font-bold text-center text-base">
+                  Cancel Order
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Rider Actions - Status Updates */}
           {user?.role === "rider" &&
             String(order.riderId) === String(user.id) && (
-              <View className="bg-secondary border border-neutral-100 rounded-2xl p-5 mb-4">
-                <Text className="text-light-100 text-lg font-semibold mb-4">
+              <View
+                className={`border rounded-2xl p-5 mb-4 ${
+                  isDark
+                    ? "bg-secondary border-neutral-100"
+                    : "bg-white border-gray-200"
+                }`}
+              >
+                <Text
+                  className={`text-lg font-semibold mb-4 ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
                   Order Actions
                 </Text>
 
@@ -966,18 +1162,34 @@ export default function OrderDetailScreen() {
 
                 {/* Show OTP if generated */}
                 {order.delivery?.otpCode && (
-                  <View className="bg-dark-100 rounded-xl p-4 mb-3">
-                    <Text className="text-light-300 text-sm mb-2">
+                  <View
+                    className={`rounded-xl p-4 mb-3 ${
+                      isDark ? "bg-dark-100" : "bg-gray-100"
+                    }`}
+                  >
+                    <Text
+                      className={`text-sm mb-2 ${
+                        isDark ? "text-light-300" : "text-gray-600"
+                      }`}
+                    >
                       Delivery OTP Code
                     </Text>
                     <Text className="text-accent text-2xl font-bold text-center mb-2">
                       {order.delivery.otpCode}
                     </Text>
-                    <Text className="text-light-400 text-xs text-center">
+                    <Text
+                      className={`text-xs text-center ${
+                        isDark ? "text-light-400" : "text-gray-500"
+                      }`}
+                    >
                       Share this code with the customer
                     </Text>
                     {order.delivery.otpExpiresAt && (
-                      <Text className="text-light-400 text-xs text-center mt-1">
+                      <Text
+                        className={`text-xs text-center mt-1 ${
+                          isDark ? "text-light-400" : "text-gray-500"
+                        }`}
+                      >
                         Expires:{" "}
                         {new Date(
                           order.delivery.otpExpiresAt
@@ -1019,11 +1231,15 @@ export default function OrderDetailScreen() {
 
           {/* Enhanced Timeline Section */}
           <View
-            className="bg-secondary rounded-3xl p-5 mb-4 border border-neutral-100"
+            className={`rounded-3xl p-5 mb-4 border ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            }`}
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
+              shadowOpacity: isDark ? 0.1 : 0.05,
               shadowRadius: 8,
               elevation: 4,
             }}
@@ -1036,19 +1252,31 @@ export default function OrderDetailScreen() {
                   color="#5AC8FA"
                 />
               </View>
-              <Text className="text-light-100 text-lg font-bold">
+              <Text
+                className={`text-lg font-bold ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
                 Order Timeline
               </Text>
             </View>
 
             {timeline.length === 0 ? (
-              <View className="bg-dark-100 rounded-2xl p-6 items-center">
+              <View
+                className={`rounded-2xl p-6 items-center ${
+                  isDark ? "bg-dark-100" : "bg-gray-100"
+                }`}
+              >
                 <Icons.time
                   name={IconNames.timeOutline as any}
                   size={32}
-                  color="#9CA4AB"
+                  color={isDark ? "#9CA4AB" : "#6E6E73"}
                 />
-                <Text className="text-light-400 text-sm mt-2">
+                <Text
+                  className={`text-sm mt-2 ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
                   No timeline events yet
                 </Text>
               </View>
@@ -1091,12 +1319,24 @@ export default function OrderDetailScreen() {
                         >
                           {String(t.status).replace("_", " ")}
                         </Text>
-                        <Text className="text-light-400 text-xs mb-1">
+                        <Text
+                          className={`text-xs mb-1 ${
+                            isDark ? "text-light-400" : "text-gray-500"
+                          }`}
+                        >
                           {formatDate(t.at)}
                         </Text>
                         {t.note && (
-                          <View className="bg-dark-100 rounded-lg p-2 mt-1">
-                            <Text className="text-light-300 text-xs">
+                          <View
+                            className={`rounded-lg p-2 mt-1 ${
+                              isDark ? "bg-dark-100" : "bg-gray-100"
+                            }`}
+                          >
+                            <Text
+                              className={`text-xs ${
+                                isDark ? "text-light-300" : "text-gray-600"
+                              }`}
+                            >
                               {t.note}
                             </Text>
                           </View>
@@ -1110,8 +1350,18 @@ export default function OrderDetailScreen() {
           </View>
 
           {order.status === "delivered" && (
-            <View className="bg-secondary border border-neutral-100 rounded-2xl p-5 mb-4">
-              <Text className="text-light-100 text-lg font-semibold mb-3">
+            <View
+              className={`border rounded-2xl p-5 mb-4 ${
+                isDark
+                  ? "bg-secondary border-neutral-100"
+                  : "bg-white border-gray-200"
+              }`}
+            >
+              <Text
+                className={`text-lg font-semibold mb-3 ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
                 Delivery Proof
               </Text>
               {delivery.photoUrl ? (
@@ -1121,8 +1371,16 @@ export default function OrderDetailScreen() {
                   resizeMode="cover"
                 />
               ) : (
-                <View className="bg-dark-100 rounded-xl p-8 items-center">
-                  <Text className="text-light-400 text-center">
+                <View
+                  className={`rounded-xl p-8 items-center ${
+                    isDark ? "bg-dark-100" : "bg-gray-100"
+                  }`}
+                >
+                  <Text
+                    className={`text-center ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
                     No photo uploaded
                   </Text>
                 </View>
@@ -1130,46 +1388,74 @@ export default function OrderDetailScreen() {
               <View className="mt-4 space-y-3">
                 {delivery.recipientName && (
                   <View>
-                    <Text className="text-light-300 text-sm mb-1">
+                    <Text
+                      className={`text-sm mb-1 ${
+                        isDark ? "text-light-300" : "text-gray-600"
+                      }`}
+                    >
                       Recipient Name
                     </Text>
-                    <Text className="text-light-100 font-semibold">
+                    <Text
+                      className={`font-semibold ${
+                        isDark ? "text-light-100" : "text-black"
+                      }`}
+                    >
                       {delivery.recipientName}
                     </Text>
                   </View>
                 )}
                 {delivery.recipientPhone && (
                   <View>
-                    <Text className="text-light-300 text-sm mb-1">
+                    <Text
+                      className={`text-sm mb-1 ${
+                        isDark ? "text-light-300" : "text-gray-600"
+                      }`}
+                    >
                       Recipient Phone
                     </Text>
-                    <Text className="text-light-100">
+                    <Text className={isDark ? "text-light-100" : "text-black"}>
                       {delivery.recipientPhone}
                     </Text>
                   </View>
                 )}
                 {delivery.note && (
                   <View>
-                    <Text className="text-light-300 text-sm mb-1">Note</Text>
-                    <Text className="text-light-100">{delivery.note}</Text>
+                    <Text
+                      className={`text-sm mb-1 ${
+                        isDark ? "text-light-300" : "text-gray-600"
+                      }`}
+                    >
+                      Note
+                    </Text>
+                    <Text className={isDark ? "text-light-100" : "text-black"}>
+                      {delivery.note}
+                    </Text>
                   </View>
                 )}
                 {delivery.deliveredAt && (
                   <View>
-                    <Text className="text-light-300 text-sm mb-1">
+                    <Text
+                      className={`text-sm mb-1 ${
+                        isDark ? "text-light-300" : "text-gray-600"
+                      }`}
+                    >
                       Delivered At
                     </Text>
-                    <Text className="text-light-100">
+                    <Text className={isDark ? "text-light-100" : "text-black"}>
                       {new Date(delivery.deliveredAt).toLocaleString()}
                     </Text>
                   </View>
                 )}
                 {delivery.otpVerifiedAt && (
                   <View>
-                    <Text className="text-light-300 text-sm mb-1">
+                    <Text
+                      className={`text-sm mb-1 ${
+                        isDark ? "text-light-300" : "text-gray-600"
+                      }`}
+                    >
                       OTP Verified At
                     </Text>
-                    <Text className="text-light-100">
+                    <Text className={isDark ? "text-light-100" : "text-black"}>
                       {new Date(delivery.otpVerifiedAt).toLocaleString()}
                     </Text>
                   </View>
@@ -1182,12 +1468,28 @@ export default function OrderDetailScreen() {
           {order.riderLocation &&
             (user?.role === "customer" || user?.role === "admin") &&
             ["assigned", "picked_up", "delivering"].includes(order.status) && (
-              <View className="bg-secondary border border-neutral-100 rounded-2xl p-5 mb-4">
-                <Text className="text-light-100 text-lg font-semibold mb-3">
+              <View
+                className={`border rounded-2xl p-5 mb-4 ${
+                  isDark
+                    ? "bg-secondary border-neutral-100"
+                    : "bg-white border-gray-200"
+                }`}
+              >
+                <Text
+                  className={`text-lg font-semibold mb-3 ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
                   Rider Location
                 </Text>
                 <View className="mb-3">
-                  <Text className="text-light-300 text-sm mb-1">Status</Text>
+                  <Text
+                    className={`text-sm mb-1 ${
+                      isDark ? "text-light-300" : "text-gray-600"
+                    }`}
+                  >
+                    Status
+                  </Text>
                   <View className="flex-row items-center gap-2">
                     <View
                       className={`w-3 h-3 rounded-full ${
@@ -1196,7 +1498,7 @@ export default function OrderDetailScreen() {
                           : "bg-gray-500"
                       }`}
                     />
-                    <Text className="text-light-100">
+                    <Text className={isDark ? "text-light-100" : "text-black"}>
                       {order.riderLocation.online
                         ? "Online"
                         : "Last seen: " +
@@ -1206,7 +1508,11 @@ export default function OrderDetailScreen() {
                     </Text>
                   </View>
                   {realTimeLocation && (
-                    <Text className="text-light-400 text-xs mt-1">
+                    <Text
+                      className={`text-xs mt-1 ${
+                        isDark ? "text-light-400" : "text-gray-500"
+                      }`}
+                    >
                       Last updated:{" "}
                       {new Date(
                         realTimeLocation.timestamp
@@ -1228,7 +1534,11 @@ export default function OrderDetailScreen() {
                     View on Google Maps
                   </Text>
                 </TouchableOpacity>
-                <Text className="text-light-400 text-xs mt-2 text-center">
+                <Text
+                  className={`text-xs mt-2 text-center ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
                   {realTimeLocation
                     ? "Location updates in real-time"
                     : "Tap to open rider's current location in Google Maps"}
@@ -1240,15 +1550,29 @@ export default function OrderDetailScreen() {
           {(user?.role === "customer" || user?.role === "admin") &&
             order.status === "delivered" &&
             locationHistory.length > 0 && (
-              <View className="bg-secondary border border-neutral-100 rounded-2xl p-5 mb-4">
-                <Text className="text-light-100 text-lg font-semibold mb-3">
+              <View
+                className={`border rounded-2xl p-5 mb-4 ${
+                  isDark
+                    ? "bg-secondary border-neutral-100"
+                    : "bg-white border-gray-200"
+                }`}
+              >
+                <Text
+                  className={`text-lg font-semibold mb-3 ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
                   Delivery Route History
                 </Text>
                 {loadingHistory ? (
                   <ActivityIndicator size="small" color="#AB8BFF" />
                 ) : (
                   <>
-                    <Text className="text-light-400 text-sm mb-3">
+                    <Text
+                      className={`text-sm mb-3 ${
+                        isDark ? "text-light-400" : "text-gray-500"
+                      }`}
+                    >
                       {locationHistory.length} location points recorded during
                       delivery
                     </Text>
@@ -1270,13 +1594,25 @@ export default function OrderDetailScreen() {
                                   console.error("Failed to open maps", err)
                                 );
                               }}
-                              className="bg-dark-100 border border-neutral-100 rounded-lg px-3 py-2"
+                              className={`border rounded-lg px-3 py-2 ${
+                                isDark
+                                  ? "bg-dark-100 border-neutral-100"
+                                  : "bg-gray-100 border-gray-200"
+                              }`}
                             >
-                              <Text className="text-light-300 text-xs">
+                              <Text
+                                className={`text-xs ${
+                                  isDark ? "text-light-300" : "text-gray-600"
+                                }`}
+                              >
                                 {new Date(entry.timestamp).toLocaleTimeString()}
                               </Text>
                               {entry.speed && (
-                                <Text className="text-light-400 text-xs">
+                                <Text
+                                  className={`text-xs ${
+                                    isDark ? "text-light-400" : "text-gray-500"
+                                  }`}
+                                >
                                   {Math.round(entry.speed)} km/h
                                 </Text>
                               )}
@@ -1284,7 +1620,11 @@ export default function OrderDetailScreen() {
                           ))}
                       </View>
                     </ScrollView>
-                    <Text className="text-light-400 text-xs text-center">
+                    <Text
+                      className={`text-xs text-center ${
+                        isDark ? "text-light-400" : "text-gray-500"
+                      }`}
+                    >
                       Tap any point to view on Google Maps
                     </Text>
                   </>
@@ -1301,17 +1641,31 @@ export default function OrderDetailScreen() {
           onRequestClose={() => setShowPriceModal(false)}
         >
           <View className="flex-1 bg-black/50 justify-end">
-            <View className="bg-secondary rounded-t-3xl p-6 pb-10">
+            <View
+              className={`rounded-t-3xl p-6 pb-10 ${
+                isDark ? "bg-secondary" : "bg-white"
+              }`}
+            >
               <View className="flex-row items-center justify-between mb-4">
-                <Text className="text-light-100 text-xl font-bold">
+                <Text
+                  className={`text-xl font-bold ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
                   Request Price Change
                 </Text>
                 <TouchableOpacity onPress={() => setShowPriceModal(false)}>
-                  <Text className="text-light-400 text-lg">✕</Text>
+                  <Text className={isDark ? "text-light-400" : "text-gray-500"}>
+                    ✕
+                  </Text>
                 </TouchableOpacity>
               </View>
 
-              <Text className="text-light-300 text-sm mb-2">
+              <Text
+                className={`text-sm mb-2 ${
+                  isDark ? "text-light-300" : "text-gray-600"
+                }`}
+              >
                 Original Price: ₦
                 {Number(
                   order?.originalPrice || order?.price || 0
@@ -1319,7 +1673,11 @@ export default function OrderDetailScreen() {
               </Text>
 
               <View className="mb-4">
-                <Text className="text-light-300 mb-2">
+                <Text
+                  className={`mb-2 ${
+                    isDark ? "text-light-300" : "text-gray-600"
+                  }`}
+                >
                   Requested Price (NGN)
                 </Text>
                 <TextInput
@@ -1328,12 +1686,22 @@ export default function OrderDetailScreen() {
                   placeholder="Enter amount"
                   keyboardType="numeric"
                   placeholderTextColor="#9CA4AB"
-                  className="text-light-100 bg-dark-100 rounded-xl px-4 py-3"
+                  className={`rounded-xl px-4 py-3 ${
+                    isDark
+                      ? "text-light-100 bg-dark-100"
+                      : "text-black bg-gray-100"
+                  }`}
                 />
               </View>
 
               <View className="mb-6">
-                <Text className="text-light-300 mb-2">Reason (Optional)</Text>
+                <Text
+                  className={`mb-2 ${
+                    isDark ? "text-light-300" : "text-gray-600"
+                  }`}
+                >
+                  Reason (Optional)
+                </Text>
                 <TextInput
                   value={priceReason}
                   onChangeText={setPriceReason}
@@ -1341,7 +1709,11 @@ export default function OrderDetailScreen() {
                   placeholderTextColor="#9CA4AB"
                   multiline
                   numberOfLines={3}
-                  className="text-light-100 bg-dark-100 rounded-xl px-4 py-3"
+                  className={`rounded-xl px-4 py-3 ${
+                    isDark
+                      ? "text-light-100 bg-dark-100"
+                      : "text-black bg-gray-100"
+                  }`}
                   style={{ textAlignVertical: "top" }}
                 />
               </View>
@@ -1371,22 +1743,42 @@ export default function OrderDetailScreen() {
           onRequestClose={() => setShowOtpModal(false)}
         >
           <View className="flex-1 bg-black/50 justify-end">
-            <View className="bg-secondary rounded-t-3xl p-6 pb-10">
+            <View
+              className={`rounded-t-3xl p-6 pb-10 ${
+                isDark ? "bg-secondary" : "bg-white"
+              }`}
+            >
               <View className="flex-row items-center justify-between mb-4">
-                <Text className="text-light-100 text-xl font-bold">
+                <Text
+                  className={`text-xl font-bold ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
                   Verify Delivery OTP
                 </Text>
                 <TouchableOpacity onPress={() => setShowOtpModal(false)}>
-                  <Text className="text-light-400 text-lg">✕</Text>
+                  <Text className={isDark ? "text-light-400" : "text-gray-500"}>
+                    ✕
+                  </Text>
                 </TouchableOpacity>
               </View>
 
-              <Text className="text-light-300 text-sm mb-4">
+              <Text
+                className={`text-sm mb-4 ${
+                  isDark ? "text-light-300" : "text-gray-600"
+                }`}
+              >
                 Enter the 4-digit OTP code provided by the recipient
               </Text>
 
               <View className="mb-6">
-                <Text className="text-light-300 mb-2">OTP Code</Text>
+                <Text
+                  className={`mb-2 ${
+                    isDark ? "text-light-300" : "text-gray-600"
+                  }`}
+                >
+                  OTP Code
+                </Text>
                 <TextInput
                   value={otpCode}
                   onChangeText={(text) => {
@@ -1398,7 +1790,11 @@ export default function OrderDetailScreen() {
                   keyboardType="numeric"
                   maxLength={4}
                   placeholderTextColor="#9CA4AB"
-                  className="text-light-100 bg-dark-100 rounded-xl px-4 py-4 text-center text-2xl font-bold tracking-widest"
+                  className={`rounded-xl px-4 py-4 text-center text-2xl font-bold tracking-widest ${
+                    isDark
+                      ? "text-light-100 bg-dark-100"
+                      : "text-black bg-gray-100"
+                  }`}
                 />
               </View>
 
@@ -1429,18 +1825,34 @@ export default function OrderDetailScreen() {
           onRequestClose={() => setShowProofModal(false)}
         >
           <View className="flex-1 bg-black/50 justify-end">
-            <ScrollView className="bg-secondary rounded-t-3xl">
+            <ScrollView
+              className={`rounded-t-3xl ${
+                isDark ? "bg-secondary" : "bg-white"
+              }`}
+            >
               <View className="p-6 pb-10">
                 <View className="flex-row items-center justify-between mb-4">
-                  <Text className="text-light-100 text-xl font-bold">
+                  <Text
+                    className={`text-xl font-bold ${
+                      isDark ? "text-light-100" : "text-black"
+                    }`}
+                  >
                     Upload Delivery Proof
                   </Text>
                   <TouchableOpacity onPress={() => setShowProofModal(false)}>
-                    <Text className="text-light-400 text-lg">✕</Text>
+                    <Text
+                      className={isDark ? "text-light-400" : "text-gray-500"}
+                    >
+                      ✕
+                    </Text>
                   </TouchableOpacity>
                 </View>
 
-                <Text className="text-light-300 text-sm mb-4">
+                <Text
+                  className={`text-sm mb-4 ${
+                    isDark ? "text-light-300" : "text-gray-600"
+                  }`}
+                >
                   Upload a photo and recipient details to complete delivery
                   proof
                 </Text>

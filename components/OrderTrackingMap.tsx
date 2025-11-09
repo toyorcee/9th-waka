@@ -1,4 +1,5 @@
 import { SocketEvents } from "@/constants/socketEvents";
+import { useTheme } from "@/contexts/ThemeContext";
 import { getOrder } from "@/services/orderApi";
 import { socketClient } from "@/services/socketClient";
 import React, { useEffect, useRef, useState } from "react";
@@ -9,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 let WebView: any;
 try {
@@ -26,6 +28,9 @@ export default function OrderTrackingMap({
   orderId,
   onClose,
 }: OrderTrackingMapProps) {
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const isDark = theme === "dark";
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [riderLocation, setRiderLocation] = useState<{
@@ -219,17 +224,33 @@ export default function OrderTrackingMap({
 
   if (loading) {
     return (
-      <View className="flex-1 bg-primary items-center justify-center">
+      <View
+        className={`flex-1 items-center justify-center ${
+          isDark ? "bg-primary" : "bg-white"
+        }`}
+        style={{ paddingTop: insets.top }}
+      >
         <ActivityIndicator size="large" color="#AB8BFF" />
-        <Text className="text-light-300 mt-4">Loading map...</Text>
+        <Text className={`mt-4 ${isDark ? "text-light-300" : "text-gray-600"}`}>
+          Loading map...
+        </Text>
       </View>
     );
   }
 
   if (!order || !order.pickup?.lat || !order.dropoff?.lat) {
     return (
-      <View className="flex-1 bg-primary items-center justify-center px-6">
-        <Text className="text-light-300 text-center mb-4">
+      <View
+        className={`flex-1 items-center justify-center px-6 ${
+          isDark ? "bg-primary" : "bg-white"
+        }`}
+        style={{ paddingTop: insets.top }}
+      >
+        <Text
+          className={`text-center mb-4 ${
+            isDark ? "text-light-300" : "text-gray-600"
+          }`}
+        >
           Map data not available
         </Text>
         {onClose && (
@@ -249,32 +270,66 @@ export default function OrderTrackingMap({
   // If WebView is not available, show a fallback with link to open in browser
   if (!WebView) {
     return (
-      <View className="flex-1 bg-primary">
-        <View className="bg-secondary border-b border-neutral-100 px-4 py-3 flex-row items-center justify-between">
+      <View
+        className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
+        style={{ paddingTop: insets.top }}
+      >
+        <View
+          className={`border-b px-4 py-3 flex-row items-center justify-between ${
+            isDark
+              ? "bg-secondary border-neutral-100"
+              : "bg-white border-gray-200"
+          }`}
+        >
           <View className="flex-1">
-            <Text className="text-light-100 font-semibold text-base">
+            <Text
+              className={`font-semibold text-base ${
+                isDark ? "text-light-100" : "text-black"
+              }`}
+            >
               Live Order Tracking
             </Text>
-            <Text className="text-light-400 text-xs">
+            <Text
+              className={`text-xs ${
+                isDark ? "text-light-400" : "text-gray-500"
+              }`}
+            >
               {order.items} • {order.status}
             </Text>
           </View>
           {onClose && (
             <TouchableOpacity
               onPress={onClose}
-              className="bg-dark-100 rounded-lg px-3 py-2"
+              className={`rounded-lg px-3 py-2 ${
+                isDark ? "bg-dark-100" : "bg-gray-100"
+              }`}
             >
-              <Text className="text-light-200 font-semibold text-xs">
+              <Text
+                className={`font-semibold text-xs ${
+                  isDark ? "text-light-200" : "text-black"
+                }`}
+              >
                 Close
               </Text>
             </TouchableOpacity>
           )}
         </View>
-        <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-light-200 text-lg font-semibold mb-4 text-center">
+        <View
+          className="flex-1 items-center justify-center px-6"
+          style={{ paddingBottom: insets.bottom }}
+        >
+          <Text
+            className={`text-lg font-semibold mb-4 text-center ${
+              isDark ? "text-light-200" : "text-black"
+            }`}
+          >
             Open in Google Maps
           </Text>
-          <Text className="text-light-400 text-sm text-center mb-6">
+          <Text
+            className={`text-sm text-center mb-6 ${
+              isDark ? "text-light-400" : "text-gray-500"
+            }`}
+          >
             Install react-native-webview for in-app map viewing, or open in your
             browser
           </Text>
@@ -300,13 +355,28 @@ export default function OrderTrackingMap({
   }
 
   return (
-    <View className="flex-1 bg-primary">
-      <View className="bg-secondary border-b border-neutral-100 px-4 py-3 flex-row items-center justify-between">
+    <View
+      className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
+      style={{ paddingTop: insets.top }}
+    >
+      <View
+        className={`border-b px-4 py-3 flex-row items-center justify-between ${
+          isDark
+            ? "bg-secondary border-neutral-100"
+            : "bg-white border-gray-200"
+        }`}
+      >
         <View className="flex-1">
-          <Text className="text-light-100 font-semibold text-base">
+          <Text
+            className={`font-semibold text-base ${
+              isDark ? "text-light-100" : "text-black"
+            }`}
+          >
             Live Order Tracking
           </Text>
-          <Text className="text-light-400 text-xs">
+          <Text
+            className={`text-xs ${isDark ? "text-light-400" : "text-gray-500"}`}
+          >
             {order.items} • {order.status}
           </Text>
         </View>
@@ -330,9 +400,15 @@ export default function OrderTrackingMap({
           {onClose && (
             <TouchableOpacity
               onPress={onClose}
-              className="bg-dark-100 rounded-lg px-3 py-2"
+              className={`rounded-lg px-3 py-2 ${
+                isDark ? "bg-dark-100" : "bg-gray-100"
+              }`}
             >
-              <Text className="text-light-200 font-semibold text-xs">
+              <Text
+                className={`font-semibold text-xs ${
+                  isDark ? "text-light-200" : "text-black"
+                }`}
+              >
                 Close
               </Text>
             </TouchableOpacity>
@@ -347,19 +423,38 @@ export default function OrderTrackingMap({
         domStorageEnabled={true}
         startInLoadingState={true}
         renderLoading={() => (
-          <View className="absolute inset-0 bg-primary items-center justify-center">
+          <View
+            className={`absolute inset-0 items-center justify-center ${
+              isDark ? "bg-primary" : "bg-white"
+            }`}
+          >
             <ActivityIndicator size="large" color="#AB8BFF" />
           </View>
         )}
       />
       {riderLocation && (
-        <View className="absolute bottom-4 left-4 right-4 bg-secondary/95 border border-neutral-100 rounded-xl p-3">
+        <View
+          className={`absolute left-4 right-4 rounded-xl p-3 border ${
+            isDark
+              ? "bg-secondary/95 border-neutral-100"
+              : "bg-white/95 border-gray-200"
+          }`}
+          style={{ bottom: insets.bottom + 16 }}
+        >
           <View className="flex-row items-center gap-2">
             <View className="w-3 h-3 rounded-full bg-green-500" />
-            <Text className="text-light-200 text-sm flex-1">
+            <Text
+              className={`text-sm flex-1 ${
+                isDark ? "text-light-200" : "text-black"
+              }`}
+            >
               Rider location updated
             </Text>
-            <Text className="text-light-400 text-xs">
+            <Text
+              className={`text-xs ${
+                isDark ? "text-light-400" : "text-gray-500"
+              }`}
+            >
               {new Date().toLocaleTimeString()}
             </Text>
           </View>

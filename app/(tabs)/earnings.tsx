@@ -1,6 +1,7 @@
 import { IconNames, Icons, MCIconNames } from "@/constants/icons";
 import { SocketEvents } from "@/constants/socketEvents";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { EarningsData, getRiderEarnings } from "@/services/riderApi";
 import { socketClient } from "@/services/socketClient";
 import { useRouter } from "expo-router";
@@ -17,8 +18,10 @@ import Toast from "react-native-toast-message";
 
 export default function EarningsScreen() {
   const { user, isLoading: authLoading } = useAuth();
+  const { theme } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const isDark = theme === "dark";
   const [earnings, setEarnings] = useState<EarningsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -73,7 +76,11 @@ export default function EarningsScreen() {
 
   if (authLoading || loading) {
     return (
-      <View className="flex-1 bg-primary items-center justify-center">
+      <View
+        className={`flex-1 items-center justify-center ${
+          isDark ? "bg-primary" : "bg-white"
+        }`}
+      >
         <ActivityIndicator size="large" color="#AB8BFF" />
       </View>
     );
@@ -81,8 +88,12 @@ export default function EarningsScreen() {
 
   if (!isRider) {
     return (
-      <View className="flex-1 bg-primary items-center justify-center">
-        <Text className="text-light-300">
+      <View
+        className={`flex-1 items-center justify-center ${
+          isDark ? "bg-primary" : "bg-white"
+        }`}
+      >
+        <Text className={`${isDark ? "text-light-300" : "text-gray-600"}`}>
           Earnings available for riders only
         </Text>
       </View>
@@ -91,8 +102,14 @@ export default function EarningsScreen() {
 
   if (!earnings) {
     return (
-      <View className="flex-1 bg-primary items-center justify-center">
-        <Text className="text-light-300">No earnings data</Text>
+      <View
+        className={`flex-1 items-center justify-center ${
+          isDark ? "bg-primary" : "bg-white"
+        }`}
+      >
+        <Text className={`${isDark ? "text-light-300" : "text-gray-600"}`}>
+          No earnings data
+        </Text>
       </View>
     );
   }
@@ -106,7 +123,7 @@ export default function EarningsScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-primary"
+      className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
       contentContainerStyle={{
         paddingTop: insets.top,
         paddingBottom: contentBottomPadding,
@@ -125,10 +142,18 @@ export default function EarningsScreen() {
               />
             </View>
             <View className="flex-1">
-              <Text className="text-light-100 text-xl font-bold mb-0.5">
+              <Text
+                className={`text-xl font-bold mb-0.5 ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
                 Earnings
               </Text>
-              <Text className="text-light-400 text-xs">
+              <Text
+                className={`text-xs ${
+                  isDark ? "text-light-400" : "text-gray-500"
+                }`}
+              >
                 Track your delivery income
               </Text>
             </View>
@@ -174,7 +199,11 @@ export default function EarningsScreen() {
                 <Text className="text-warning font-bold text-lg mb-1">
                   Payment Tomorrow!
                 </Text>
-                <Text className="text-light-200 text-sm leading-5">
+                <Text
+                  className={`text-sm leading-5 ${
+                    isDark ? "text-light-200" : "text-black"
+                  }`}
+                >
                   Your weekly earnings of ₦
                   {currentWeek.totals.riderNet.toLocaleString()} will be paid on
                   Saturday
@@ -186,7 +215,11 @@ export default function EarningsScreen() {
 
         {/* Current Week Summary */}
         <View
-          className="bg-secondary border border-neutral-100 rounded-3xl p-6 mb-6"
+          className={`border rounded-3xl p-6 mb-6 ${
+            isDark
+              ? "bg-secondary border-neutral-100"
+              : "bg-white border-gray-200"
+          }`}
           style={{
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 4 },
@@ -204,17 +237,31 @@ export default function EarningsScreen() {
               />
             </View>
             <View className="flex-1">
-              <Text className="text-light-100 text-lg font-bold mb-1">
+              <Text
+                className={`text-lg font-bold mb-1 ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
                 This Week
               </Text>
-              <Text className="text-light-400 text-xs">
+              <Text
+                className={`text-xs ${
+                  isDark ? "text-light-400" : "text-gray-500"
+                }`}
+              >
                 {weekStart.toLocaleDateString()} -{" "}
                 {new Date(weekEnd.getTime() - 1).toLocaleDateString()} (Sun-Sat)
               </Text>
             </View>
           </View>
           <View className="bg-dark-100/50 rounded-2xl p-4 mb-4">
-            <Text className="text-light-400 text-xs mb-2">Net Earnings</Text>
+            <Text
+              className={`text-xs mb-2 ${
+                isDark ? "text-light-400" : "text-gray-500"
+              }`}
+            >
+              Net Earnings
+            </Text>
             <View className="flex-row items-center">
               <Icons.money
                 name={MCIconNames.cash as any}
@@ -236,9 +283,19 @@ export default function EarningsScreen() {
                   color="#5AC8FA"
                   style={{ marginRight: 8 }}
                 />
-                <Text className="text-light-400 text-sm">Total Trips</Text>
+                <Text
+                  className={`text-sm ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
+                  Total Trips
+                </Text>
               </View>
-              <Text className="text-light-100 font-bold text-base">
+              <Text
+                className={`font-bold text-base ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
                 {currentWeek.totals.count}
               </Text>
             </View>
@@ -250,9 +307,19 @@ export default function EarningsScreen() {
                   color="#AB8BFF"
                   style={{ marginRight: 8 }}
                 />
-                <Text className="text-light-400 text-sm">Gross Earnings</Text>
+                <Text
+                  className={`text-sm ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
+                  Gross Earnings
+                </Text>
               </View>
-              <Text className="text-light-200 font-semibold text-base">
+              <Text
+                className={`font-semibold text-base ${
+                  isDark ? "text-light-200" : "text-black"
+                }`}
+              >
                 ₦{currentWeek.totals.gross.toLocaleString()}
               </Text>
             </View>
@@ -264,14 +331,24 @@ export default function EarningsScreen() {
                   color="#FF3B30"
                   style={{ marginRight: 8 }}
                 />
-                <Text className="text-light-400 text-sm">Commission (10%)</Text>
+                <Text
+                  className={`text-sm ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
+                  Commission (10%)
+                </Text>
               </View>
               <Text className="text-danger font-semibold text-base">
                 -₦{currentWeek.totals.commission.toLocaleString()}
               </Text>
             </View>
             <View className="flex-row justify-between items-center pt-3 border-t border-neutral-100 mt-2">
-              <Text className="text-light-100 font-bold text-base">
+              <Text
+                className={`font-bold text-base ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
                 Your Net
               </Text>
               <Text className="text-accent font-bold text-xl">
@@ -294,7 +371,13 @@ export default function EarningsScreen() {
                   }
                   style={{ marginRight: 8 }}
                 />
-                <Text className="text-light-400 text-xs">Payout Status</Text>
+                <Text
+                  className={`text-xs ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
+                  Payout Status
+                </Text>
               </View>
               <Text
                 className={`font-bold text-base ${
@@ -306,7 +389,11 @@ export default function EarningsScreen() {
                 {currentWeek.payout.status === "paid" ? "✓ Paid" : "⏳ Pending"}
               </Text>
               {currentWeek.payout.paidAt && (
-                <Text className="text-light-400 text-xs mt-1">
+                <Text
+                  className={`text-xs mt-1 ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
                   Paid:{" "}
                   {new Date(currentWeek.payout.paidAt).toLocaleDateString()}
                 </Text>
@@ -317,7 +404,11 @@ export default function EarningsScreen() {
 
         {/* All-Time Stats */}
         <View
-          className="bg-secondary border border-neutral-100 rounded-3xl p-6 mb-6"
+          className={`border rounded-3xl p-6 mb-6 ${
+            isDark
+              ? "bg-secondary border-neutral-100"
+              : "bg-white border-gray-200"
+          }`}
           style={{
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 2 },
@@ -349,7 +440,11 @@ export default function EarningsScreen() {
                 />
                 <Text className="text-light-300 text-sm">Total Deliveries</Text>
               </View>
-              <Text className="text-light-100 font-bold text-base">
+              <Text
+                className={`font-bold text-base ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
                 {allTime.totals.count}
               </Text>
             </View>
@@ -462,7 +557,11 @@ export default function EarningsScreen() {
                           color="#9CA4AB"
                           style={{ marginRight: 6 }}
                         />
-                        <Text className="text-light-400 text-xs">
+                        <Text
+                          className={`text-xs ${
+                            isDark ? "text-light-400" : "text-gray-500"
+                          }`}
+                        >
                           {new Date(trip.deliveredAt).toLocaleString()}
                         </Text>
                       </View>
@@ -481,7 +580,11 @@ export default function EarningsScreen() {
                         color="#AB8BFF"
                         style={{ marginRight: 6 }}
                       />
-                      <Text className="text-light-400 text-xs">
+                      <Text
+                        className={`text-xs ${
+                          isDark ? "text-light-400" : "text-gray-500"
+                        }`}
+                      >
                         Gross: ₦{trip.grossAmount.toLocaleString()}
                       </Text>
                     </View>

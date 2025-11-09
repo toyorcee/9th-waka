@@ -57,9 +57,9 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "9thWaka uses your location to match you with nearby delivery orders when you're online.",
-          "locationAlwaysPermission": "9thWaka uses your location to match you with nearby delivery orders when you're online.",
-          "locationWhenInUsePermission": "9thWaka uses your location to match you with nearby delivery orders when you're online."
+          "locationAlwaysAndWhenInUsePermission": "9thWaka needs location access for: (1) Riders: To match you with nearby delivery orders when you're online. (2) Customers: To quickly set your pickup address when creating orders. You can choose 'While Using the App' or 'Just Once' - we only access location when you need it. You can manage this anytime in Settings > Location Services.",
+          "locationAlwaysPermission": "9thWaka needs location access for riders to match you with nearby delivery orders when you're online. This allows you to receive orders even when the app is in the background. You can manage this anytime in Settings > Location Services.",
+          "locationWhenInUsePermission": "9thWaka needs location access for: (1) Riders: To match you with nearby delivery orders when you're online. (2) Customers: To quickly set your pickup address when creating orders. You can choose 'While Using the App' or 'Just Once' - we only access location when you need it. You can manage this anytime in Settings > Location Services."
         }
       ]
     ],

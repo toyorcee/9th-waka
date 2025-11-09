@@ -1,5 +1,6 @@
 import { IconNames, Icons } from "@/constants/icons";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Routes } from "@/services/navigationHelper";
 import { toAbsoluteUrl } from "@/services/url";
 import { Image } from "expo-image";
@@ -17,12 +18,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ProfileScreen() {
   const { user, isLoading, logout } = useAuth();
+  const { theme } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [showLogout, setShowLogout] = React.useState(false);
   const tabBarHeight = 65;
   const bottomPadding = insets.bottom > 0 ? insets.bottom : 20;
   const contentBottomPadding = tabBarHeight + bottomPadding + 32;
+  const isDark = theme === "dark";
 
   const handleLogout = async () => {
     setShowLogout(true);
@@ -30,7 +33,11 @@ export default function ProfileScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-primary items-center justify-center">
+      <View
+        className={`flex-1 items-center justify-center ${
+          isDark ? "bg-primary" : "bg-white"
+        }`}
+      >
         <ActivityIndicator size="large" color="#AB8BFF" />
       </View>
     );
@@ -38,7 +45,7 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-primary"
+      className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
       contentContainerStyle={{
         paddingTop: insets.top + 20,
         paddingBottom: tabBarHeight + insets.bottom + 40,
@@ -49,22 +56,30 @@ export default function ProfileScreen() {
       <View>
         {/* Profile Header Card - Enhanced */}
         <View
-          className="bg-secondary rounded-3xl p-6 mb-6 border border-neutral-100"
+          className={`rounded-3xl p-6 mb-6 border ${
+            isDark
+              ? "bg-secondary border-neutral-100"
+              : "bg-white border-gray-200"
+          }`}
           style={{
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.15,
+            shadowOpacity: isDark ? 0.15 : 0.08,
             shadowRadius: 12,
             elevation: 6,
           }}
         >
           <View className="items-center mb-5">
             <View
-              className="w-28 h-28 rounded-full bg-accent/20 items-center justify-center mb-4 overflow-hidden border-4 border-accent/30"
+              className={`w-28 h-28 rounded-full items-center justify-center mb-4 overflow-hidden border-4 ${
+                isDark
+                  ? "bg-accent/20 border-accent/30"
+                  : "bg-accent/10 border-accent/40"
+              }`}
               style={{
                 shadowColor: "#AB8BFF",
                 shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
+                shadowOpacity: isDark ? 0.3 : 0.2,
                 shadowRadius: 8,
                 elevation: 6,
               }}
@@ -87,20 +102,44 @@ export default function ProfileScreen() {
                 </View>
               )}
             </View>
-            <Text className="text-light-100 text-xl font-bold mb-1">
-              {user?.fullName || "User"}
-            </Text>
+            <View className="w-full px-2 mb-1">
+              <Text
+                className={`text-xl font-bold text-center ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+                numberOfLines={2}
+                ellipsizeMode="tail"
+                style={{
+                  maxWidth: "100%",
+                  lineHeight: 28,
+                }}
+              >
+                {user?.fullName || "User"}
+              </Text>
+            </View>
             <View className="flex-row items-center mb-2">
               <Icons.communication
                 name={IconNames.messageOutline as any}
                 size={14}
-                color="#9CA4AB"
+                color={isDark ? "#9CA4AB" : "#6E6E73"}
                 style={{ marginRight: 6 }}
               />
-              <Text className="text-light-400 text-sm">{user?.email}</Text>
+              <Text
+                className={`text-sm ${
+                  isDark ? "text-light-400" : "text-gray-500"
+                }`}
+              >
+                {user?.email}
+              </Text>
             </View>
             {user?.role && (
-              <View className="bg-accent/20 border border-accent/30 px-4 py-2 rounded-full">
+              <View
+                className={`border px-4 py-2 rounded-full ${
+                  isDark
+                    ? "bg-accent/20 border-accent/30"
+                    : "bg-accent/10 border-accent/40"
+                }`}
+              >
                 <View className="flex-row items-center">
                   <Icons.user
                     name={IconNames.personOutline as any}
@@ -143,7 +182,11 @@ export default function ProfileScreen() {
         <View className="gap-3 mb-6">
           <TouchableOpacity
             onPress={() => router.push(Routes.standalone.profileEdit)}
-            className="bg-secondary rounded-2xl p-5 flex-row items-center justify-between border border-neutral-100 active:opacity-80"
+            className={`rounded-2xl p-5 flex-row items-center justify-between border active:opacity-80 ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            }`}
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
@@ -161,10 +204,18 @@ export default function ProfileScreen() {
                 />
               </View>
               <View className="flex-1">
-                <Text className="text-light-100 font-bold text-base mb-0.5">
+                <Text
+                  className={`font-bold text-base mb-0.5 ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
                   Edit Profile
                 </Text>
-                <Text className="text-light-400 text-xs">
+                <Text
+                  className={`text-xs ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
                   Update your personal information
                 </Text>
               </View>
@@ -172,17 +223,21 @@ export default function ProfileScreen() {
             <Icons.navigation
               name={IconNames.arrowForward as any}
               size={20}
-              color="#9CA4AB"
+              color={isDark ? "#9CA4AB" : "#6E6E73"}
             />
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => router.push(Routes.standalone.profileSettings)}
-            className="bg-secondary rounded-2xl p-5 flex-row items-center justify-between border border-neutral-100 active:opacity-80"
+            className={`rounded-2xl p-5 flex-row items-center justify-between border active:opacity-80 ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            }`}
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
+              shadowOpacity: isDark ? 0.1 : 0.05,
               shadowRadius: 8,
               elevation: 4,
             }}
@@ -196,10 +251,18 @@ export default function ProfileScreen() {
                 />
               </View>
               <View className="flex-1">
-                <Text className="text-light-100 font-bold text-base mb-0.5">
+                <Text
+                  className={`font-bold text-base mb-0.5 ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
                   Settings
                 </Text>
-                <Text className="text-light-400 text-xs">
+                <Text
+                  className={`text-xs ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
                   App preferences and notifications
                 </Text>
               </View>
@@ -207,17 +270,21 @@ export default function ProfileScreen() {
             <Icons.navigation
               name={IconNames.arrowForward as any}
               size={20}
-              color="#9CA4AB"
+              color={isDark ? "#9CA4AB" : "#6E6E73"}
             />
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => router.push("/support" as any)}
-            className="bg-secondary rounded-2xl p-5 flex-row items-center justify-between border border-neutral-100 active:opacity-80 mb-3"
+            className={`rounded-2xl p-5 flex-row items-center justify-between border active:opacity-80 mb-3 ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            }`}
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
+              shadowOpacity: isDark ? 0.1 : 0.05,
               shadowRadius: 8,
               elevation: 4,
             }}
@@ -231,10 +298,18 @@ export default function ProfileScreen() {
                 />
               </View>
               <View className="flex-1">
-                <Text className="text-light-100 font-bold text-base mb-0.5">
+                <Text
+                  className={`font-bold text-base mb-0.5 ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
                   Support & FAQ
                 </Text>
-                <Text className="text-light-400 text-xs">
+                <Text
+                  className={`text-xs ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
                   Get help and find answers
                 </Text>
               </View>
@@ -242,19 +317,34 @@ export default function ProfileScreen() {
             <Icons.navigation
               name={IconNames.arrowForward as any}
               size={20}
-              color="#9CA4AB"
+              color={isDark ? "#9CA4AB" : "#6E6E73"}
             />
           </TouchableOpacity>
 
           {/* Legal Section */}
           <View className="mb-3">
-            <Text className="text-light-400 text-xs font-semibold mb-2 px-1">
+            <Text
+              className={`text-xs font-semibold mb-2 px-1 ${
+                isDark ? "text-light-400" : "text-gray-500"
+              }`}
+            >
               Legal
             </Text>
             <View className="gap-2">
               <TouchableOpacity
                 onPress={() => router.push("/legal/privacy" as any)}
-                className="bg-secondary rounded-xl p-4 flex-row items-center justify-between border border-neutral-100 active:opacity-80"
+                className={`rounded-xl p-4 flex-row items-center justify-between border active:opacity-80 ${
+                  isDark
+                    ? "bg-secondary border-neutral-100"
+                    : "bg-white border-gray-200"
+                }`}
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: isDark ? 0.05 : 0.03,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }}
               >
                 <View className="flex-row items-center flex-1">
                   <View className="bg-info/20 rounded-lg p-1.5 mr-3">
@@ -264,20 +354,35 @@ export default function ProfileScreen() {
                       color="#5AC8FA"
                     />
                   </View>
-                  <Text className="text-light-100 font-medium text-sm">
+                  <Text
+                    className={`font-medium text-sm ${
+                      isDark ? "text-light-100" : "text-black"
+                    }`}
+                  >
                     Privacy Policy
                   </Text>
                 </View>
                 <Icons.navigation
                   name={IconNames.arrowForward as any}
                   size={16}
-                  color="#9CA4AB"
+                  color={isDark ? "#9CA4AB" : "#6E6E73"}
                 />
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => router.push("/legal/terms" as any)}
-                className="bg-secondary rounded-xl p-4 flex-row items-center justify-between border border-neutral-100 active:opacity-80"
+                className={`rounded-xl p-4 flex-row items-center justify-between border active:opacity-80 ${
+                  isDark
+                    ? "bg-secondary border-neutral-100"
+                    : "bg-white border-gray-200"
+                }`}
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: isDark ? 0.05 : 0.03,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }}
               >
                 <View className="flex-row items-center flex-1">
                   <View className="bg-info/20 rounded-lg p-1.5 mr-3">
@@ -287,14 +392,18 @@ export default function ProfileScreen() {
                       color="#5AC8FA"
                     />
                   </View>
-                  <Text className="text-light-100 font-medium text-sm">
+                  <Text
+                    className={`font-medium text-sm ${
+                      isDark ? "text-light-100" : "text-black"
+                    }`}
+                  >
                     Terms & Conditions
                   </Text>
                 </View>
                 <Icons.navigation
                   name={IconNames.arrowForward as any}
                   size={16}
-                  color="#9CA4AB"
+                  color={isDark ? "#9CA4AB" : "#6E6E73"}
                 />
               </TouchableOpacity>
             </View>
@@ -334,7 +443,11 @@ export default function ProfileScreen() {
       >
         <View className="flex-1 bg-black/60 items-center justify-center p-6">
           <View
-            className="w-full rounded-3xl p-6 bg-secondary border border-neutral-100"
+            className={`w-full rounded-3xl p-6 border ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            }`}
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 8 },
@@ -351,19 +464,35 @@ export default function ProfileScreen() {
                   color="#FF3B30"
                 />
               </View>
-              <Text className="text-light-100 text-xl font-bold mb-2">
+              <Text
+                className={`text-xl font-bold mb-2 ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
                 Logout
               </Text>
-              <Text className="text-light-400 text-sm text-center">
+              <Text
+                className={`text-sm text-center ${
+                  isDark ? "text-light-400" : "text-gray-500"
+                }`}
+              >
                 Are you sure you want to logout?
               </Text>
             </View>
             <View className="flex-row gap-3">
               <TouchableOpacity
                 onPress={() => setShowLogout(false)}
-                className="flex-1 bg-dark-100 rounded-2xl py-4 items-center border border-neutral-100"
+                className={`flex-1 rounded-2xl py-4 items-center border ${
+                  isDark
+                    ? "bg-dark-100 border-neutral-100"
+                    : "bg-gray-100 border-gray-200"
+                }`}
               >
-                <Text className="text-light-100 font-semibold text-base">
+                <Text
+                  className={`font-semibold text-base ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
                   Cancel
                 </Text>
               </TouchableOpacity>
@@ -388,7 +517,11 @@ export default function ProfileScreen() {
                   color="#FFFFFF"
                   style={{ marginRight: 6 }}
                 />
-                <Text className="text-light-100 font-bold text-base">
+                <Text
+                  className={`font-bold text-base ${
+                    isDark ? "text-light-100" : "text-white"
+                  }`}
+                >
                   Logout
                 </Text>
               </TouchableOpacity>

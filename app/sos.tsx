@@ -1,4 +1,5 @@
 import { IconNames, Icons } from "@/constants/icons";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Routes } from "@/services/navigationHelper";
 import Constants from "expo-constants";
 import * as Linking from "expo-linking";
@@ -60,7 +61,9 @@ const getEmergencyContacts = () => {
 
 export default function SOSScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const isDark = theme === "dark";
   const EMERGENCY_CONTACTS = getEmergencyContacts();
 
   const handleCall = async (phoneNumber: string, name: string) => {
@@ -119,13 +122,20 @@ export default function SOSScreen() {
   };
 
   return (
-    <View className="flex-1 bg-primary" style={{ paddingTop: insets.top + 12 }}>
+    <View
+      className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
+      style={{ paddingTop: insets.top + 12 }}
+    >
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 24 }}
       >
         {/* Header */}
-        <View className="px-6 pb-4 border-b border-neutral-100/40">
+        <View
+          className={`px-6 pb-4 border-b ${
+            isDark ? "border-neutral-100/40" : "border-gray-200"
+          }`}
+        >
           <View className="flex-row items-center justify-between mb-4">
             <TouchableOpacity
               onPress={() => {
@@ -135,16 +145,22 @@ export default function SOSScreen() {
                   router.replace(Routes.tabs.home as any);
                 }
               }}
-              className="w-9 h-9 rounded-full bg-dark-200 items-center justify-center"
+              className={`w-9 h-9 rounded-full items-center justify-center ${
+                isDark ? "bg-dark-200" : "bg-gray-100"
+              }`}
             >
               <Icons.navigation
                 name={IconNames.arrowBack as any}
                 size={20}
-                color="#FFFFFF"
+                color={isDark ? "#FFFFFF" : "#000000"}
               />
             </TouchableOpacity>
 
-            <Text className="text-light-100 text-lg font-bold flex-1 text-center -ml-9">
+            <Text
+              className={`text-lg font-bold flex-1 text-center -ml-9 ${
+                isDark ? "text-light-100" : "text-black"
+              }`}
+            >
               Emergency SOS
             </Text>
 
@@ -165,7 +181,11 @@ export default function SOSScreen() {
                 Emergency Assistance
               </Text>
             </View>
-            <Text className="text-light-200 text-sm">
+            <Text
+              className={`text-sm ${
+                isDark ? "text-light-200" : "text-gray-600"
+              }`}
+            >
               Use these contacts in case of emergency. For immediate help, call
               the numbers below directly.
             </Text>
@@ -173,16 +193,34 @@ export default function SOSScreen() {
 
           {/* 9th Waka Support */}
           <View className="mb-6">
-            <Text className="text-light-200 text-base font-semibold mb-3">
+            <Text
+              className={`text-base font-semibold mb-3 ${
+                isDark ? "text-light-200" : "text-gray-600"
+              }`}
+            >
               9th Waka Support
             </Text>
-            <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
+            <View
+              className={`rounded-2xl p-5 border ${
+                isDark
+                  ? "bg-secondary border-neutral-100"
+                  : "bg-white border-gray-200"
+              }`}
+            >
               <View className="flex-row items-center justify-between mb-4">
                 <View className="flex-1">
-                  <Text className="text-light-100 font-semibold text-base mb-1">
+                  <Text
+                    className={`font-semibold text-base mb-1 ${
+                      isDark ? "text-light-100" : "text-black"
+                    }`}
+                  >
                     {EMERGENCY_CONTACTS.ninthwaka.name}
                   </Text>
-                  <Text className="text-light-300 text-sm">
+                  <Text
+                    className={`text-sm ${
+                      isDark ? "text-light-300" : "text-gray-500"
+                    }`}
+                  >
                     {EMERGENCY_CONTACTS.ninthwaka.phone}
                   </Text>
                 </View>
@@ -226,19 +264,41 @@ export default function SOSScreen() {
 
           {/* LASEMA - Lagos State Emergency Management Agency */}
           <View className="mb-6">
-            <Text className="text-light-200 text-base font-semibold mb-3">
+            <Text
+              className={`text-base font-semibold mb-3 ${
+                isDark ? "text-light-200" : "text-gray-600"
+              }`}
+            >
               Lagos State Emergency Services
             </Text>
 
-            <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
+            <View
+              className={`rounded-2xl p-5 border ${
+                isDark
+                  ? "bg-secondary border-neutral-100"
+                  : "bg-white border-gray-200"
+              }`}
+            >
               <View className="mb-4">
-                <Text className="text-light-100 font-semibold text-base mb-1">
+                <Text
+                  className={`font-semibold text-base mb-1 ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
                   {EMERGENCY_CONTACTS.lasema.name}
                 </Text>
-                <Text className="text-light-400 text-xs mb-2">
+                <Text
+                  className={`text-xs mb-2 ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
                   {EMERGENCY_CONTACTS.lasema.description}
                 </Text>
-                <Text className="text-light-300 text-sm">
+                <Text
+                  className={`text-sm ${
+                    isDark ? "text-light-300" : "text-gray-600"
+                  }`}
+                >
                   Available Numbers:{" "}
                   {EMERGENCY_CONTACTS.lasema.numbers
                     .map((n) => n.phone)
@@ -276,21 +336,47 @@ export default function SOSScreen() {
           </View>
 
           {/* Safety Tips */}
-          <View className="bg-dark-100 rounded-2xl p-5 border border-neutral-100">
-            <Text className="text-light-100 font-semibold text-base mb-3">
+          <View
+            className={`rounded-2xl p-5 border ${
+              isDark
+                ? "bg-dark-100 border-neutral-100"
+                : "bg-gray-100 border-gray-200"
+            }`}
+          >
+            <Text
+              className={`font-semibold text-base mb-3 ${
+                isDark ? "text-light-100" : "text-black"
+              }`}
+            >
               Safety Tips
             </Text>
             <View className="gap-2">
-              <Text className="text-light-300 text-sm">
+              <Text
+                className={`text-sm ${
+                  isDark ? "text-light-300" : "text-gray-600"
+                }`}
+              >
                 • Stay calm and provide clear information about your location
               </Text>
-              <Text className="text-light-300 text-sm">
+              <Text
+                className={`text-sm ${
+                  isDark ? "text-light-300" : "text-gray-600"
+                }`}
+              >
                 • Share your exact address or landmarks nearby
               </Text>
-              <Text className="text-light-300 text-sm">
+              <Text
+                className={`text-sm ${
+                  isDark ? "text-light-300" : "text-gray-600"
+                }`}
+              >
                 • Keep your phone charged and accessible
               </Text>
-              <Text className="text-light-300 text-sm">
+              <Text
+                className={`text-sm ${
+                  isDark ? "text-light-300" : "text-gray-600"
+                }`}
+              >
                 • If unable to speak, send a message via WhatsApp
               </Text>
             </View>

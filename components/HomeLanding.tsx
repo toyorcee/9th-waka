@@ -3,23 +3,30 @@ import OrderTrackingMap from "@/components/OrderTrackingMap";
 import { IconNames, Icons } from "@/constants/icons";
 import { images } from "@/constants/images";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useTabBarPadding } from "@/hooks/useTabBarPadding";
 import { navigationHelper, Routes } from "@/services/navigationHelper";
 import { getMyOrders, Order } from "@/services/orderApi";
 import { toAbsoluteUrl } from "@/services/url";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
+  Dimensions,
+  FlatList,
   Modal,
   ScrollView,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function OrderSkeletonLoader() {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const shimmerAnim = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
@@ -66,7 +73,9 @@ function OrderSkeletonLoader() {
           },
           widthStyle,
         ]}
-        className={`bg-dark-100 rounded-lg ${className}`}
+        className={`rounded-lg ${
+          isDark ? "bg-dark-100" : "bg-gray-100"
+        } ${className}`}
       />
     );
   };
@@ -76,7 +85,11 @@ function OrderSkeletonLoader() {
       {[1, 2].map((i) => (
         <View
           key={i}
-          className="bg-secondary rounded-2xl p-4 border border-neutral-100"
+          className={`rounded-2xl p-4 border ${
+            isDark
+              ? "bg-secondary border-neutral-100"
+              : "bg-white border-gray-200"
+          }`}
         >
           <View className="mb-3">
             <SkeletonBox width="60%" height={20} className="mb-2" />
@@ -84,7 +97,11 @@ function OrderSkeletonLoader() {
             <SkeletonBox width="85%" height={16} className="mb-2" />
             <SkeletonBox width="30%" height={24} />
           </View>
-          <View className="bg-dark-100 rounded-xl h-12 items-center justify-center">
+          <View
+            className={`rounded-xl h-12 items-center justify-center ${
+              isDark ? "bg-dark-100" : "bg-gray-100"
+            }`}
+          >
             <View className="flex-row items-center gap-2">
               <SkeletonBox width={20} height={20} />
               <SkeletonBox width={120} height={16} />
@@ -98,14 +115,98 @@ function OrderSkeletonLoader() {
 
 export default function HomeLanding() {
   const { isAuthenticated, user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { tabBarPadding } = useTabBarPadding();
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [showMapModal, setShowMapModal] = useState(false);
+  const [trackingCode, setTrackingCode] = useState("");
+  const [currentPromoIndex, setCurrentPromoIndex] = useState(0);
+  const promoCarouselRef = useRef<FlatList>(null);
+  const screenWidth = Dimensions.get("window").width;
 
-  const tabBarHeight = 65;
+  const isDark = theme === "dark";
+
+  // Promo banners data
+  const promoBanners = [
+    {
+      id: "1",
+      title: "BoltFood",
+      subtitle:
+        "Lightning-fast food delivery at your doorstep. Order from your favorite restaurants and get meals delivered in minutes!",
+      cta: "Order Now",
+      image: images.partners.boltFood,
+    },
+    {
+      id: "2",
+      title: "Chowdeck",
+      subtitle:
+        "Discover amazing restaurants and cuisines. Your favorite meals, delivered fresh and hot to you!",
+      cta: "Order Now",
+      image: images.partners.chowdeck,
+    },
+    {
+      id: "3",
+      title: "DHL Express",
+      subtitle:
+        "World-class logistics and shipping services. Track your packages in real-time with our advanced tracking system.",
+      cta: "Order Now",
+      image: images.partners.dhl,
+    },
+    {
+      id: "4",
+      title: "Glovo",
+      subtitle:
+        "Everything you need, delivered. From groceries to meals, get anything delivered quickly and reliably.",
+      cta: "Order Now",
+      image: images.partners.glovo,
+    },
+    {
+      id: "5",
+      title: "Item7",
+      subtitle:
+        "Premium delivery experience. Fast, secure, and professional delivery services for all your needs.",
+      cta: "Order Now",
+      image: images.partners.item7,
+    },
+    {
+      id: "6",
+      title: "Xtabel-Buka",
+      subtitle:
+        "Authentic traditional meals delivered fresh. Experience the rich flavors of local cuisine, delivered to you!",
+      cta: "Order Now",
+      image: images.partners.xtabelBuka,
+    },
+  ];
+
+  // Featured partners data
+  const featuredPartners = [
+    { id: "1", name: "BoltFood", logo: images.partners.boltFood },
+    { id: "2", name: "Chowdeck", logo: images.partners.chowdeck },
+    { id: "3", name: "DHL", logo: images.partners.dhl },
+    { id: "4", name: "Glovo", logo: images.partners.glovo },
+    { id: "5", name: "Item7", logo: images.partners.item7 },
+    { id: "6", name: "Xtabel-Buka", logo: images.partners.xtabelBuka },
+  ];
+
+  // Auto-slide promo carousel
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentPromoIndex((prev) => {
+        const next = (prev + 1) % promoBanners.length;
+        promoCarouselRef.current?.scrollToIndex({
+          index: next,
+          animated: true,
+        });
+        return next;
+      });
+    }, 4000); // Change slide every 4 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (
@@ -160,25 +261,48 @@ export default function HomeLanding() {
 
   return (
     <>
-      <ScrollView
-        className="flex-1 bg-primary"
-        contentContainerStyle={{
-          paddingTop: insets.top + 20,
-          paddingBottom: tabBarHeight + insets.bottom + 40,
+      {/* Fixed Header */}
+      <View
+        className={`absolute top-0 left-0 right-0 z-50 ${
+          isDark ? "bg-primary" : "bg-white"
+        }`}
+        style={{
+          paddingTop: insets.top + 10,
+          paddingBottom: 10,
           paddingHorizontal: 24,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: isDark ? 0.1 : 0.05,
+          shadowRadius: 4,
+          elevation: 4,
         }}
-        showsVerticalScrollIndicator={false}
       >
-        <View>
-          {/* Enhanced Header */}
-          <View className="flex-row items-center justify-between mb-4">
+        <View className="flex-row items-center justify-between">
+          <View className="rounded-xl p-2">
             <Image
-              source={images.logo}
+              source={isDark ? images.logo : images.logoDark}
               style={{ width: 56, height: 56 }}
               contentFit="contain"
             />
-            {isAuthenticated ? (
-              <View className="flex-row items-center">
+          </View>
+          <View className="flex-row items-center">
+            {/* Theme Toggle Button */}
+            <TouchableOpacity
+              onPress={toggleTheme}
+              className="mr-3"
+              accessibilityRole="button"
+              accessibilityLabel={
+                isDark ? "Switch to light mode" : "Switch to dark mode"
+              }
+            >
+              <Icons.action
+                name={isDark ? "moon-outline" : "sunny-outline"}
+                size={24}
+                color={isDark ? "#FFFFFF" : "#000000"}
+              />
+            </TouchableOpacity>
+            {isAuthenticated && (
+              <>
                 <NotificationBell />
                 <TouchableOpacity
                   onPress={() => router.push(Routes.tabs.profile)}
@@ -215,36 +339,38 @@ export default function HomeLanding() {
                     </View>
                   )}
                 </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity
-                onPress={() => router.push(Routes.standalone.auth)}
-                className="bg-accent/20 rounded-xl p-2.5 border border-accent/30"
-                style={{
-                  shadowColor: "#AB8BFF",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 4,
-                  elevation: 3,
-                }}
-              >
-                <Icons.user
-                  name={IconNames.personOutline as any}
-                  size={24}
-                  color="#AB8BFF"
-                />
-              </TouchableOpacity>
+              </>
             )}
           </View>
+        </View>
+      </View>
 
+      <ScrollView
+        className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
+        contentContainerStyle={{
+          paddingTop: insets.top + 100,
+          paddingBottom: tabBarPadding,
+          paddingHorizontal: 24,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View>
           {/* Welcome Section */}
-          <View className="mb-6">
-            <Text className="text-light-100 text-2xl font-bold mb-1">
+          <View className="mb-6 mt-2">
+            <Text
+              className={`text-2xl font-bold mb-1 ${
+                isDark ? "text-light-100" : "text-black"
+              }`}
+            >
               {isAuthenticated && user?.fullName
                 ? `Welcome, ${user.fullName.split(" ")[0]}!`
                 : "Welcome to 9thWaka"}
             </Text>
-            <Text className="text-light-400 text-sm">
+            <Text
+              className={`text-sm ${
+                isDark ? "text-light-400" : "text-gray-500"
+              }`}
+            >
               Modern Delivery • Safe • Fast
             </Text>
           </View>
@@ -262,7 +388,11 @@ export default function HomeLanding() {
                         color="#AB8BFF"
                       />
                     </View>
-                    <Text className="text-light-100 text-lg font-bold">
+                    <Text
+                      className={`text-lg font-bold ${
+                        isDark ? "text-light-100" : "text-black"
+                      }`}
+                    >
                       Active Deliveries
                     </Text>
                   </View>
@@ -281,7 +411,11 @@ export default function HomeLanding() {
                   activeOrders.map((order) => (
                     <View
                       key={order._id}
-                      className="bg-secondary rounded-3xl p-5 mb-4 border border-neutral-100"
+                      className={`rounded-3xl p-5 mb-4 border ${
+                        isDark
+                          ? "bg-secondary border-neutral-100"
+                          : "bg-white border-gray-200"
+                      }`}
                       style={{
                         shadowColor: "#000",
                         shadowOffset: { width: 0, height: 2 },
@@ -300,7 +434,11 @@ export default function HomeLanding() {
                                 color="#AB8BFF"
                               />
                             </View>
-                            <Text className="text-light-100 font-bold text-base flex-1">
+                            <Text
+                              className={`font-bold text-base flex-1 ${
+                                isDark ? "text-light-100" : "text-black"
+                              }`}
+                            >
                               {order.items}
                             </Text>
                           </View>
@@ -312,7 +450,11 @@ export default function HomeLanding() {
                                 color="#5AC8FA"
                                 style={{ marginRight: 6, marginTop: 2 }}
                               />
-                              <Text className="text-light-300 text-sm flex-1">
+                              <Text
+                                className={`text-sm flex-1 ${
+                                  isDark ? "text-light-300" : "text-gray-600"
+                                }`}
+                              >
                                 {order.pickup.address}
                               </Text>
                             </View>
@@ -323,7 +465,11 @@ export default function HomeLanding() {
                                 color="#FF9500"
                                 style={{ marginRight: 6, marginTop: 2 }}
                               />
-                              <Text className="text-light-300 text-sm flex-1">
+                              <Text
+                                className={`text-sm flex-1 ${
+                                  isDark ? "text-light-300" : "text-gray-600"
+                                }`}
+                              >
                                 {order.dropoff.address}
                               </Text>
                             </View>
@@ -380,13 +526,23 @@ export default function HomeLanding() {
                     </View>
                   ))
                 ) : (
-                  <View className="bg-secondary rounded-3xl p-8 border border-neutral-100 items-center">
+                  <View
+                    className={`rounded-3xl p-8 border items-center ${
+                      isDark
+                        ? "bg-secondary border-neutral-100"
+                        : "bg-white border-gray-200"
+                    }`}
+                  >
                     <Icons.package
                       name={IconNames.packageOutline as any}
                       size={48}
                       color="#9CA4AB"
                     />
-                    <Text className="text-light-400 text-sm mt-3 text-center">
+                    <Text
+                      className={`text-sm mt-3 text-center ${
+                        isDark ? "text-light-400" : "text-gray-500"
+                      }`}
+                    >
                       No active deliveries at the moment
                     </Text>
                   </View>
@@ -396,7 +552,11 @@ export default function HomeLanding() {
 
           {/* Service Status Card */}
           <View
-            className="bg-secondary rounded-3xl p-5 mb-6 border border-neutral-100"
+            className={`rounded-3xl p-5 mb-6 border ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-gray-50 border-gray-200"
+            }`}
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
@@ -414,7 +574,11 @@ export default function HomeLanding() {
                     color="#30D158"
                   />
                 </View>
-                <Text className="text-light-100 text-lg font-bold">
+                <Text
+                  className={`text-lg font-bold ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
                   Service Status
                 </Text>
               </View>
@@ -432,9 +596,199 @@ export default function HomeLanding() {
                 color="#9CA4AB"
                 style={{ marginRight: 6 }}
               />
-              <Text className="text-light-300 text-sm">
+              <Text
+                className={`text-sm ${
+                  isDark ? "text-light-300" : "text-gray-600"
+                }`}
+              >
                 Daily Service • Open until 10:00 PM
               </Text>
+            </View>
+          </View>
+
+          {/* Track Shipment Search Bar */}
+          <View className="mb-4">
+            <View
+              className={`flex-row items-center rounded-2xl px-4 py-3 border ${
+                isDark
+                  ? "bg-dark-100 border-neutral-100"
+                  : "bg-gray-100 border-gray-200"
+              }`}
+              style={{
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: isDark ? 0.1 : 0.05,
+                shadowRadius: 4,
+                elevation: 2,
+              }}
+            >
+              <Icons.search
+                name={IconNames.search as any}
+                size={20}
+                color={isDark ? "#9CA4AB" : "#6E6E73"}
+                style={{ marginRight: 12 }}
+              />
+              <TextInput
+                placeholder="Enter tracking code or order ID"
+                placeholderTextColor={isDark ? "#9CA4AB" : "#6E6E73"}
+                value={trackingCode}
+                onChangeText={setTrackingCode}
+                className={`flex-1 text-base ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+                onSubmitEditing={() => {
+                  if (trackingCode.trim()) {
+                    router.push(`/orders/${trackingCode.trim()}` as any);
+                  }
+                }}
+              />
+              {trackingCode.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => {
+                    if (trackingCode.trim()) {
+                      router.push(`/orders/${trackingCode.trim()}` as any);
+                    }
+                  }}
+                  className="ml-2"
+                >
+                  <Icons.action
+                    name={IconNames.arrowForward as any}
+                    size={20}
+                    color="#AB8BFF"
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* Promo Carousel */}
+          <View className="mb-6">
+            <FlatList
+              ref={promoCarouselRef}
+              data={promoBanners}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item) => item.id}
+              onMomentumScrollEnd={(event) => {
+                const index = Math.round(
+                  event.nativeEvent.contentOffset.x / screenWidth
+                );
+                setCurrentPromoIndex(index);
+              }}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  style={{ width: screenWidth - 48 }}
+                  className="mr-4"
+                  onPress={() => {
+                    if (isAuthenticated) {
+                      router.push(Routes.standalone.newOrder as any);
+                    } else {
+                      navigationHelper.setPendingAction("request");
+                      router.push(Routes.standalone.auth as any);
+                    }
+                  }}
+                >
+                  <View
+                    className={`rounded-2xl overflow-hidden border ${
+                      isDark
+                        ? "bg-secondary border-neutral-100"
+                        : "bg-white border-gray-200"
+                    }`}
+                    style={{
+                      height: 180,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: isDark ? 0.15 : 0.08,
+                      shadowRadius: 8,
+                      elevation: 4,
+                    }}
+                  >
+                    {/* Image Background */}
+                    {item.image && (
+                      <View className="absolute inset-0">
+                        <Image
+                          source={item.image}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                          }}
+                          contentFit="cover"
+                        />
+                        {/* Overlay for better text readability */}
+                        <View
+                          className="absolute inset-0"
+                          style={{
+                            backgroundColor: isDark
+                              ? "rgba(0, 0, 0, 0.15)"
+                              : "rgba(255, 255, 255, 0.2)",
+                          }}
+                        />
+                      </View>
+                    )}
+                    {/* Content */}
+                    <View className="flex-1 p-6 justify-between">
+                      <View>
+                        <Text
+                          className="text-2xl font-bold mb-2 text-white"
+                          style={{
+                            textShadowColor: "rgba(0, 0, 0, 0.6)",
+                            textShadowOffset: { width: 0, height: 1 },
+                            textShadowRadius: 3,
+                          }}
+                        >
+                          {item.title}
+                        </Text>
+                        <Text
+                          className="text-sm leading-5 text-white"
+                          numberOfLines={2}
+                          style={{
+                            textShadowColor: "rgba(0, 0, 0, 0.6)",
+                            textShadowOffset: { width: 0, height: 1 },
+                            textShadowRadius: 3,
+                          }}
+                        >
+                          {item.subtitle}
+                        </Text>
+                      </View>
+                      <View className="flex-row items-center">
+                        <Text
+                          className="font-semibold text-base text-white"
+                          style={{
+                            textShadowColor: "rgba(0, 0, 0, 0.6)",
+                            textShadowOffset: { width: 0, height: 1 },
+                            textShadowRadius: 3,
+                          }}
+                        >
+                          {item.cta}
+                        </Text>
+                        <Icons.action
+                          name={IconNames.arrowForward as any}
+                          size={18}
+                          color="#FFFFFF"
+                          style={{ marginLeft: 8 }}
+                        />
+                      </View>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              )}
+            />
+            {/* Carousel Indicators */}
+            <View className="flex-row justify-center mt-3">
+              {promoBanners.map((_, index) => (
+                <View
+                  key={index}
+                  className={`h-2 rounded-full mx-1 ${
+                    index === currentPromoIndex
+                      ? "bg-accent w-6"
+                      : isDark
+                      ? "bg-dark-100 w-2"
+                      : "bg-gray-300 w-2"
+                  }`}
+                />
+              ))}
             </View>
           </View>
 
@@ -448,7 +802,11 @@ export default function HomeLanding() {
                   color="#AB8BFF"
                 />
               </View>
-              <Text className="text-light-100 text-lg font-bold">
+              <Text
+                className={`text-lg font-bold ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
                 Quick Actions
               </Text>
             </View>
@@ -471,10 +829,14 @@ export default function HomeLanding() {
                   <Icons.package
                     name={IconNames.packageOutline as any}
                     size={20}
-                    color="#030014"
+                    color={isDark ? "#030014" : "#FFFFFF"}
                     style={{ marginBottom: 6, alignSelf: "center" }}
                   />
-                  <Text className="text-primary font-bold text-center text-xs">
+                  <Text
+                    className={`font-bold text-center text-xs ${
+                      isDark ? "text-primary" : "text-white"
+                    }`}
+                  >
                     Available Orders
                   </Text>
                 </TouchableOpacity>
@@ -493,16 +855,22 @@ export default function HomeLanding() {
                   <Icons.map
                     name={IconNames.mapOutline as any}
                     size={20}
-                    color="#030014"
+                    color={isDark ? "#030014" : "#FFFFFF"}
                     style={{ marginBottom: 6, alignSelf: "center" }}
                   />
-                  <Text className="text-primary font-bold text-center text-xs">
+                  <Text
+                    className={`font-bold text-center text-xs ${
+                      isDark ? "text-primary" : "text-white"
+                    }`}
+                  >
                     My Deliveries
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleAction("earnings")}
-                  className="bg-secondary border-2 border-accent/30 px-4 py-3.5 flex-1 min-w-[30%]"
+                  className={`border-2 border-accent/30 px-4 py-3.5 flex-1 min-w-[30%] ${
+                    isDark ? "bg-secondary" : "bg-white"
+                  }`}
                   style={{
                     borderRadius: 20,
                     shadowColor: "#000",
@@ -515,7 +883,7 @@ export default function HomeLanding() {
                   <Icons.money
                     name={IconNames.cash as any}
                     size={20}
-                    color="#AB8BFF"
+                    color={isDark ? "#AB8BFF" : "#AB8BFF"}
                     style={{ marginBottom: 6, alignSelf: "center" }}
                   />
                   <Text className="text-accent font-bold text-center text-xs">
@@ -541,10 +909,14 @@ export default function HomeLanding() {
                   <Icons.action
                     name={IconNames.addCircle as any}
                     size={20}
-                    color="#030014"
+                    color={isDark ? "#030014" : "#FFFFFF"}
                     style={{ marginBottom: 6, alignSelf: "center" }}
                   />
-                  <Text className="text-primary font-bold text-center text-xs">
+                  <Text
+                    className={`font-bold text-center text-xs ${
+                      isDark ? "text-primary" : "text-white"
+                    }`}
+                  >
                     Request Delivery
                   </Text>
                 </TouchableOpacity>
@@ -563,32 +935,40 @@ export default function HomeLanding() {
                   <Icons.map
                     name={IconNames.mapOutline as any}
                     size={20}
-                    color="#030014"
+                    color={isDark ? "#030014" : "#FFFFFF"}
                     style={{ marginBottom: 6, alignSelf: "center" }}
                   />
-                  <Text className="text-primary font-bold text-center text-xs">
+                  <Text
+                    className={`font-bold text-center text-xs ${
+                      isDark ? "text-primary" : "text-white"
+                    }`}
+                  >
                     Track Order
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleAction("orders")}
-                  className="bg-secondary border-2 border-accent/30 px-4 py-3.5 flex-1 min-w-[30%]"
+                  className="bg-accent px-4 py-3.5 flex-1 min-w-[30%]"
                   style={{
                     borderRadius: 20,
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 4,
-                    elevation: 3,
+                    shadowColor: "#AB8BFF",
+                    shadowOffset: { width: 0, height: 3 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 6,
+                    elevation: 5,
                   }}
                 >
                   <Icons.package
                     name={IconNames.packageOutline as any}
                     size={20}
-                    color="#AB8BFF"
+                    color={isDark ? "#030014" : "#FFFFFF"}
                     style={{ marginBottom: 6, alignSelf: "center" }}
                   />
-                  <Text className="text-accent font-bold text-center text-xs">
+                  <Text
+                    className={`font-bold text-center text-xs ${
+                      isDark ? "text-primary" : "text-white"
+                    }`}
+                  >
                     My Orders
                   </Text>
                 </TouchableOpacity>
@@ -616,7 +996,11 @@ export default function HomeLanding() {
                   color="#FFFFFF"
                   style={{ marginRight: 8 }}
                 />
-                <Text className="text-light-100 font-bold text-lg">
+                <Text
+                  className={`font-bold text-lg ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
                   Emergency SOS
                 </Text>
               </TouchableOpacity>
@@ -633,11 +1017,21 @@ export default function HomeLanding() {
                   color="#5AC8FA"
                 />
               </View>
-              <Text className="text-light-100 text-lg font-bold">Features</Text>
+              <Text
+                className={`text-lg font-bold ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
+                Features
+              </Text>
             </View>
             <View className="gap-3">
               <View
-                className="bg-secondary rounded-2xl p-4 border border-neutral-100"
+                className={`rounded-2xl p-4 border ${
+                  isDark
+                    ? "bg-secondary border-neutral-100"
+                    : "bg-white border-gray-200"
+                }`}
                 style={{
                   shadowColor: "#000",
                   shadowOffset: { width: 0, height: 2 },
@@ -658,12 +1052,20 @@ export default function HomeLanding() {
                     AI Safe Routes
                   </Text>
                 </View>
-                <Text className="text-light-300 text-sm">
+                <Text
+                  className={`text-sm ${
+                    isDark ? "text-light-300" : "text-gray-600"
+                  }`}
+                >
                   Intelligent routing for maximum safety
                 </Text>
               </View>
               <View
-                className="bg-secondary rounded-2xl p-4 border border-neutral-100"
+                className={`rounded-2xl p-4 border ${
+                  isDark
+                    ? "bg-secondary border-neutral-100"
+                    : "bg-white border-gray-200"
+                }`}
                 style={{
                   shadowColor: "#000",
                   shadowOffset: { width: 0, height: 2 },
@@ -684,12 +1086,20 @@ export default function HomeLanding() {
                     Real-Time Tracking
                   </Text>
                 </View>
-                <Text className="text-light-300 text-sm">
+                <Text
+                  className={`text-sm ${
+                    isDark ? "text-light-300" : "text-gray-600"
+                  }`}
+                >
                   Follow your delivery live on the map
                 </Text>
               </View>
               <View
-                className="bg-secondary rounded-2xl p-4 border border-neutral-100"
+                className={`rounded-2xl p-4 border ${
+                  isDark
+                    ? "bg-secondary border-neutral-100"
+                    : "bg-white border-gray-200"
+                }`}
                 style={{
                   shadowColor: "#000",
                   shadowOffset: { width: 0, height: 2 },
@@ -710,7 +1120,11 @@ export default function HomeLanding() {
                     Night Assurance
                   </Text>
                 </View>
-                <Text className="text-light-300 text-sm">
+                <Text
+                  className={`text-sm ${
+                    isDark ? "text-light-300" : "text-gray-600"
+                  }`}
+                >
                   Verified riders, secure deliveries
                 </Text>
               </View>

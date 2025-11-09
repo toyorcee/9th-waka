@@ -1,6 +1,8 @@
 import OrderChat from "@/components/OrderChat";
+import SupportChat from "@/components/SupportChat";
 import { IconNames, Icons } from "@/constants/icons";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { getMyOrders } from "@/services/orderApi";
 import Constants from "expo-constants";
 import * as Linking from "expo-linking";
@@ -24,12 +26,15 @@ const whatsappNumber =
 
 export default function FloatingSupportBot() {
   const { user, isAuthenticated } = useAuth();
+  const { theme } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const isDark = theme === "dark";
   const [showModal, setShowModal] = useState(false);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [showChat, setShowChat] = useState(false);
+  const [showSupportChat, setShowSupportChat] = useState(false);
   const [loadingActiveOrder, setLoadingActiveOrder] = useState(false);
 
   // Animation values
@@ -189,6 +194,11 @@ export default function FloatingSupportBot() {
     router.push("/(tabs)/messages" as any);
   };
 
+  const handleChatWithLiveAgent = () => {
+    setShowModal(false);
+    setShowSupportChat(true);
+  };
+
   if (!shouldShow) return null;
 
   return (
@@ -197,7 +207,7 @@ export default function FloatingSupportBot() {
       <Animated.View
         style={{
           position: "absolute",
-          bottom: insets.bottom + 80,
+          bottom: insets.bottom + 100,
           right: 20,
           zIndex: 1000,
           transform: [{ scale: scaleAnim }, { translateY: floatAnim }],
@@ -206,23 +216,23 @@ export default function FloatingSupportBot() {
         <TouchableOpacity
           onPress={handlePress}
           activeOpacity={0.8}
-          className="w-16 h-16 rounded-full bg-accent items-center justify-center"
+          className="w-12 h-12 rounded-full bg-accent items-center justify-center"
           style={{
             shadowColor: "#AB8BFF",
-            shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: 0.4,
-            shadowRadius: 12,
-            elevation: 10,
-            borderWidth: 3,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+            elevation: 8,
+            borderWidth: 2,
             borderColor: "#030014",
           }}
         >
           <Animated.View
             style={{
               position: "absolute",
-              width: 64,
-              height: 64,
-              borderRadius: 32,
+              width: 50,
+              height: 50,
+              borderRadius: 24,
               backgroundColor: "#AB8BFF",
               opacity: 0.3,
               transform: [{ scale: pulseAnim }],
@@ -230,7 +240,7 @@ export default function FloatingSupportBot() {
           />
           <Icons.communication
             name={IconNames.chatbubbleOutline as any}
-            size={28}
+            size={20}
             color="#030014"
             style={{ zIndex: 1 }}
           />
@@ -255,7 +265,11 @@ export default function FloatingSupportBot() {
             className="w-full max-w-sm"
           >
             <View
-              className="bg-secondary rounded-3xl p-6 border border-neutral-100"
+              className={`rounded-3xl p-6 border ${
+                isDark
+                  ? "bg-secondary border-neutral-100"
+                  : "bg-white border-gray-200"
+              }`}
               style={{
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 8 },
@@ -273,10 +287,18 @@ export default function FloatingSupportBot() {
                     color="#AB8BFF"
                   />
                 </View>
-                <Text className="text-light-100 text-xl font-bold mb-1">
+                <Text
+                  className={`text-xl font-bold mb-1 ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
                   How can we help?
                 </Text>
-                <Text className="text-light-400 text-sm text-center">
+                <Text
+                  className={`text-sm text-center ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
                   Choose an option below
                 </Text>
               </View>
@@ -332,6 +354,56 @@ export default function FloatingSupportBot() {
                   </TouchableOpacity>
                 )}
 
+                {/* Chat with Live Agent */}
+                {isAuthenticated && (
+                  <TouchableOpacity
+                    onPress={handleChatWithLiveAgent}
+                    className="bg-accent rounded-2xl p-5 flex-row items-center justify-between active:opacity-90"
+                    style={{
+                      shadowColor: "#AB8BFF",
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 8,
+                      elevation: 6,
+                    }}
+                  >
+                    <View className="flex-row items-center flex-1">
+                      <View
+                        className={`rounded-xl p-2.5 mr-4 ${
+                          isDark ? "bg-primary/20" : "bg-white/20"
+                        }`}
+                      >
+                        <Icons.communication
+                          name={IconNames.chatbubbleOutline as any}
+                          size={22}
+                          color={isDark ? "#030014" : "#FFFFFF"}
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text
+                          className={`font-bold text-base mb-0.5 ${
+                            isDark ? "text-primary" : "text-white"
+                          }`}
+                        >
+                          Chat with Live Agent
+                        </Text>
+                        <Text
+                          className={`text-xs ${
+                            isDark ? "text-primary/70" : "text-white/80"
+                          }`}
+                        >
+                          Get help from our support team
+                        </Text>
+                      </View>
+                    </View>
+                    <Icons.navigation
+                      name={IconNames.arrowForward as any}
+                      size={20}
+                      color={isDark ? "#030014" : "#FFFFFF"}
+                    />
+                  </TouchableOpacity>
+                )}
+
                 {/* View All Messages */}
                 {isAuthenticated && (
                   <TouchableOpacity
@@ -346,18 +418,30 @@ export default function FloatingSupportBot() {
                     }}
                   >
                     <View className="flex-row items-center flex-1">
-                      <View className="bg-primary/20 rounded-xl p-2.5 mr-4">
+                      <View
+                        className={`rounded-xl p-2.5 mr-4 ${
+                          isDark ? "bg-primary/20" : "bg-white/20"
+                        }`}
+                      >
                         <Icons.communication
                           name={IconNames.chatbubbleOutline as any}
                           size={22}
-                          color="#030014"
+                          color={isDark ? "#030014" : "#FFFFFF"}
                         />
                       </View>
                       <View className="flex-1">
-                        <Text className="text-primary font-bold text-base mb-0.5">
+                        <Text
+                          className={`font-bold text-base mb-0.5 ${
+                            isDark ? "text-primary" : "text-white"
+                          }`}
+                        >
                           View Messages
                         </Text>
-                        <Text className="text-primary/70 text-xs">
+                        <Text
+                          className={`text-xs ${
+                            isDark ? "text-primary/70" : "text-white/80"
+                          }`}
+                        >
                           See all conversations
                         </Text>
                       </View>
@@ -365,7 +449,7 @@ export default function FloatingSupportBot() {
                     <Icons.navigation
                       name={IconNames.arrowForward as any}
                       size={20}
-                      color="#030014"
+                      color={isDark ? "#030014" : "#FFFFFF"}
                     />
                   </TouchableOpacity>
                 )}
@@ -382,18 +466,30 @@ export default function FloatingSupportBot() {
                   }}
                 >
                   <View className="flex-row items-center flex-1">
-                    <View className="bg-primary/20 rounded-xl p-2.5 mr-4">
+                    <View
+                      className={`rounded-xl p-2.5 mr-4 ${
+                        isDark ? "bg-primary/20" : "bg-white/20"
+                      }`}
+                    >
                       <Icons.communication
                         name={IconNames.chatbubbleOutline as any}
                         size={22}
-                        color="#030014"
+                        color={isDark ? "#030014" : "#FFFFFF"}
                       />
                     </View>
                     <View className="flex-1">
-                      <Text className="text-primary font-bold text-base mb-0.5">
+                      <Text
+                        className={`font-bold text-base mb-0.5 ${
+                          isDark ? "text-primary" : "text-white"
+                        }`}
+                      >
                         Chat on WhatsApp
                       </Text>
-                      <Text className="text-primary/70 text-xs">
+                      <Text
+                        className={`text-xs ${
+                          isDark ? "text-primary/70" : "text-white/80"
+                        }`}
+                      >
                         Get instant support
                       </Text>
                     </View>
@@ -401,7 +497,7 @@ export default function FloatingSupportBot() {
                   <Icons.navigation
                     name={IconNames.arrowForward as any}
                     size={20}
-                    color="#030014"
+                    color={isDark ? "#030014" : "#FFFFFF"}
                   />
                 </TouchableOpacity>
 
@@ -417,18 +513,30 @@ export default function FloatingSupportBot() {
                   }}
                 >
                   <View className="flex-row items-center flex-1">
-                    <View className="bg-primary/20 rounded-xl p-2.5 mr-4">
+                    <View
+                      className={`rounded-xl p-2.5 mr-4 ${
+                        isDark ? "bg-primary/20" : "bg-white/20"
+                      }`}
+                    >
                       <Icons.info
                         name={IconNames.informationOutline as any}
                         size={22}
-                        color="#030014"
+                        color={isDark ? "#030014" : "#FFFFFF"}
                       />
                     </View>
                     <View className="flex-1">
-                      <Text className="text-primary font-bold text-base mb-0.5">
+                      <Text
+                        className={`font-bold text-base mb-0.5 ${
+                          isDark ? "text-primary" : "text-white"
+                        }`}
+                      >
                         View FAQ
                       </Text>
-                      <Text className="text-primary/70 text-xs">
+                      <Text
+                        className={`text-xs ${
+                          isDark ? "text-primary/70" : "text-white/80"
+                        }`}
+                      >
                         Find answers to common questions
                       </Text>
                     </View>
@@ -436,7 +544,7 @@ export default function FloatingSupportBot() {
                   <Icons.navigation
                     name={IconNames.arrowForward as any}
                     size={20}
-                    color="#030014"
+                    color={isDark ? "#030014" : "#FFFFFF"}
                   />
                 </TouchableOpacity>
               </View>
@@ -444,9 +552,15 @@ export default function FloatingSupportBot() {
               {/* Close Button */}
               <TouchableOpacity
                 onPress={() => setShowModal(false)}
-                className="mt-4 pt-4 border-t border-neutral-100"
+                className={`mt-4 pt-4 border-t ${
+                  isDark ? "border-neutral-100" : "border-gray-200"
+                }`}
               >
-                <Text className="text-light-400 text-center font-semibold text-sm">
+                <Text
+                  className={`text-center font-semibold text-sm ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
                   Cancel
                 </Text>
               </TouchableOpacity>
@@ -466,6 +580,12 @@ export default function FloatingSupportBot() {
           }}
         />
       )}
+
+      {/* Support Chat Modal */}
+      <SupportChat
+        visible={showSupportChat}
+        onClose={() => setShowSupportChat(false)}
+      />
     </>
   );
 }

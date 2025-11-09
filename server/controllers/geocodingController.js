@@ -54,9 +54,12 @@ export const geocodeSingleAddress = async (req, res) => {
     const result = await geocodeAddress(address.trim());
 
     if (!result) {
-      return res.status(404).json({
+      // Return 200 with success: false instead of 404
+      // This allows frontend to handle gracefully
+      return res.status(200).json({
         success: false,
         error: "Address not found",
+        location: null,
       });
     }
 

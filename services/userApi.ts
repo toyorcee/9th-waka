@@ -159,3 +159,15 @@ export async function updateSearchRadius(
   });
   return response.data;
 }
+
+/**
+ * Accept terms and conditions
+ */
+export async function acceptTerms(): Promise<{
+  success: boolean;
+  message: string;
+  user: any;
+}> {
+  const response = await apiClient.post("/user/accept-terms");
+  return response.data;
+}

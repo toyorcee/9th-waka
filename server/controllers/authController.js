@@ -1,5 +1,4 @@
 import bcrypt from "bcryptjs";
-import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 import path from "path";
@@ -9,6 +8,7 @@ import User from "../models/User.js";
 import { io } from "../server.js";
 import { buildDarkEmailTemplate } from "../services/emailTemplates.js";
 import { createAndSendNotification } from "../services/notificationService.js";
+import { sendSMS } from "../services/smsService.js";
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -349,6 +349,7 @@ export const login = async (req, res, next) => {
         role: user.role,
         fullName: user.fullName,
         phoneNumber: user.phoneNumber,
+        termsAccepted: user.termsAccepted || false,
       },
     });
   } catch (error) {
@@ -385,6 +386,7 @@ export const getCurrentUser = async (req, res, next) => {
         driverLicenseVerified: user.driverLicenseVerified || false,
         vehiclePicture: user.vehiclePicture || null,
         searchRadiusKm: user.searchRadiusKm || 7,
+        termsAccepted: user.termsAccepted || false,
       },
     });
   } catch (error) {
@@ -479,6 +481,7 @@ export const verifyEmail = async (req, res, next) => {
         phoneNumber: user.phoneNumber,
         vehicleType: user.vehicleType || null,
         isVerified: user.isVerified,
+        termsAccepted: user.termsAccepted || false,
       },
     });
   } catch (error) {
@@ -546,71 +549,127 @@ export const resendVerification = async (req, res, next) => {
   }
 };
 
-// @desc    Forgot password - Generate reset token
+// @desc    Forgot password - Generate reset code
 // @route   POST /api/auth/forgotpassword
 // @access  Public
 export const forgotPassword = async (req, res, next) => {
   try {
-    let { email } = req.body;
+    let { email, phoneNumber } = req.body;
 
-    email = email ? email.trim().toLowerCase() : email;
-
-    if (!email) {
+    // Validate that at least one identifier is provided
+    if (!email && !phoneNumber) {
       return res.status(400).json({
         success: false,
-        error: "Please provide an email address",
+        error: "Please provide either an email address or phone number",
       });
     }
 
-    const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({
-        success: false,
-        error: "Please provide a valid email address",
-      });
+    // Format phone number if provided
+    let formattedPhone = null;
+    if (phoneNumber) {
+      formattedPhone = phoneNumber.trim();
+      // Remove + if present, ensure it starts with 234
+      formattedPhone = formattedPhone.replace(/^\+/, "");
+      if (!formattedPhone.startsWith("234")) {
+        formattedPhone = "234" + formattedPhone;
+      }
+      formattedPhone = "+" + formattedPhone;
     }
 
-    const user = await User.findOne({ email });
+    // Format email if provided
+    email = email ? email.trim().toLowerCase() : null;
+
+    // Validate email format if provided
+    if (email) {
+      const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({
+          success: false,
+          error: "Please provide a valid email address",
+        });
+      }
+    }
+
+    // Find user by email or phone
+    let user = null;
+    if (email) {
+      user = await User.findOne({ email });
+    } else if (formattedPhone) {
+      user = await User.findOne({ phoneNumber: formattedPhone });
+    }
+
+    // Don't reveal if user exists (security best practice)
     if (!user) {
       return res.status(200).json({
         success: true,
-        message: "If that email exists, a password reset link has been sent",
+        message:
+          "If an account exists with that information, a password reset code has been sent",
       });
     }
 
-    // Generate reset token
-    const resetToken = user.getResetPasswordToken();
+    // Generate 6-digit reset code
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    user.resetPasswordCode = resetCode;
+    user.resetPasswordCodeExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
     await user.save({ validateBeforeSave: false });
 
-    // In production, you would send an email here
-    // For now, we'll return the token (remove this in production!)
-    // TODO: Send email with reset link containing the resetToken
-    // const resetUrl = `${req.protocol}://${req.get('host')}/api/auth/resetpassword/${resetToken}`;
-    // await sendEmail({
-    //   email: user.email,
-    //   subject: 'Password Reset Request',
-    //   message: `Click this link to reset your password: ${resetUrl}`
-    // });
+    // Log code in development mode only
+    if (
+      process.env.LOG_IN_DEV === "true" ||
+      process.env.NODE_ENV !== "production"
+    ) {
+      console.log("🔑 [DEV] Password Reset Code:", resetCode);
+      console.log("   Email:", user.email);
+      console.log("   Phone:", user.phoneNumber);
+      console.log(
+        "   Expires at:",
+        user.resetPasswordCodeExpires.toISOString()
+      );
+    }
+
+    // Send code via email or SMS
+    try {
+      if (email && user.email) {
+        await sendEmail({
+          to: user.email,
+          subject: "9thWaka Password Reset Code",
+          html: buildDarkEmailTemplate(
+            "Password Reset Request",
+            "Use the code below to reset your password. This code will expire in 10 minutes.",
+            resetCode
+          ),
+        });
+        console.log("✉️ [EMAIL] Password reset code sent to:", user.email);
+      } else if (formattedPhone && user.phoneNumber) {
+        const smsMessage = `Your 9thWaka password reset code is: ${resetCode}. This code expires in 10 minutes. If you didn't request this, please ignore this message.`;
+        await sendSMS(user.phoneNumber, smsMessage);
+        console.log("📱 [SMS] Password reset code sent to:", user.phoneNumber);
+      }
+    } catch (sendError) {
+      console.error(
+        "❌ [AUTH] Failed to send reset code:",
+        sendError?.message || sendError
+      );
+      // Still return success to not reveal if user exists
+    }
 
     res.status(200).json({
       success: true,
-      message: "Password reset token generated",
-      // Remove this in production! Only for development/testing
-      resetToken:
-        process.env.NODE_ENV === "development" ? resetToken : undefined,
+      message:
+        "If an account exists with that information, a password reset code has been sent",
     });
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Reset password
-// @route   PUT /api/auth/resetpassword/:resettoken
+// @desc    Reset password using code
+// @route   PUT /api/auth/resetpassword/:code
 // @access  Public
 export const resetPassword = async (req, res, next) => {
   try {
-    let { password } = req.body;
-    const resetToken = req.params.resettoken;
+    let { password, email, phoneNumber } = req.body;
+    const resetCode = req.params.code;
 
     // Normalize password: trim whitespace
     password = password ? password.trim() : password;
@@ -630,36 +689,59 @@ export const resetPassword = async (req, res, next) => {
       });
     }
 
-    if (!resetToken) {
+    if (!resetCode || resetCode.length !== 6) {
       return res.status(400).json({
         success: false,
-        error: "Invalid reset token",
+        error: "Invalid reset code. Please enter the 6-digit code.",
       });
     }
 
-    // Hash the reset token to compare with stored token
-    const hashedToken = crypto
-      .createHash("sha256")
-      .update(resetToken)
-      .digest("hex");
+    // Format identifiers
+    email = email ? email.trim().toLowerCase() : null;
+    let formattedPhone = null;
+    if (phoneNumber) {
+      formattedPhone = phoneNumber.trim();
+      formattedPhone = formattedPhone.replace(/^\+/, "");
+      if (!formattedPhone.startsWith("234")) {
+        formattedPhone = "234" + formattedPhone;
+      }
+      formattedPhone = "+" + formattedPhone;
+    }
 
-    // Find user with matching token and check if token hasn't expired
-    const user = await User.findOne({
-      resetPasswordToken: hashedToken,
-      resetPasswordExpire: { $gt: Date.now() }, // Token must not be expired
-    });
+    // Build query to find user
+    const query = {
+      resetPasswordCode: resetCode,
+      resetPasswordCodeExpires: { $gt: new Date() }, // Code must not be expired
+    };
+
+    if (email) {
+      query.email = email;
+    } else if (formattedPhone) {
+      query.phoneNumber = formattedPhone;
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: "Please provide either email or phone number",
+      });
+    }
+
+    // Find user with matching code
+    const user = await User.findOne(query);
 
     if (!user) {
       return res.status(400).json({
         success: false,
-        error: "Invalid or expired reset token",
+        error:
+          "Invalid or expired reset code. Please request a new code if needed.",
       });
     }
 
     // Set new password (pre-save hook will hash it automatically)
     user.password = password;
 
-    // Clear reset token fields
+    // Clear reset code fields
+    user.resetPasswordCode = undefined;
+    user.resetPasswordCodeExpires = undefined;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
 
@@ -667,6 +749,32 @@ export const resetPassword = async (req, res, next) => {
 
     // Generate new login token
     const token = generateToken(user._id);
+
+    // Send confirmation email/SMS
+    try {
+      if (user.email) {
+        await sendEmail({
+          to: user.email,
+          subject: "9thWaka Password Changed Successfully",
+          html: buildDarkEmailTemplate(
+            "Password Changed",
+            "Your password has been successfully changed. If you didn't make this change, please contact support immediately.",
+            null
+          ),
+        });
+      }
+      if (user.phoneNumber) {
+        await sendSMS(
+          user.phoneNumber,
+          "Your 9thWaka password has been changed successfully. If you didn't make this change, contact support immediately."
+        );
+      }
+    } catch (notifyError) {
+      console.error(
+        "❌ [AUTH] Failed to send password change notification:",
+        notifyError?.message
+      );
+    }
 
     res.status(200).json({
       success: true,

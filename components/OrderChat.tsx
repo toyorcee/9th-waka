@@ -1,6 +1,7 @@
 import { IconNames, Icons } from "@/constants/icons";
 import { SocketEvents } from "@/constants/socketEvents";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import {
   ChatMessage,
   getOrderMessages,
@@ -10,6 +11,8 @@ import {
 import { getOrder, Order } from "@/services/orderApi";
 import { getUserPresence, UserPresence } from "@/services/presenceApi";
 import { socketClient } from "@/services/socketClient";
+import { toAbsoluteUrl } from "@/services/url";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -38,8 +41,10 @@ export default function OrderChat({
   onClose,
 }: OrderChatProps) {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const isDark = theme === "dark";
   const [order, setOrder] = useState<Order | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messageText, setMessageText] = useState("");
@@ -51,6 +56,7 @@ export default function OrderChat({
   const [page, setPage] = useState(1);
   const [presence, setPresence] = useState<UserPresence | null>(null);
   const [loadingPresence, setLoadingPresence] = useState(false);
+  const lastTapRef = useRef<number>(0);
 
   // Determine the other party (customer or rider)
   const otherPartyId =
@@ -253,12 +259,16 @@ export default function OrderChat({
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1 bg-primary"
+        className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
         style={{ paddingTop: insets.top }}
       >
         {/* Header */}
         <View
-          className="bg-secondary border-b border-neutral-100 px-5 py-4 flex-row items-center justify-between"
+          className={`border-b px-5 py-4 flex-row items-center justify-between ${
+            isDark
+              ? "bg-secondary border-neutral-100"
+              : "bg-white border-gray-200"
+          }`}
           style={{
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 2 },
@@ -270,18 +280,54 @@ export default function OrderChat({
           <View className="flex-row items-center flex-1">
             <TouchableOpacity
               onPress={onClose}
-              className="mr-4 p-2"
+              className="mr-3 p-2"
               activeOpacity={0.7}
             >
               <Icons.navigation
                 name={IconNames.arrowBack as any}
                 size={24}
-                color="#FFFFFF"
+                color={isDark ? "#FFFFFF" : "#000000"}
               />
             </TouchableOpacity>
+            {/* Profile Picture */}
+            <View className="relative mr-3">
+              {presence?.profilePicture ? (
+                <Image
+                  source={{
+                    uri: String(toAbsoluteUrl(String(presence.profilePicture))),
+                  }}
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
+                  }}
+                  contentFit="cover"
+                />
+              ) : (
+                <View
+                  className={`w-10 h-10 rounded-full items-center justify-center ${
+                    isDark ? "bg-dark-100" : "bg-gray-100"
+                  }`}
+                >
+                  <Icons.user
+                    name={IconNames.personCircle as any}
+                    size={24}
+                    color={isDark ? "#9CA4AB" : "#6E6E73"}
+                  />
+                </View>
+              )}
+              {/* Online Status Dot */}
+              {presence?.online && (
+                <View className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-success border-2 border-white" />
+              )}
+            </View>
             <View className="flex-1">
-              <Text className="text-light-100 text-lg font-bold">
-                {otherPartyName}
+              <Text
+                className={`text-lg font-bold ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
+                {presence?.fullName || otherPartyName}
               </Text>
               {presence ? (
                 presence.online ? (
@@ -292,14 +338,28 @@ export default function OrderChat({
                     </Text>
                   </View>
                 ) : (
-                  <Text className="text-light-400 text-xs">
+                  <Text
+                    className={`text-xs ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
                     Last seen {formatLastSeen(presence.lastSeen)}
                   </Text>
                 )
               ) : loadingPresence ? (
-                <Text className="text-light-400 text-xs">Loading...</Text>
+                <Text
+                  className={`text-xs ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
+                  Loading...
+                </Text>
               ) : (
-                <Text className="text-light-400 text-xs">
+                <Text
+                  className={`text-xs ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
                   Order #{orderId.slice(-6)}
                 </Text>
               )}
@@ -322,7 +382,11 @@ export default function OrderChat({
         {loading && messages.length === 0 ? (
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator size="large" color="#AB8BFF" />
-            <Text className="text-light-400 mt-4 text-sm">
+            <Text
+              className={`mt-4 text-sm ${
+                isDark ? "text-light-400" : "text-gray-500"
+              }`}
+            >
               Loading messages...
             </Text>
           </View>
@@ -335,10 +399,18 @@ export default function OrderChat({
                 color="#FF9500"
               />
             </View>
-            <Text className="text-light-100 text-xl font-bold mb-2 text-center">
+            <Text
+              className={`text-xl font-bold mb-2 text-center ${
+                isDark ? "text-light-100" : "text-black"
+              }`}
+            >
               No chat available
             </Text>
-            <Text className="text-light-400 text-sm text-center leading-5">
+            <Text
+              className={`text-sm text-center leading-5 ${
+                isDark ? "text-light-400" : "text-gray-500"
+              }`}
+            >
               {user?.role === "customer"
                 ? "A rider hasn't been assigned to this order yet."
                 : "This order doesn't have a customer assigned."}
@@ -368,10 +440,18 @@ export default function OrderChat({
                       color="#AB8BFF"
                     />
                   </View>
-                  <Text className="text-light-300 text-base font-semibold mb-2">
+                  <Text
+                    className={`text-base font-semibold mb-2 ${
+                      isDark ? "text-light-300" : "text-gray-600"
+                    }`}
+                  >
                     No messages yet
                   </Text>
-                  <Text className="text-light-400 text-sm text-center">
+                  <Text
+                    className={`text-sm text-center ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
                     Start the conversation!
                   </Text>
                 </View>
@@ -396,8 +476,16 @@ export default function OrderChat({
                     <React.Fragment key={message._id || message.id}>
                       {showDateSeparator && (
                         <View className="items-center my-4">
-                          <View className="bg-dark-100/50 rounded-full px-4 py-1.5">
-                            <Text className="text-light-400 text-xs">
+                          <View
+                            className={`rounded-full px-4 py-1.5 ${
+                              isDark ? "bg-dark-100/50" : "bg-gray-100"
+                            }`}
+                          >
+                            <Text
+                              className={`text-xs ${
+                                isDark ? "text-light-400" : "text-gray-500"
+                              }`}
+                            >
                               {new Date(message.createdAt).toLocaleDateString(
                                 "en-US",
                                 {
@@ -410,7 +498,33 @@ export default function OrderChat({
                           </View>
                         </View>
                       )}
-                      <View
+                      <TouchableOpacity
+                        onPress={() => {
+                          // Double tap to mark as read (only for received messages)
+                          if (!isMe) {
+                            const now = Date.now();
+                            const DOUBLE_TAP_DELAY = 300;
+
+                            if (
+                              lastTapRef.current &&
+                              now - lastTapRef.current < DOUBLE_TAP_DELAY
+                            ) {
+                              // Double tap detected
+                              if (!message.read) {
+                                markAsRead();
+                                Toast.show({
+                                  type: "success",
+                                  text1: "Marked as read",
+                                  text2: "Message receipt sent",
+                                });
+                              }
+                              lastTapRef.current = 0;
+                            } else {
+                              lastTapRef.current = now;
+                            }
+                          }
+                        }}
+                        activeOpacity={0.9}
                         className={`mb-1 ${
                           isMe ? "items-end" : "items-start"
                         } ${isGrouped ? "mt-0" : "mt-2"}`}
@@ -419,7 +533,9 @@ export default function OrderChat({
                           className={`rounded-2xl px-4 py-2.5 max-w-[75%] ${
                             isMe
                               ? "bg-accent rounded-br-sm"
-                              : "bg-secondary border border-neutral-100 rounded-bl-sm"
+                              : isDark
+                              ? "bg-secondary border border-neutral-100 rounded-bl-sm"
+                              : "bg-white border border-gray-200 rounded-bl-sm"
                           }`}
                           style={{
                             shadowColor: "#000",
@@ -431,7 +547,11 @@ export default function OrderChat({
                         >
                           <Text
                             className={`text-sm leading-5 ${
-                              isMe ? "text-primary" : "text-light-100"
+                              isMe
+                                ? "text-primary"
+                                : isDark
+                                ? "text-light-100"
+                                : "text-black"
                             }`}
                           >
                             {message.message}
@@ -439,7 +559,11 @@ export default function OrderChat({
                           <View className="flex-row items-center justify-end mt-1">
                             <Text
                               className={`text-[10px] mr-1.5 ${
-                                isMe ? "text-primary/60" : "text-light-400"
+                                isMe
+                                  ? "text-primary/60"
+                                  : isDark
+                                  ? "text-light-400"
+                                  : "text-gray-500"
                               }`}
                             >
                               {new Date(message.createdAt).toLocaleTimeString(
@@ -456,20 +580,20 @@ export default function OrderChat({
                                   <Icons.communication
                                     name={IconNames.checkmarkDone as any}
                                     size={14}
-                                    color="#5AC8FA"
+                                    color={isDark ? "#5AC8FA" : "#5AC8FA"} // Blue tick for read (theme-aware)
                                   />
                                 ) : (
                                   <Icons.communication
                                     name={IconNames.checkmark as any}
                                     size={14}
-                                    color="#9CA4AB"
+                                    color={isDark ? "#9CA4AB" : "#6E6E73"} // Gray/white tick for unread (theme-aware)
                                   />
                                 )}
                               </View>
                             )}
                           </View>
                         </View>
-                      </View>
+                      </TouchableOpacity>
                     </React.Fragment>
                   );
                 })
@@ -481,7 +605,11 @@ export default function OrderChat({
         {/* Input */}
         {otherPartyId && (
           <View
-            className="bg-secondary border-t border-neutral-100 px-5 py-3"
+            className={`border-t px-5 py-3 ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            }`}
             style={{ paddingBottom: insets.bottom + 12 }}
           >
             <View className="flex-row items-end">
@@ -492,7 +620,11 @@ export default function OrderChat({
                 placeholderTextColor="#9CA4AB"
                 multiline
                 maxLength={500}
-                className="flex-1 bg-dark-100 rounded-2xl px-4 py-3 text-light-100 text-base mr-3 border border-neutral-100"
+                className={`flex-1 rounded-2xl px-4 py-3 text-base mr-3 border ${
+                  isDark
+                    ? "bg-dark-100 text-light-100 border-neutral-100"
+                    : "bg-gray-100 text-black border-gray-200"
+                }`}
                 style={{ maxHeight: 100 }}
                 onSubmitEditing={handleSend}
                 editable={!sending}
@@ -501,7 +633,11 @@ export default function OrderChat({
                 onPress={handleSend}
                 disabled={!messageText.trim() || sending}
                 className={`rounded-full p-3 ${
-                  messageText.trim() && !sending ? "bg-accent" : "bg-dark-100"
+                  messageText.trim() && !sending
+                    ? "bg-accent"
+                    : isDark
+                    ? "bg-dark-100"
+                    : "bg-gray-100"
                 }`}
                 style={{
                   shadowColor: "#AB8BFF",

@@ -1,5 +1,6 @@
 import { IconNames, Icons, MCIconNames } from "@/constants/icons";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { acceptOrder, getAvailableOrders, Order } from "@/services/orderApi";
 import { checkActiveOrders, updateRiderPresence } from "@/services/riderApi";
 import { updateSearchRadius } from "@/services/userApi";
@@ -19,8 +20,10 @@ import Toast from "react-native-toast-message";
 
 export default function DeliveriesScreen() {
   const { user, isLoading, updateUser } = useAuth();
+  const { theme } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const isDark = theme === "dark";
   const isRider = user?.role === "rider";
   const tabBarHeight = 65;
   const bottomPadding = insets.bottom > 0 ? insets.bottom : 20;
@@ -148,7 +151,11 @@ export default function DeliveriesScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-primary items-center justify-center">
+      <View
+        className={`flex-1 items-center justify-center ${
+          isDark ? "bg-primary" : "bg-white"
+        }`}
+      >
         <ActivityIndicator size="large" color="#AB8BFF" />
       </View>
     );
@@ -186,7 +193,7 @@ export default function DeliveriesScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-primary"
+      className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
       contentContainerStyle={{
         paddingTop: insets.top,
         paddingBottom: contentBottomPadding,
@@ -204,10 +211,18 @@ export default function DeliveriesScreen() {
             />
           </View>
           <View className="flex-1">
-            <Text className="text-light-100 text-xl font-bold mb-0.5">
+            <Text
+              className={`text-xl font-bold mb-0.5 ${
+                isDark ? "text-light-100" : "text-black"
+              }`}
+            >
               Deliveries
             </Text>
-            <Text className="text-light-400 text-xs">
+            <Text
+              className={`text-xs ${
+                isDark ? "text-light-400" : "text-gray-500"
+              }`}
+            >
               {isRider
                 ? online
                   ? "Active and ready"
@@ -232,7 +247,11 @@ export default function DeliveriesScreen() {
                 <Text className="text-accent font-bold text-xl mb-2">
                   Complete Your KYC Verification
                 </Text>
-                <Text className="text-light-300 text-sm mb-4 leading-5">
+                <Text
+                  className={`text-sm mb-4 leading-5 ${
+                    isDark ? "text-light-300" : "text-gray-600"
+                  }`}
+                >
                   To start accepting delivery orders, you need to complete your
                   profile verification with identity documents.
                 </Text>
@@ -296,7 +315,11 @@ export default function DeliveriesScreen() {
                   />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-light-100 text-xl font-bold mb-1">
+                  <Text
+                    className={`text-xl font-bold mb-1 ${
+                      isDark ? "text-light-100" : "text-black"
+                    }`}
+                  >
                     {online ? "You're Online" : "Go Online"}
                   </Text>
                   <Text className="text-light-400 text-sm">
@@ -399,7 +422,11 @@ export default function DeliveriesScreen() {
         {/* Search Radius Settings - Modern Design */}
         {isRider && isKycComplete && (
           <View
-            className="bg-secondary rounded-3xl p-6 mb-6 border border-neutral-100"
+            className={`rounded-3xl p-6 mb-6 border ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            }`}
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
@@ -417,10 +444,18 @@ export default function DeliveriesScreen() {
                 />
               </View>
               <View className="flex-1">
-                <Text className="text-light-100 text-lg font-bold mb-1">
+                <Text
+                  className={`text-lg font-bold mb-1 ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
                   Search Radius
                 </Text>
-                <Text className="text-light-400 text-xs">
+                <Text
+                  className={`text-xs ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
                   Adjust delivery request range (1-20 km)
                 </Text>
               </View>
@@ -434,7 +469,11 @@ export default function DeliveriesScreen() {
                     color="#AB8BFF"
                     style={{ marginRight: 8 }}
                   />
-                  <Text className="text-light-200 text-2xl font-bold">
+                  <Text
+                    className={`text-2xl font-bold ${
+                      isDark ? "text-light-200" : "text-black"
+                    }`}
+                  >
                     {searchRadius} km
                   </Text>
                 </View>
@@ -562,7 +601,11 @@ export default function DeliveriesScreen() {
                     color="#AB8BFF"
                   />
                 </View>
-                <Text className="text-light-100 text-xl font-bold">
+                <Text
+                  className={`text-xl font-bold ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
                   Available Deliveries
                 </Text>
                 {availableOrders.length > 0 && (
@@ -595,7 +638,11 @@ export default function DeliveriesScreen() {
             </View>
             {loadingOrders ? (
               <View
-                className="bg-secondary rounded-3xl p-12 items-center border border-neutral-100"
+                className={`rounded-3xl p-12 items-center border ${
+                  isDark
+                    ? "bg-secondary border-neutral-100"
+                    : "bg-white border-gray-200"
+                }`}
                 style={{
                   shadowColor: "#000",
                   shadowOffset: { width: 0, height: 2 },
@@ -605,7 +652,11 @@ export default function DeliveriesScreen() {
                 }}
               >
                 <ActivityIndicator size="large" color="#AB8BFF" />
-                <Text className="text-light-300 mt-4 text-sm">
+                <Text
+                  className={`mt-4 text-sm ${
+                    isDark ? "text-light-300" : "text-gray-600"
+                  }`}
+                >
                   Loading orders...
                 </Text>
               </View>

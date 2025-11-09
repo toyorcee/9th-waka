@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  acceptTerms,
   checkEmailAvailability,
   getNotificationPreferences,
   updateNotificationPreferences,
@@ -129,3 +130,6 @@ router.get("/check-email", protect, checkEmailAvailability);
 
 // PATCH /api/user/search-radius (Riders only)
 router.patch("/search-radius", protect, updateSearchRadius);
+
+// POST /api/user/accept-terms
+router.post("/accept-terms", protect, acceptTerms);

@@ -189,6 +189,38 @@ export async function requestPriceChange(
   return response.data?.order || response.data;
 }
 
+export interface PriceEstimate {
+  success: boolean;
+  estimatedPrice: number;
+  bikePrice: number;
+  carPrice: number;
+  distanceKm: number | null;
+  currency: string;
+}
+
+export interface PriceEstimateRequest {
+  pickup: {
+    address: string;
+    lat?: number;
+    lng?: number;
+  };
+  dropoff: {
+    address: string;
+    lat?: number;
+    lng?: number;
+  };
+}
+
+/**
+ * Estimate delivery price before creating order
+ */
+export async function estimatePrice(
+  request: PriceEstimateRequest
+): Promise<PriceEstimate> {
+  const response = await apiClient.post("/orders/estimate", request);
+  return response.data;
+}
+
 export async function respondToPriceRequest(
   id: string,
   accept: boolean

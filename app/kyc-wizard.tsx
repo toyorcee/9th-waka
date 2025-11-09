@@ -1,5 +1,6 @@
 import KYCWizard from "@/components/KYCWizard";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { updateProfile } from "@/services/userApi";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -9,10 +10,11 @@ import Toast from "react-native-toast-message";
 
 export default function KYCWizardScreen() {
   const { user, checkAuthStatus } = useAuth();
+  const { theme } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const isDark = theme === "dark";
 
-  // KYC fields - initialized from user data
   const [nin, setNin] = useState(user?.nin || "");
   const [bvn, setBvn] = useState(user?.bvn || "");
   const [address, setAddress] = useState(user?.address || "");
@@ -240,7 +242,7 @@ export default function KYCWizardScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-primary"
+      className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
       contentContainerStyle={{
         paddingTop: insets.top + 20,
         paddingBottom: insets.bottom + 20,
@@ -250,10 +252,16 @@ export default function KYCWizardScreen() {
       {/* Header */}
       <View className="flex-row items-center justify-between mb-6">
         <View className="flex-1">
-          <Text className="text-light-100 text-2xl font-bold mb-2">
+          <Text
+            className={`text-2xl font-bold mb-2 ${
+              isDark ? "text-light-100" : "text-black"
+            }`}
+          >
             Complete Your KYC
           </Text>
-          <Text className="text-light-400 text-sm">
+          <Text
+            className={`text-sm ${isDark ? "text-light-400" : "text-gray-500"}`}
+          >
             Verify your identity to start accepting deliveries
           </Text>
         </View>
@@ -261,7 +269,11 @@ export default function KYCWizardScreen() {
           onPress={() => router.replace("/(tabs)/home")}
           className="ml-4"
         >
-          <Text className="text-light-300 text-sm">Skip for now</Text>
+          <Text
+            className={`text-sm ${isDark ? "text-light-300" : "text-gray-600"}`}
+          >
+            Skip for now
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -300,9 +312,17 @@ export default function KYCWizardScreen() {
       {/* Skip Button */}
       <TouchableOpacity
         onPress={() => router.replace("/(tabs)/home")}
-        className="mt-6 bg-dark-100 border border-neutral-100 rounded-xl py-3 items-center"
+        className={`mt-6 border rounded-xl py-3 items-center ${
+          isDark
+            ? "bg-dark-100 border-neutral-100"
+            : "bg-gray-100 border-gray-200"
+        }`}
       >
-        <Text className="text-light-300 font-semibold">
+        <Text
+          className={`font-semibold ${
+            isDark ? "text-light-300" : "text-gray-600"
+          }`}
+        >
           Skip for now - Complete later
         </Text>
       </TouchableOpacity>

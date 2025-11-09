@@ -1,4 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { resendVerification, verifyEmailCode } from "@/services/authApi";
 import { navigationHelper, Routes } from "@/services/navigationHelper";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -18,6 +19,8 @@ import Toast from "react-native-toast-message";
 export default function VerifyScreen() {
   const router = useRouter();
   const { verifyEmail } = useAuth();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const params = useLocalSearchParams<{ email?: string }>();
   const [email, setEmail] = useState((params.email as string) || "");
   const [code, setCode] = useState("");
@@ -50,6 +53,11 @@ export default function VerifyScreen() {
       });
 
       const user = response.user;
+
+      if (!user.termsAccepted) {
+        router.replace("/accept-terms");
+        return;
+      }
 
       if (user.role === "rider") {
         router.replace("/kyc-wizard");
@@ -102,34 +110,34 @@ export default function VerifyScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className="flex-1 bg-primary p-6"
+      className={`flex-1 p-6 ${isDark ? "bg-primary" : "bg-white"}`}
     >
       <View className="mt-24">
-        <Text className="text-light-100 text-3xl font-bold mb-2">
+        <Text className={`text-3xl font-bold mb-2 ${isDark ? "text-light-100" : "text-black"}`}>
           Verify your email
         </Text>
-        <Text className="text-light-300 mb-6">
+        <Text className={`mb-6 ${isDark ? "text-light-300" : "text-gray-600"}`}>
           Enter the 6-digit code we sent to your email.
         </Text>
 
-        <Text className="text-light-400 text-xs mb-2">Email</Text>
+        <Text className={`text-xs mb-2 ${isDark ? "text-light-400" : "text-gray-500"}`}>Email</Text>
         <TextInput
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
-          className="bg-dark-100 rounded-xl p-4 text-light-100 mb-4 border border-neutral-100"
+          className={`rounded-xl p-4 mb-4 border ${isDark ? "bg-dark-100 text-light-100 border-neutral-100" : "bg-gray-100 text-black border-gray-200"}`}
           placeholder="you@example.com"
           placeholderTextColor="#9CA4AB"
         />
 
-        <Text className="text-light-400 text-xs mb-2">Verification Code</Text>
+        <Text className={`text-xs mb-2 ${isDark ? "text-light-400" : "text-gray-500"}`}>Verification Code</Text>
         <TextInput
           value={code}
           onChangeText={setCode}
           keyboardType="number-pad"
           maxLength={6}
-          className="bg-dark-100 rounded-xl p-4 text-light-100 tracking-widest text-center text-2xl mb-6 border border-neutral-100"
+          className={`rounded-xl p-4 tracking-widest text-center text-2xl mb-6 border ${isDark ? "bg-dark-100 text-light-100 border-neutral-100" : "bg-gray-100 text-black border-gray-200"}`}
           placeholder="000000"
           placeholderTextColor="#9CA4AB"
         />
@@ -157,10 +165,10 @@ export default function VerifyScreen() {
           {isResending ? (
             <View className="flex-row items-center gap-2">
               <ActivityIndicator color="#9CA4AB" />
-              <Text className="text-light-300 font-semibold">Sending…</Text>
+              <Text className={`font-semibold ${isDark ? "text-light-300" : "text-gray-600"}`}>Sending…</Text>
             </View>
           ) : (
-            <Text className="text-light-200 font-semibold">Resend Code</Text>
+            <Text className={`font-semibold ${isDark ? "text-light-200" : "text-black"}`}>Resend Code</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -173,15 +181,15 @@ export default function VerifyScreen() {
         onRequestClose={() => setShowResentModal(false)}
       >
         <View className="flex-1 bg-black/60 items-center justify-center p-6">
-          <View className="w-full rounded-2xl p-6 bg-primary border border-neutral-100">
+          <View className={`w-full rounded-2xl p-6 border ${isDark ? "bg-primary border-neutral-100" : "bg-white border-gray-200"}`}>
             <View className="items-center mb-4">
               <View className="h-12 w-12 rounded-full bg-accent items-center justify-center mb-3">
                 <Text className="text-primary font-extrabold text-lg">✓</Text>
               </View>
-              <Text className="text-light-100 text-xl font-bold mb-1">
+              <Text className={`text-xl font-bold mb-1 ${isDark ? "text-light-100" : "text-black"}`}>
                 Code re-sent
               </Text>
-              <Text className="text-light-300 text-center">
+              <Text className={`text-center ${isDark ? "text-light-300" : "text-gray-600"}`}>
                 We emailed a fresh 6‑digit code to {email}. Enter it to verify
                 your account.
               </Text>

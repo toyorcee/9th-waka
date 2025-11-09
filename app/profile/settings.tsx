@@ -1,5 +1,7 @@
 import { IconNames, Icons } from "@/constants/icons";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useTabBarPadding } from "@/hooks/useTabBarPadding";
 import { checkActiveOrders } from "@/services/riderApi";
 import {
   getNotificationPreferences,
@@ -42,6 +44,9 @@ const ALL_NOTIFICATION_TYPES = [
 export default function SettingsScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { theme, themeMode, setThemeMode } = useTheme();
+  const { tabBarPadding } = useTabBarPadding();
+  const isDark = theme === "dark";
   const [preferences, setPreferences] = useState<NotificationPreferences>({});
   const [loading, setLoading] = useState(true);
   const [savingChannel, setSavingChannel] = useState<
@@ -58,17 +63,15 @@ export default function SettingsScreen() {
     checkLocationPermission();
   }, []);
 
-  // Refresh active orders and location permission when screen comes into focus
   useFocusEffect(
     useCallback(() => {
+      checkLocationPermission();
       if (user?.role === "rider") {
         checkActiveOrdersStatus();
-        checkLocationPermission();
       }
     }, [user?.role])
   );
 
-  // Periodically refresh active orders status
   useEffect(() => {
     if (user?.role === "rider") {
       const interval = setInterval(() => {
@@ -110,18 +113,28 @@ export default function SettingsScreen() {
         Toast.show({
           type: "success",
           text1: "Location enabled",
-          text2: "You can now go online and receive delivery requests",
+          text2:
+            user?.role === "rider"
+              ? "You can now go online and receive delivery requests"
+              : "You can now quickly set your pickup address when creating orders",
         });
       } else if (status === Location.PermissionStatus.DENIED) {
         Toast.show({
           type: "error",
           text1: "Location permission denied",
-          text2: "Please enable location in your device settings",
+          text2:
+            "Please enable location in your device settings. Go to Apps, 9thWaka, Permissions, then Location",
         });
-        // Optionally open settings
         if (Platform.OS !== "web") {
           Linking.openSettings();
         }
+      } else {
+        Toast.show({
+          type: "info",
+          text1: "Location permission needed",
+          text2:
+            "Please allow location access. You can choose 'While Using the App' or 'Just Once'",
+        });
       }
     } catch (error: any) {
       Toast.show({
@@ -208,15 +221,19 @@ export default function SettingsScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-primary items-center justify-center">
+      <View
+        className={`flex-1 items-center justify-center ${
+          isDark ? "bg-primary" : "bg-white"
+        }`}
+      >
         <ActivityIndicator size="large" color="#AB8BFF" />
       </View>
     );
   }
 
   return (
-    <ScrollView className="flex-1 bg-primary">
-      <View className="pt-20 px-6 pb-10">
+    <ScrollView className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}>
+      <View className="pt-20 px-6" style={{ paddingBottom: tabBarPadding }}>
         {/* Header */}
         <View className="flex-row items-center justify-between mb-6">
           <TouchableOpacity
@@ -232,31 +249,190 @@ export default function SettingsScreen() {
             <Icons.navigation
               name={IconNames.arrowBack as any}
               size={24}
-              color="#E6E6F0"
+              color={isDark ? "#E6E6F0" : "#000000"}
             />
           </TouchableOpacity>
-          <Text className="text-light-100 text-2xl font-bold">Settings</Text>
+          <Text
+            className={`text-2xl font-bold ${
+              isDark ? "text-light-100" : "text-black"
+            }`}
+          >
+            Settings
+          </Text>
           <View className="w-10" />
+        </View>
+
+        {/* Appearance Section */}
+        <View className="mb-6">
+          <Text
+            className={`text-xl font-bold mb-2 ${
+              isDark ? "text-light-100" : "text-black"
+            }`}
+          >
+            Appearance
+          </Text>
+          <Text
+            className={`text-sm mb-4 ${
+              isDark ? "text-light-400" : "text-gray-500"
+            }`}
+          >
+            Customize the app's appearance
+          </Text>
+
+          <View
+            className={`rounded-2xl p-5 border ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            }`}
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: isDark ? 0.05 : 0.03,
+              shadowRadius: 4,
+              elevation: 2,
+            }}
+          >
+            <View className="flex-row items-center justify-between">
+              <View className="flex-1">
+                <Text
+                  className={`font-semibold mb-1 ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
+                  Theme
+                </Text>
+                <Text
+                  className={`text-xs ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
+                  {themeMode === "system"
+                    ? "Following system settings"
+                    : theme === "dark"
+                    ? "Dark mode"
+                    : "Light mode"}
+                </Text>
+              </View>
+              <View className="flex-row items-center gap-3">
+                <TouchableOpacity
+                  onPress={() => setThemeMode("light")}
+                  className={`px-4 py-2 rounded-xl ${
+                    themeMode === "light"
+                      ? "bg-accent"
+                      : isDark
+                      ? "bg-dark-100 border border-neutral-100"
+                      : "bg-white border border-gray-200"
+                  }`}
+                >
+                  <Text
+                    className={`font-semibold text-sm ${
+                      themeMode === "light"
+                        ? "text-primary"
+                        : isDark
+                        ? "text-light-400"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    Light
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setThemeMode("dark")}
+                  className={`px-4 py-2 rounded-xl ${
+                    themeMode === "dark"
+                      ? "bg-accent"
+                      : isDark
+                      ? "bg-dark-100 border border-neutral-100"
+                      : "bg-white border border-gray-200"
+                  }`}
+                >
+                  <Text
+                    className={`font-semibold text-sm ${
+                      themeMode === "dark"
+                        ? "text-primary"
+                        : isDark
+                        ? "text-light-400"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    Dark
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setThemeMode("system")}
+                  className={`px-4 py-2 rounded-xl ${
+                    themeMode === "system"
+                      ? "bg-accent"
+                      : isDark
+                      ? "bg-dark-100 border border-neutral-100"
+                      : "bg-white border border-gray-200"
+                  }`}
+                >
+                  <Text
+                    className={`font-semibold text-sm ${
+                      themeMode === "system"
+                        ? "text-primary"
+                        : isDark
+                        ? "text-light-400"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    Auto
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
         </View>
 
         {/* Notification Preferences Section */}
         <View className="mb-6">
-          <Text className="text-light-100 text-xl font-bold mb-2">
+          <Text
+            className={`text-xl font-bold mb-2 ${
+              isDark ? "text-light-100" : "text-black"
+            }`}
+          >
             Notification Preferences
           </Text>
-          <Text className="text-light-400 text-sm mb-4">
+          <Text
+            className={`text-sm mb-4 ${
+              isDark ? "text-light-400" : "text-gray-500"
+            }`}
+          >
             Choose how you want to receive notifications
           </Text>
 
-          <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
+          <View
+            className={`rounded-2xl p-5 border ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            }`}
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: isDark ? 0.05 : 0.03,
+              shadowRadius: 4,
+              elevation: 2,
+            }}
+          >
             <View className="gap-4">
               {/* In-App Notifications */}
               <View className="flex-row items-center justify-between">
                 <View className="flex-1">
-                  <Text className="text-light-100 font-semibold mb-1">
+                  <Text
+                    className={`font-semibold mb-1 ${
+                      isDark ? "text-light-100" : "text-black"
+                    }`}
+                  >
                     In-App Notifications
                   </Text>
-                  <Text className="text-light-400 text-xs">
+                  <Text
+                    className={`text-xs ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
                     Show notifications within the app
                   </Text>
                 </View>
@@ -271,8 +447,11 @@ export default function SettingsScreen() {
                     onValueChange={(value) =>
                       updateChannelPreference("inApp", value)
                     }
-                    trackColor={{ false: "#2A2D3A", true: "#AB8BFF" }}
-                    thumbColor="#E6E6F0"
+                    trackColor={{
+                      false: isDark ? "#2A2D3A" : "#E5E5EA",
+                      true: "#AB8BFF",
+                    }}
+                    thumbColor={isDark ? "#E6E6F0" : "#FFFFFF"}
                     disabled={savingChannel !== null}
                     style={{ opacity: savingChannel === "inApp" ? 0.5 : 1 }}
                   />
@@ -280,12 +459,24 @@ export default function SettingsScreen() {
               </View>
 
               {/* Push Notifications */}
-              <View className="flex-row items-center justify-between border-t border-neutral-100 pt-4">
+              <View
+                className={`flex-row items-center justify-between border-t pt-4 ${
+                  isDark ? "border-neutral-100" : "border-gray-200"
+                }`}
+              >
                 <View className="flex-1">
-                  <Text className="text-light-100 font-semibold mb-1">
+                  <Text
+                    className={`font-semibold mb-1 ${
+                      isDark ? "text-light-100" : "text-black"
+                    }`}
+                  >
                     Push Notifications
                   </Text>
-                  <Text className="text-light-400 text-xs">
+                  <Text
+                    className={`text-xs ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
                     Receive push notifications on your device
                   </Text>
                 </View>
@@ -300,8 +491,11 @@ export default function SettingsScreen() {
                     onValueChange={(value) =>
                       updateChannelPreference("push", value)
                     }
-                    trackColor={{ false: "#2A2D3A", true: "#AB8BFF" }}
-                    thumbColor="#E6E6F0"
+                    trackColor={{
+                      false: isDark ? "#2A2D3A" : "#E5E5EA",
+                      true: "#AB8BFF",
+                    }}
+                    thumbColor={isDark ? "#E6E6F0" : "#FFFFFF"}
                     disabled={savingChannel !== null}
                     style={{ opacity: savingChannel === "push" ? 0.5 : 1 }}
                   />
@@ -309,12 +503,24 @@ export default function SettingsScreen() {
               </View>
 
               {/* Email Notifications */}
-              <View className="flex-row items-center justify-between border-t border-neutral-100 pt-4">
+              <View
+                className={`flex-row items-center justify-between border-t pt-4 ${
+                  isDark ? "border-neutral-100" : "border-gray-200"
+                }`}
+              >
                 <View className="flex-1">
-                  <Text className="text-light-100 font-semibold mb-1">
+                  <Text
+                    className={`font-semibold mb-1 ${
+                      isDark ? "text-light-100" : "text-black"
+                    }`}
+                  >
                     Email Notifications
                   </Text>
-                  <Text className="text-light-400 text-xs">
+                  <Text
+                    className={`text-xs ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
                     Receive notifications via email
                   </Text>
                 </View>
@@ -329,8 +535,11 @@ export default function SettingsScreen() {
                     onValueChange={(value) =>
                       updateChannelPreference("email", value)
                     }
-                    trackColor={{ false: "#2A2D3A", true: "#AB8BFF" }}
-                    thumbColor="#E6E6F0"
+                    trackColor={{
+                      false: isDark ? "#2A2D3A" : "#E5E5EA",
+                      true: "#AB8BFF",
+                    }}
+                    thumbColor={isDark ? "#E6E6F0" : "#FFFFFF"}
                     disabled={savingChannel !== null}
                     style={{ opacity: savingChannel === "email" ? 0.5 : 1 }}
                   />
@@ -340,157 +549,296 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Location Settings (Riders only) */}
-        {user?.role === "rider" && (
-          <View className="mb-6">
-            <Text className="text-light-100 text-xl font-bold mb-2">
-              Location Services
-            </Text>
-            <Text className="text-light-400 text-sm mb-4">
-              Enable location to go online and receive delivery requests
-            </Text>
+        {/* Location Settings */}
+        <View className="mb-6">
+          <Text
+            className={`text-xl font-bold mb-2 ${
+              isDark ? "text-light-100" : "text-black"
+            }`}
+          >
+            Location Services
+          </Text>
+          <Text
+            className={`text-sm mb-4 ${
+              isDark ? "text-light-400" : "text-gray-500"
+            }`}
+          >
+            {user?.role === "rider"
+              ? "Enable location to go online and receive delivery requests"
+              : "Enable location to quickly set your pickup address when creating orders"}
+          </Text>
 
-            <View
-              className={`bg-secondary rounded-2xl p-5 border border-neutral-100 ${
-                hasActiveOrders ? "opacity-60" : ""
-              }`}
-            >
-              {hasActiveOrders && (
+          <View
+            className={`rounded-2xl p-5 border ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            } ${user?.role === "rider" && hasActiveOrders ? "opacity-60" : ""}`}
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: isDark ? 0.05 : 0.03,
+              shadowRadius: 4,
+              elevation: 2,
+            }}
+          >
+            {user?.role === "rider" && checkingActiveOrders && (
+              <View className="bg-info/20 border border-info rounded-xl p-3 mb-4">
+                <View className="flex-row items-center">
+                  <ActivityIndicator
+                    size="small"
+                    color="#5AC8FA"
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text
+                    className={`text-info text-xs ${
+                      isDark ? "text-light-300" : "text-gray-600"
+                    }`}
+                  >
+                    Checking active orders...
+                  </Text>
+                </View>
+              </View>
+            )}
+            {user?.role === "rider" &&
+              !checkingActiveOrders &&
+              hasActiveOrders && (
                 <View className="bg-accent/20 border border-accent rounded-xl p-3 mb-4">
                   <Text className="text-accent font-semibold text-sm mb-1">
                     Location Locked
                   </Text>
-                  <Text className="text-light-300 text-xs">
+                  <Text
+                    className={`text-xs ${
+                      isDark ? "text-light-300" : "text-gray-600"
+                    }`}
+                  >
                     You have active orders. Location services must remain
                     enabled until all orders are completed or cancelled.
                   </Text>
                 </View>
               )}
-              <View className="flex-row items-center justify-between mb-3">
-                <View className="flex-1">
-                  <Text className="text-light-100 font-semibold mb-1">
-                    Location Permission
-                  </Text>
-                  <Text className="text-light-400 text-xs">
-                    {locationPermissionStatus ===
-                    Location.PermissionStatus.GRANTED
-                      ? "Location access is enabled"
-                      : locationPermissionStatus ===
-                        Location.PermissionStatus.DENIED
-                      ? "Location access is denied"
-                      : "Location permission not granted"}
-                  </Text>
-                </View>
-                <View className="relative">
-                  {checkingLocation && (
-                    <View className="absolute inset-0 items-center justify-center z-10">
-                      <ActivityIndicator size="small" color="#AB8BFF" />
-                    </View>
-                  )}
-                  <Switch
-                    value={
-                      locationPermissionStatus ===
-                      Location.PermissionStatus.GRANTED
-                    }
-                    onValueChange={async (value) => {
-                      if (value) {
-                        await requestLocationPermission();
-                      } else {
-                        if (hasActiveOrders) {
-                          Toast.show({
-                            type: "error",
-                            text1: "Cannot disable location",
-                            text2:
-                              "You have active orders. Complete or cancel them first.",
-                          });
-                        } else {
-                          Toast.show({
-                            type: "info",
-                            text1: "Disable in settings",
-                            text2:
-                              "Open device settings to disable location permission",
-                          });
-                          openLocationSettings();
-                        }
-                      }
-                    }}
-                    trackColor={{ false: "#2A2D3A", true: "#AB8BFF" }}
-                    thumbColor="#E6E6F0"
-                    disabled={checkingLocation || hasActiveOrders}
-                    style={{
-                      opacity: checkingLocation || hasActiveOrders ? 0.5 : 1,
-                    }}
-                  />
-                </View>
+            <View className="flex-row items-center justify-between mb-3">
+              <View className="flex-1">
+                <Text
+                  className={`font-semibold mb-1 ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
+                  Location Permission
+                </Text>
+                <Text
+                  className={`text-xs ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
+                  {locationPermissionStatus ===
+                  Location.PermissionStatus.GRANTED
+                    ? "Location access is enabled"
+                    : locationPermissionStatus ===
+                      Location.PermissionStatus.DENIED
+                    ? "Location access is denied"
+                    : "Location permission not granted"}
+                </Text>
               </View>
-
-              {locationPermissionStatus !==
-                Location.PermissionStatus.GRANTED && (
-                <TouchableOpacity
-                  onPress={requestLocationPermission}
-                  disabled={checkingLocation || hasActiveOrders}
-                  className={`rounded-xl py-3 px-4 items-center mt-2 ${
-                    hasActiveOrders
-                      ? "bg-dark-100 border border-neutral-100 opacity-50"
-                      : "bg-accent"
-                  }`}
-                >
-                  {checkingLocation ? (
-                    <ActivityIndicator size="small" color="#030014" />
-                  ) : (
-                    <Text
-                      className={`font-bold ${
-                        hasActiveOrders ? "text-light-400" : "text-primary"
-                      }`}
-                    >
-                      Enable Location
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              )}
-
-              {locationPermissionStatus ===
-                Location.PermissionStatus.DENIED && (
-                <TouchableOpacity
-                  onPress={openLocationSettings}
-                  disabled={hasActiveOrders}
-                  className={`border border-neutral-100 rounded-xl py-3 px-4 items-center mt-2 ${
-                    hasActiveOrders ? "bg-dark-100 opacity-50" : "bg-dark-100"
-                  }`}
-                >
-                  <Text
-                    className={`font-semibold ${
-                      hasActiveOrders ? "text-light-400" : "text-light-200"
-                    }`}
-                  >
-                    Open Device Settings
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              <View className="mt-4 pt-4 border-t border-neutral-100">
-                <Text className="text-light-300 text-xs mb-2">
-                  📍 How it works:
-                </Text>
-                <Text className="text-light-400 text-xs mb-1">
-                  • Location is required to go online and receive orders
-                </Text>
-                <Text className="text-light-400 text-xs mb-1">
-                  • Your location is shared every 30 seconds while online
-                </Text>
-                <Text className="text-light-400 text-xs mb-1">
-                  • Toggle "Go Online" from the Deliveries tab to start
-                  receiving orders
-                </Text>
-                {hasActiveOrders && (
-                  <Text className="text-accent text-xs mt-2 font-semibold">
-                    ⚠️ Location cannot be disabled while you have active orders
-                  </Text>
+              <View className="relative">
+                {checkingLocation && (
+                  <View className="absolute inset-0 items-center justify-center z-10">
+                    <ActivityIndicator size="small" color="#AB8BFF" />
+                  </View>
                 )}
+                <Switch
+                  value={
+                    locationPermissionStatus ===
+                    Location.PermissionStatus.GRANTED
+                  }
+                  onValueChange={async (value) => {
+                    if (value) {
+                      await requestLocationPermission();
+                    } else {
+                      if (user?.role === "rider" && hasActiveOrders) {
+                        Toast.show({
+                          type: "error",
+                          text1: "Cannot disable location",
+                          text2:
+                            "You have active orders. Complete or cancel them first.",
+                        });
+                      } else {
+                        Toast.show({
+                          type: "info",
+                          text1: "Disable in device settings",
+                          text2:
+                            "To turn off location, open your device settings. Go to Apps, then 9thWaka, then Permissions, then Location",
+                        });
+                        openLocationSettings();
+                      }
+                    }
+                  }}
+                  trackColor={{
+                    false: isDark ? "#2A2D3A" : "#E5E5EA",
+                    true: "#AB8BFF",
+                  }}
+                  thumbColor={isDark ? "#E6E6F0" : "#FFFFFF"}
+                  disabled={
+                    checkingLocation ||
+                    (user?.role === "rider" && hasActiveOrders)
+                  }
+                  style={{
+                    opacity:
+                      checkingLocation ||
+                      (user?.role === "rider" && hasActiveOrders)
+                        ? 0.5
+                        : 1,
+                  }}
+                />
               </View>
             </View>
+
+            {locationPermissionStatus !== Location.PermissionStatus.GRANTED && (
+              <TouchableOpacity
+                onPress={requestLocationPermission}
+                disabled={
+                  checkingLocation ||
+                  (user?.role === "rider" && hasActiveOrders)
+                }
+                className={`rounded-xl py-3 px-4 items-center mt-2 ${
+                  user?.role === "rider" && hasActiveOrders
+                    ? isDark
+                      ? "bg-dark-100 border border-neutral-100 opacity-50"
+                      : "bg-white border border-gray-200 opacity-50"
+                    : "bg-accent"
+                }`}
+              >
+                {checkingLocation ? (
+                  <ActivityIndicator size="small" color="#030014" />
+                ) : (
+                  <Text
+                    className={`font-bold ${
+                      user?.role === "rider" && hasActiveOrders
+                        ? isDark
+                          ? "text-light-400"
+                          : "text-gray-500"
+                        : "text-primary"
+                    }`}
+                  >
+                    Enable Location
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
+
+            {locationPermissionStatus === Location.PermissionStatus.DENIED && (
+              <TouchableOpacity
+                onPress={openLocationSettings}
+                disabled={user?.role === "rider" && hasActiveOrders}
+                className={`border rounded-xl py-3 px-4 items-center mt-2 ${
+                  isDark ? "border-neutral-100" : "border-gray-200"
+                } ${
+                  user?.role === "rider" && hasActiveOrders
+                    ? isDark
+                      ? "bg-dark-100 opacity-50"
+                      : "bg-white opacity-50"
+                    : isDark
+                    ? "bg-dark-100"
+                    : "bg-white"
+                }`}
+              >
+                <Text
+                  className={`font-semibold ${
+                    user?.role === "rider" && hasActiveOrders
+                      ? isDark
+                        ? "text-light-400"
+                        : "text-gray-500"
+                      : isDark
+                      ? "text-light-200"
+                      : "text-black"
+                  }`}
+                >
+                  Open Device Settings
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <View
+              className={`mt-4 pt-4 border-t ${
+                isDark ? "border-neutral-100" : "border-gray-200"
+              }`}
+            >
+              <Text
+                className={`text-xs mb-2 ${
+                  isDark ? "text-light-300" : "text-gray-600"
+                }`}
+              >
+                📍 How it works:
+              </Text>
+              {user?.role === "rider" ? (
+                <>
+                  <Text
+                    className={`text-xs mb-1 ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
+                    • Location is required to go online and receive orders
+                  </Text>
+                  <Text
+                    className={`text-xs mb-1 ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
+                    • Your location is shared every 30 seconds while online
+                  </Text>
+                  <Text
+                    className={`text-xs mb-1 ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
+                    • Toggle "Go Online" from the Deliveries tab to start
+                    receiving orders
+                  </Text>
+                  {hasActiveOrders && (
+                    <Text className="text-accent text-xs mt-2 font-semibold">
+                      ⚠️ Location cannot be disabled while you have active
+                      orders
+                    </Text>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Text
+                    className={`text-xs mb-1 ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
+                    • Location is used to quickly set your pickup address when
+                    creating orders
+                  </Text>
+                  <Text
+                    className={`text-xs mb-1 ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
+                    • We only access location when you tap the location button
+                  </Text>
+                  <Text
+                    className={`text-xs mb-1 ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
+                    • You can choose "While Using the App" or "Just Once" when
+                    prompted
+                  </Text>
+                </>
+              )}
+              <Text
+                className={`text-xs mt-3 ${
+                  isDark ? "text-light-400" : "text-gray-500"
+                }`}
+              >
+                💡 To turn off location: Open Device Settings above, then go to
+                Apps, then 9thWaka, then Permissions, then Location
+              </Text>
+            </View>
           </View>
-        )}
+        </View>
 
         {/* Profile Completion Reminder (for riders) */}
         {user?.role === "rider" && (!user?.fullName || !user?.phoneNumber) && (
@@ -499,7 +847,11 @@ export default function SettingsScreen() {
               <Text className="text-accent font-semibold mb-2">
                 Complete Your Profile
               </Text>
-              <Text className="text-light-300 text-sm mb-3">
+              <Text
+                className={`text-sm mb-3 ${
+                  isDark ? "text-light-300" : "text-gray-600"
+                }`}
+              >
                 Add your name and phone number to complete your rider profile.
                 This helps customers contact you for deliveries.
               </Text>

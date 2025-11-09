@@ -1,5 +1,6 @@
 import { IconNames, Icons, MCIconNames } from "@/constants/icons";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { getMyOrders, Order } from "@/services/orderApi";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -28,7 +29,7 @@ const getStatusColor = (status: string) => {
     case "cancelled":
       return { bg: "bg-danger/20", text: "text-danger", label: "Cancelled" };
     default:
-      return { bg: "bg-neutral-100/20", text: "text-light-300", label: status };
+      return { bg: "bg-neutral-100/20", text: "text-gray-600", label: status };
   }
 };
 
@@ -43,8 +44,10 @@ const formatDate = (date: string | Date) => {
 
 export default function TrackScreen() {
   const { isLoading: authLoading, isAuthenticated, user } = useAuth();
+  const { theme } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const isDark = theme === "dark";
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,7 +94,11 @@ export default function TrackScreen() {
 
   if (authLoading) {
     return (
-      <View className="flex-1 bg-primary items-center justify-center">
+      <View
+        className={`flex-1 items-center justify-center ${
+          isDark ? "bg-primary" : "bg-white"
+        }`}
+      >
         <ActivityIndicator size="large" color="#AB8BFF" />
       </View>
     );
@@ -108,7 +115,7 @@ export default function TrackScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-primary"
+      className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
       contentContainerStyle={{
         paddingTop: insets.top + 20,
         paddingBottom: tabBarHeight + insets.bottom + 40,
@@ -135,10 +142,18 @@ export default function TrackScreen() {
               />
             </View>
             <View className="flex-1">
-              <Text className="text-light-100 text-2xl font-bold mb-1">
+              <Text
+                className={`text-2xl font-bold mb-1 ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
                 Track Deliveries
               </Text>
-              <Text className="text-light-400 text-xs">
+              <Text
+                className={`text-xs ${
+                  isDark ? "text-light-400" : "text-gray-500"
+                }`}
+              >
                 Real-time delivery tracking
               </Text>
             </View>
@@ -156,7 +171,11 @@ export default function TrackScreen() {
         {isAuthenticated && (
           <View className="flex-row gap-3 mb-6">
             <View
-              className="bg-secondary rounded-2xl p-4 flex-1 border border-neutral-100"
+              className={`rounded-2xl p-4 flex-1 border ${
+                isDark
+                  ? "bg-secondary border-neutral-100"
+                  : "bg-white border-gray-200"
+              }`}
               style={{
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 2 },
@@ -173,14 +192,28 @@ export default function TrackScreen() {
                     color="#AB8BFF"
                   />
                 </View>
-                <Text className="text-light-400 text-xs">Active</Text>
+                <Text
+                  className={`text-xs ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
+                  Active
+                </Text>
               </View>
-              <Text className="text-light-100 text-xl font-bold">
+              <Text
+                className={`text-xl font-bold ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
                 {statistics.total}
               </Text>
             </View>
             <View
-              className="bg-secondary rounded-2xl p-4 flex-1 border border-neutral-100"
+              className={`rounded-2xl p-4 flex-1 border ${
+                isDark
+                  ? "bg-secondary border-neutral-100"
+                  : "bg-white border-gray-200"
+              }`}
               style={{
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 2 },
@@ -197,14 +230,28 @@ export default function TrackScreen() {
                     color="#5AC8FA"
                   />
                 </View>
-                <Text className="text-light-400 text-xs">In Transit</Text>
+                <Text
+                  className={`text-xs ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
+                  In Transit
+                </Text>
               </View>
-              <Text className="text-light-100 text-xl font-bold">
+              <Text
+                className={`text-xl font-bold ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
                 {statistics.inTransit}
               </Text>
             </View>
             <View
-              className="bg-secondary rounded-2xl p-4 flex-1 border border-neutral-100"
+              className={`rounded-2xl p-4 flex-1 border ${
+                isDark
+                  ? "bg-secondary border-neutral-100"
+                  : "bg-white border-gray-200"
+              }`}
               style={{
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 2 },
@@ -221,9 +268,19 @@ export default function TrackScreen() {
                     color="#30D158"
                   />
                 </View>
-                <Text className="text-light-400 text-xs">Recent</Text>
+                <Text
+                  className={`text-xs ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
+                  Recent
+                </Text>
               </View>
-              <Text className="text-light-100 text-xl font-bold">
+              <Text
+                className={`text-xl font-bold ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
                 {statistics.completed}
               </Text>
             </View>
@@ -232,7 +289,11 @@ export default function TrackScreen() {
 
         {/* Map Section */}
         <View
-          className="bg-secondary rounded-3xl p-6 items-center justify-center mb-6 border border-neutral-100 min-h-[300px]"
+          className={`rounded-3xl p-6 items-center justify-center mb-6 border min-h-[300px] ${
+            isDark
+              ? "bg-secondary border-neutral-100"
+              : "bg-white border-gray-200"
+          }`}
           style={{
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 4 },
@@ -258,11 +319,19 @@ export default function TrackScreen() {
                     color="#AB8BFF"
                   />
                 </View>
-                <Text className="text-light-100 text-lg font-bold">
+                <Text
+                  className={`text-lg font-bold ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
                   Live Tracking Active
                 </Text>
               </View>
-              <Text className="text-light-400 text-sm text-center leading-5 px-4">
+              <Text
+                className={`text-sm text-center leading-5 px-4 ${
+                  isDark ? "text-light-400" : "text-gray-500"
+                }`}
+              >
                 {activeOrders.length} delivery
                 {activeOrders.length > 1 ? "ies" : ""} being tracked in
                 real-time
@@ -270,7 +339,11 @@ export default function TrackScreen() {
             </>
           ) : (
             <>
-              <View className="bg-dark-100 rounded-full p-8 mb-6">
+              <View
+                className={`rounded-full p-8 mb-6 ${
+                  isDark ? "bg-dark-100" : "bg-gray-100"
+                }`}
+              >
                 <Icons.map
                   name={IconNames.mapOutline as any}
                   size={64}
@@ -285,11 +358,19 @@ export default function TrackScreen() {
                     color="#AB8BFF"
                   />
                 </View>
-                <Text className="text-light-100 text-lg font-bold">
+                <Text
+                  className={`text-lg font-bold ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
                   Real-time Tracking
                 </Text>
               </View>
-              <Text className="text-light-400 text-sm text-center leading-5 px-4">
+              <Text
+                className={`text-sm text-center leading-5 px-4 ${
+                  isDark ? "text-light-400" : "text-gray-500"
+                }`}
+              >
                 Active delivery tracking will appear here with live location
                 updates
               </Text>
@@ -308,7 +389,11 @@ export default function TrackScreen() {
                   color="#5AC8FA"
                 />
               </View>
-              <Text className="text-light-100 text-lg font-bold">
+              <Text
+                className={`text-lg font-bold ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
                 Active Deliveries
               </Text>
             </View>
@@ -322,7 +407,13 @@ export default function TrackScreen() {
           </View>
 
           {loading ? (
-            <View className="bg-secondary rounded-3xl p-8 border border-neutral-100 items-center">
+            <View
+              className={`rounded-3xl p-8 border items-center ${
+                isDark
+                  ? "bg-secondary border-neutral-100"
+                  : "bg-white border-gray-200"
+              }`}
+            >
               <ActivityIndicator size="large" color="#AB8BFF" />
             </View>
           ) : activeOrders.length > 0 ? (
@@ -338,11 +429,15 @@ export default function TrackScreen() {
                         params: { id: order._id },
                       });
                     }}
-                    className="bg-secondary rounded-3xl p-5 border border-neutral-100"
+                    className={`rounded-3xl p-5 border ${
+                      isDark
+                        ? "bg-secondary border-neutral-100"
+                        : "bg-white border-gray-200"
+                    }`}
                     style={{
                       shadowColor: "#000",
                       shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.1,
+                      shadowOpacity: isDark ? 0.1 : 0.05,
                       shadowRadius: 8,
                       elevation: 4,
                     }}
@@ -357,7 +452,11 @@ export default function TrackScreen() {
                               color="#AB8BFF"
                             />
                           </View>
-                          <Text className="text-light-100 font-bold text-base flex-1">
+                          <Text
+                            className={`font-bold text-base flex-1 ${
+                              isDark ? "text-light-100" : "text-black"
+                            }`}
+                          >
                             {order.items}
                           </Text>
                         </View>
@@ -369,7 +468,11 @@ export default function TrackScreen() {
                               color="#5AC8FA"
                               style={{ marginRight: 4, marginTop: 2 }}
                             />
-                            <Text className="text-light-300 text-xs flex-1">
+                            <Text
+                              className={`text-xs flex-1 ${
+                                isDark ? "text-light-300" : "text-gray-600"
+                              }`}
+                            >
                               {order.pickup.address}
                             </Text>
                           </View>
@@ -380,7 +483,11 @@ export default function TrackScreen() {
                               color="#FF9500"
                               style={{ marginRight: 4, marginTop: 2 }}
                             />
-                            <Text className="text-light-300 text-xs flex-1">
+                            <Text
+                              className={`text-xs flex-1 ${
+                                isDark ? "text-light-300" : "text-gray-600"
+                              }`}
+                            >
                               {order.dropoff.address}
                             </Text>
                           </View>
@@ -400,10 +507,14 @@ export default function TrackScreen() {
                               <Icons.map
                                 name={IconNames.mapOutline as any}
                                 size={10}
-                                color="#9CA4AB"
+                                color={isDark ? "#9CA4AB" : "#6E6E73"}
                                 style={{ marginRight: 4 }}
                               />
-                              <Text className="text-light-400 text-xs">
+                              <Text
+                                className={`text-xs ${
+                                  isDark ? "text-light-400" : "text-gray-500"
+                                }`}
+                              >
                                 {order.distanceKm.toFixed(1)} km
                               </Text>
                             </View>
@@ -436,18 +547,36 @@ export default function TrackScreen() {
               })}
             </View>
           ) : (
-            <View className="bg-secondary rounded-3xl p-8 border border-neutral-100 items-center">
-              <View className="bg-dark-100 rounded-full p-5 mb-4">
+            <View
+              className={`rounded-3xl p-8 border items-center ${
+                isDark
+                  ? "bg-secondary border-neutral-100"
+                  : "bg-white border-gray-200"
+              }`}
+            >
+              <View
+                className={`rounded-full p-5 mb-4 ${
+                  isDark ? "bg-dark-100" : "bg-gray-100"
+                }`}
+              >
                 <Icons.delivery
                   name={MCIconNames.delivery as any}
                   size={40}
-                  color="#9CA4AB"
+                  color={isDark ? "#9CA4AB" : "#6E6E73"}
                 />
               </View>
-              <Text className="text-light-200 text-lg font-bold mb-2">
+              <Text
+                className={`text-lg font-bold mb-2 ${
+                  isDark ? "text-light-200" : "text-black"
+                }`}
+              >
                 No active deliveries
               </Text>
-              <Text className="text-light-400 text-sm text-center">
+              <Text
+                className={`text-sm text-center ${
+                  isDark ? "text-light-400" : "text-gray-500"
+                }`}
+              >
                 Your active delivery orders will appear here for real-time
                 tracking
               </Text>
@@ -467,7 +596,11 @@ export default function TrackScreen() {
                     color="#30D158"
                   />
                 </View>
-                <Text className="text-light-100 text-lg font-bold">
+                <Text
+                  className={`text-lg font-bold ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
                   Recent Deliveries
                 </Text>
               </View>
@@ -482,28 +615,40 @@ export default function TrackScreen() {
                       params: { id: order._id },
                     });
                   }}
-                  className="bg-secondary rounded-2xl p-4 border border-neutral-100"
+                  className={`rounded-2xl p-4 border ${
+                    isDark
+                      ? "bg-secondary border-neutral-100"
+                      : "bg-white border-gray-200"
+                  }`}
                   style={{
                     shadowColor: "#000",
                     shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.05,
+                    shadowOpacity: isDark ? 0.05 : 0.03,
                     shadowRadius: 4,
                     elevation: 2,
                   }}
                 >
                   <View className="flex-row items-center justify-between">
                     <View className="flex-1">
-                      <Text className="text-light-100 font-semibold text-sm mb-1">
+                      <Text
+                        className={`font-semibold text-sm mb-1 ${
+                          isDark ? "text-light-100" : "text-black"
+                        }`}
+                      >
                         {order.items}
                       </Text>
                       <View className="flex-row items-center">
                         <Icons.time
                           name={IconNames.timeOutline as any}
                           size={12}
-                          color="#9CA4AB"
+                          color={isDark ? "#9CA4AB" : "#6E6E73"}
                           style={{ marginRight: 4 }}
                         />
-                        <Text className="text-light-400 text-xs">
+                        <Text
+                          className={`text-xs ${
+                            isDark ? "text-light-400" : "text-gray-500"
+                          }`}
+                        >
                           {formatDate(order.createdAt)}
                         </Text>
                       </View>

@@ -4,6 +4,8 @@ export interface UserPresence {
   userId: string;
   online: boolean;
   lastSeen: string | Date;
+  profilePicture?: string | null;
+  fullName?: string | null;
 }
 
 /**

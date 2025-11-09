@@ -613,6 +613,7 @@ export const updateProfile = async (req, res) => {
         driverLicensePicture: user.driverLicensePicture || null,
         driverLicenseVerified: user.driverLicenseVerified || false,
         vehiclePicture: user.vehiclePicture || null,
+        termsAccepted: user.termsAccepted || false,
       },
     });
   } catch (e) {
@@ -665,6 +666,57 @@ export const checkEmailAvailability = async (req, res) => {
     });
   } catch (e) {
     console.error("❌ [EMAIL] Error checking email availability:", e);
+    return res.status(500).json({
+      success: false,
+      error: "Server error",
+    });
+  }
+};
+
+export const acceptTerms = async (req, res) => {
+  try {
+    const userId = req.user?.userId || req.user?._id;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: "User not found",
+      });
+    }
+
+    user.termsAccepted = true;
+    user.termsAcceptedAt = new Date();
+    await user.save();
+
+    console.log("✅ [TERMS] User accepted terms:", user.email);
+
+    return res.json({
+      success: true,
+      message: "Terms and conditions accepted",
+      user: {
+        id: user._id,
+        email: user.email,
+        fullName: user.fullName,
+        phoneNumber: user.phoneNumber,
+        profilePicture: user.profilePicture,
+        role: user.role,
+        vehicleType: user.vehicleType || null,
+        nin: user.nin || null,
+        bvn: user.bvn || null,
+        ninVerified: user.ninVerified || false,
+        bvnVerified: user.bvnVerified || false,
+        defaultAddress: user.defaultAddress || null,
+        address: user.address || null,
+        driverLicenseNumber: user.driverLicenseNumber || null,
+        driverLicensePicture: user.driverLicensePicture || null,
+        driverLicenseVerified: user.driverLicenseVerified || false,
+        vehiclePicture: user.vehiclePicture || null,
+        termsAccepted: user.termsAccepted,
+      },
+    });
+  } catch (e) {
+    console.error("❌ [TERMS] Error accepting terms:", e);
     return res.status(500).json({
       success: false,
       error: "Server error",

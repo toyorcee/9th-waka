@@ -15,6 +15,8 @@ export const SocketEvents = {
   RIDER_LOCATION_UPDATED: "rider.location_updated",
   CHAT_MESSAGE: "chat.message",
   CHAT_MESSAGE_READ: "chat.message_read",
+  USER_ONLINE: "user.online",
+  USER_OFFLINE: "user.offline",
 } as const;
 
 export type SocketEventName = (typeof SocketEvents)[keyof typeof SocketEvents];

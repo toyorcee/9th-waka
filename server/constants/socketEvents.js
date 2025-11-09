@@ -27,5 +27,10 @@ export const SocketEvents = {
 
   // Chat
   CHAT_MESSAGE: "chat.message",
+  CHAT_MESSAGE_DELIVERED: "chat.message_delivered",
   CHAT_MESSAGE_READ: "chat.message_read",
+
+  // User Presence
+  USER_ONLINE: "user.online",
+  USER_OFFLINE: "user.offline",
 };

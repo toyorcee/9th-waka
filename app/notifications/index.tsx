@@ -1,4 +1,6 @@
 import { IconNames, Icons } from "@/constants/icons";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useTabBarPadding } from "@/hooks/useTabBarPadding";
 import {
   trackMarkAllRead,
   trackNotificationOpened,
@@ -38,7 +40,10 @@ function normalizeNotification(n: any): UnifiedNotification {
 
 export default function NotificationsScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const { tabBarPadding } = useTabBarPadding();
+  const isDark = theme === "dark";
   const { data, loading, refetch } = useFetch(
     () => fetchNotifications(0, 100),
     true
@@ -116,17 +121,37 @@ export default function NotificationsScreen() {
   const renderItem = ({ item }: { item: UnifiedNotification }) => (
     <TouchableOpacity
       onPress={() => handleOpenNotification(item)}
-      className={`bg-dark-100 rounded-2xl px-5 py-4 mb-3 border ${
-        item.read ? "border-neutral-100/40" : "border-accent/50"
+      className={`rounded-2xl px-5 py-4 mb-3 border ${
+        isDark
+          ? item.read
+            ? "bg-dark-100 border-neutral-100/40"
+            : "bg-dark-100 border-accent/50"
+          : item.read
+          ? "bg-white border-gray-200"
+          : "bg-white border-accent/50"
       }`}
     >
       <View className="flex-row items-start justify-between">
         <View className="flex-1 mr-3">
-          <Text className="text-light-100 text-base font-semibold">
+          <Text
+            className={`text-base font-semibold ${
+              isDark ? "text-light-100" : "text-black"
+            }`}
+          >
             {item.title}
           </Text>
-          <Text className="text-light-300 text-sm mt-1">{item.message}</Text>
-          <Text className="text-light-400 text-xs mt-2">
+          <Text
+            className={`text-sm mt-1 ${
+              isDark ? "text-light-300" : "text-gray-600"
+            }`}
+          >
+            {item.message}
+          </Text>
+          <Text
+            className={`text-xs mt-2 ${
+              isDark ? "text-light-400" : "text-gray-500"
+            }`}
+          >
             {new Date(item.timestamp).toLocaleString()}
           </Text>
         </View>
@@ -136,8 +161,15 @@ export default function NotificationsScreen() {
   );
 
   return (
-    <View className="flex-1 bg-primary" style={{ paddingTop: insets.top + 12 }}>
-      <View className="px-6 pb-4 border-b border-neutral-100/40">
+    <View
+      className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
+      style={{ paddingTop: insets.top + 12 }}
+    >
+      <View
+        className={`px-6 pb-4 border-b ${
+          isDark ? "border-neutral-100/40" : "border-gray-200"
+        }`}
+      >
         <View className="flex-row items-center justify-between mb-4">
           <TouchableOpacity
             onPress={() => {
@@ -147,16 +179,22 @@ export default function NotificationsScreen() {
                 router.replace(Routes.tabs.home as any);
               }
             }}
-            className="w-9 h-9 rounded-full bg-dark-200 items-center justify-center"
+            className={`w-9 h-9 rounded-full items-center justify-center ${
+              isDark ? "bg-dark-200" : "bg-gray-100"
+            }`}
           >
             <Icons.navigation
               name={IconNames.arrowBack as any}
               size={20}
-              color="#FFFFFF"
+              color={isDark ? "#FFFFFF" : "#000000"}
             />
           </TouchableOpacity>
 
-          <Text className="text-light-100 text-lg font-bold flex-1 text-center -ml-9">
+          <Text
+            className={`text-lg font-bold flex-1 text-center -ml-9 ${
+              isDark ? "text-light-100" : "text-black"
+            }`}
+          >
             Notifications
           </Text>
 
@@ -164,7 +202,9 @@ export default function NotificationsScreen() {
         </View>
 
         <View className="flex-row items-center justify-between">
-          <Text className="text-light-300 text-sm">
+          <Text
+            className={`text-sm ${isDark ? "text-light-300" : "text-gray-600"}`}
+          >
             {unreadCount > 0 ? `${unreadCount} unread` : "You're all caught up"}
           </Text>
           <TouchableOpacity
@@ -173,7 +213,11 @@ export default function NotificationsScreen() {
           >
             <Text
               className={`text-sm font-semibold ${
-                unreadCount === 0 ? "text-light-400" : "text-accent"
+                unreadCount === 0
+                  ? isDark
+                    ? "text-light-400"
+                    : "text-gray-500"
+                  : "text-accent"
               }`}
             >
               Mark all read
@@ -194,7 +238,7 @@ export default function NotificationsScreen() {
           contentContainerStyle={{
             paddingHorizontal: 24,
             paddingTop: 16,
-            paddingBottom: 24,
+            paddingBottom: tabBarPadding,
           }}
           refreshControl={
             <RefreshControl
@@ -208,12 +252,20 @@ export default function NotificationsScreen() {
               <Icons.notification
                 name={IconNames.notificationsOutline as any}
                 size={48}
-                color="#9CA4AB"
+                color={isDark ? "#9CA4AB" : "#6E6E73"}
               />
-              <Text className="text-light-400 text-sm mt-4">
+              <Text
+                className={`text-sm mt-4 ${
+                  isDark ? "text-light-400" : "text-gray-500"
+                }`}
+              >
                 No notifications yet
               </Text>
-              <Text className="text-light-500 text-xs mt-1 text-center px-12">
+              <Text
+                className={`text-xs mt-1 text-center px-12 ${
+                  isDark ? "text-light-500" : "text-gray-400"
+                }`}
+              >
                 Once you start interacting with orders, updates will appear
                 here.
               </Text>

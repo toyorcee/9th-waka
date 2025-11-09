@@ -1,4 +1,5 @@
 import { IconNames, Icons } from "@/constants/icons";
+import { useTheme } from "@/contexts/ThemeContext";
 import { toAbsoluteUrl } from "@/services/url";
 import {
   updateProfile,
@@ -15,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 interface KYCWizardProps {
@@ -83,6 +85,9 @@ export default function KYCWizard({
   onUploadingLicenseChange,
   onUploadingVehicleChange,
 }: KYCWizardProps) {
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const isDark = theme === "dark";
   const [currentStep, setCurrentStep] = useState<number>(1);
 
   // Calculate completion status
@@ -272,9 +277,19 @@ export default function KYCWizard({
   return (
     <>
       {/* Step Wizard Header */}
-      <View className="bg-secondary rounded-2xl p-4 mb-6 border border-neutral-100">
+      <View
+        className={`rounded-2xl p-4 mb-6 border ${
+          isDark
+            ? "bg-secondary border-neutral-100"
+            : "bg-white border-gray-200"
+        }`}
+      >
         <View className="flex-row items-center justify-between mb-3">
-          <Text className="text-light-100 text-base font-semibold">
+          <Text
+            className={`text-base font-semibold ${
+              isDark ? "text-light-100" : "text-black"
+            }`}
+          >
             Step {currentStep} of 4
           </Text>
           {kycSteps.allComplete && (
@@ -318,7 +333,11 @@ export default function KYCWizard({
                   ) : (
                     <Text
                       className={`text-xs font-bold ${
-                        isCurrent ? "text-primary" : "text-light-400"
+                        isCurrent
+                          ? "text-primary"
+                          : isDark
+                          ? "text-light-400"
+                          : "text-gray-500"
                       }`}
                     >
                       {step}
@@ -339,16 +358,32 @@ export default function KYCWizard({
 
         {/* Step Labels */}
         <View className="flex-row justify-between">
-          <Text className="text-light-400 text-xs text-center flex-1">
+          <Text
+            className={`text-xs text-center flex-1 ${
+              isDark ? "text-light-400" : "text-gray-500"
+            }`}
+          >
             Identity
           </Text>
-          <Text className="text-light-400 text-xs text-center flex-1">
+          <Text
+            className={`text-xs text-center flex-1 ${
+              isDark ? "text-light-400" : "text-gray-500"
+            }`}
+          >
             Address
           </Text>
-          <Text className="text-light-400 text-xs text-center flex-1">
+          <Text
+            className={`text-xs text-center flex-1 ${
+              isDark ? "text-light-400" : "text-gray-500"
+            }`}
+          >
             License
           </Text>
-          <Text className="text-light-400 text-xs text-center flex-1">
+          <Text
+            className={`text-xs text-center flex-1 ${
+              isDark ? "text-light-400" : "text-gray-500"
+            }`}
+          >
             Vehicle
           </Text>
         </View>
@@ -357,15 +392,33 @@ export default function KYCWizard({
       {/* Step 1: Identity Verification */}
       {currentStep === 1 && (
         <>
-          <View className="bg-secondary rounded-2xl p-5 border border-neutral-100 mb-4">
-            <Text className="text-light-100 text-lg font-semibold mb-1">
+          <View
+            className={`rounded-2xl p-5 border mb-4 ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            }`}
+          >
+            <Text
+              className={`text-lg font-semibold mb-1 ${
+                isDark ? "text-light-100" : "text-black"
+              }`}
+            >
               Identity Verification
             </Text>
-            <Text className="text-light-400 text-xs mb-4">
+            <Text
+              className={`text-xs mb-4 ${
+                isDark ? "text-light-400" : "text-gray-500"
+              }`}
+            >
               Provide at least one: NIN or BVN (you can verify both if you
               prefer)
             </Text>
-            <Text className="text-light-300 text-sm mb-2">
+            <Text
+              className={`text-sm mb-2 ${
+                isDark ? "text-light-300" : "text-gray-600"
+              }`}
+            >
               NIN (National Identification Number)
             </Text>
             <View className="relative">
@@ -379,9 +432,11 @@ export default function KYCWizard({
                 placeholder="Enter your NIN (optional)"
                 placeholderTextColor="#9CA4AB"
                 keyboardType="numeric"
-                className={`text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base pr-12 ${
-                  ninVerified ? "border-2 border-green-500" : ""
-                }`}
+                className={`rounded-xl px-4 py-3 text-base pr-12 ${
+                  isDark
+                    ? "text-light-100 bg-dark-100"
+                    : "text-black bg-gray-100"
+                } ${ninVerified ? "border-2 border-green-500" : ""}`}
               />
               {verifyingNin && (
                 <View className="absolute right-4 top-3">
@@ -406,15 +461,29 @@ export default function KYCWizard({
               </View>
             )}
             {!ninVerified && !verifyingNin && (
-              <Text className="text-light-400 text-xs mt-1">
+              <Text
+                className={`text-xs mt-1 ${
+                  isDark ? "text-light-400" : "text-gray-500"
+                }`}
+              >
                 At least one is required (NIN or BVN). You can verify both if
                 you want.
               </Text>
             )}
           </View>
 
-          <View className="bg-secondary rounded-2xl p-5 border border-neutral-100 mb-4">
-            <Text className="text-light-300 text-sm mb-2">
+          <View
+            className={`rounded-2xl p-5 border mb-4 ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            }`}
+          >
+            <Text
+              className={`text-sm mb-2 ${
+                isDark ? "text-light-300" : "text-gray-600"
+              }`}
+            >
               BVN (Bank Verification Number)
             </Text>
             <View className="relative">
@@ -428,9 +497,11 @@ export default function KYCWizard({
                 placeholder="Enter your BVN (optional)"
                 placeholderTextColor="#9CA4AB"
                 keyboardType="numeric"
-                className={`text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base pr-12 ${
-                  bvnVerified ? "border-2 border-green-500" : ""
-                }`}
+                className={`rounded-xl px-4 py-3 text-base pr-12 ${
+                  isDark
+                    ? "text-light-100 bg-dark-100"
+                    : "text-black bg-gray-100"
+                } ${bvnVerified ? "border-2 border-green-500" : ""}`}
               />
               {verifyingBvn && (
                 <View className="absolute right-4 top-3">
@@ -455,7 +526,11 @@ export default function KYCWizard({
               </View>
             )}
             {!bvnVerified && !verifyingBvn && (
-              <Text className="text-light-400 text-xs mt-1">
+              <Text
+                className={`text-xs mt-1 ${
+                  isDark ? "text-light-400" : "text-gray-500"
+                }`}
+              >
                 At least one is required (NIN or BVN). You can verify both if
                 you want.
               </Text>
@@ -466,14 +541,34 @@ export default function KYCWizard({
 
       {/* Step 2: Address */}
       {currentStep === 2 && (
-        <View className="bg-secondary rounded-2xl p-5 border border-neutral-100 mb-4">
-          <Text className="text-light-100 text-lg font-semibold mb-1">
+        <View
+          className={`rounded-2xl p-5 border mb-4 ${
+            isDark
+              ? "bg-secondary border-neutral-100"
+              : "bg-white border-gray-200"
+          }`}
+        >
+          <Text
+            className={`text-lg font-semibold mb-1 ${
+              isDark ? "text-light-100" : "text-black"
+            }`}
+          >
             Address Information
           </Text>
-          <Text className="text-light-400 text-xs mb-4">
+          <Text
+            className={`text-xs mb-4 ${
+              isDark ? "text-light-400" : "text-gray-500"
+            }`}
+          >
             Add your residential or business address
           </Text>
-          <Text className="text-light-300 text-sm mb-2">Address</Text>
+          <Text
+            className={`text-sm mb-2 ${
+              isDark ? "text-light-300" : "text-gray-600"
+            }`}
+          >
+            Address
+          </Text>
           <TextInput
             value={address}
             onChangeText={onAddressChange}
@@ -481,10 +576,16 @@ export default function KYCWizard({
             placeholderTextColor="#9CA4AB"
             multiline
             numberOfLines={3}
-            className="text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base"
+            className={`rounded-xl px-4 py-3 text-base ${
+              isDark ? "text-light-100 bg-dark-100" : "text-black bg-gray-100"
+            }`}
             textAlignVertical="top"
           />
-          <Text className="text-light-400 text-xs mt-1">
+          <Text
+            className={`text-xs mt-1 ${
+              isDark ? "text-light-400" : "text-gray-500"
+            }`}
+          >
             Your residential or business address
           </Text>
         </View>
@@ -493,14 +594,32 @@ export default function KYCWizard({
       {/* Step 3: Driver License */}
       {currentStep === 3 && (
         <>
-          <View className="bg-secondary rounded-2xl p-5 border border-neutral-100 mb-4">
-            <Text className="text-light-100 text-lg font-semibold mb-1">
+          <View
+            className={`rounded-2xl p-5 border mb-4 ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            }`}
+          >
+            <Text
+              className={`text-lg font-semibold mb-1 ${
+                isDark ? "text-light-100" : "text-black"
+              }`}
+            >
               Driver License Verification
             </Text>
-            <Text className="text-light-400 text-xs mb-4">
+            <Text
+              className={`text-xs mb-4 ${
+                isDark ? "text-light-400" : "text-gray-500"
+              }`}
+            >
               Add your license number and take a selfie with your license
             </Text>
-            <Text className="text-light-300 text-sm mb-2">
+            <Text
+              className={`text-sm mb-2 ${
+                isDark ? "text-light-300" : "text-gray-600"
+              }`}
+            >
               Driver License Number
             </Text>
             <View className="relative">
@@ -509,9 +628,11 @@ export default function KYCWizard({
                 onChangeText={handleDriverLicenseNumberChange}
                 placeholder="Enter your driver license number"
                 placeholderTextColor="#9CA4AB"
-                className={`text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base pr-12 ${
-                  driverLicenseVerified ? "border-2 border-green-500" : ""
-                }`}
+                className={`rounded-xl px-4 py-3 text-base pr-12 ${
+                  isDark
+                    ? "text-light-100 bg-dark-100"
+                    : "text-black bg-gray-100"
+                } ${driverLicenseVerified ? "border-2 border-green-500" : ""}`}
               />
               {driverLicenseVerified && (
                 <View className="absolute right-4 top-3">
@@ -531,7 +652,11 @@ export default function KYCWizard({
               </View>
             )}
             {!driverLicenseVerified && (
-              <Text className="text-light-400 text-xs mt-1">
+              <Text
+                className={`text-xs mt-1 ${
+                  isDark ? "text-light-400" : "text-gray-500"
+                }`}
+              >
                 {driverLicensePicture
                   ? "Add license number to verify"
                   : "Add both license number and selfie to verify"}
@@ -539,15 +664,29 @@ export default function KYCWizard({
             )}
           </View>
 
-          <View className="bg-secondary rounded-2xl p-5 border border-neutral-100 mb-4">
-            <Text className="text-light-300 text-sm mb-3">
+          <View
+            className={`rounded-2xl p-5 border mb-4 ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            }`}
+          >
+            <Text
+              className={`text-sm mb-3 ${
+                isDark ? "text-light-300" : "text-gray-600"
+              }`}
+            >
               Selfie with License
             </Text>
             <View className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3 mb-3">
               <Text className="text-blue-300 text-xs font-semibold mb-1">
                 📸 Security Requirement
               </Text>
-              <Text className="text-light-300 text-xs">
+              <Text
+                className={`text-xs ${
+                  isDark ? "text-light-300" : "text-gray-600"
+                }`}
+              >
                 Take a clear selfie holding your driver license next to your
                 face. This helps us verify your identity and prevent fraud.
               </Text>
@@ -577,16 +716,30 @@ export default function KYCWizard({
                 </View>
               </View>
             ) : (
-              <View className="mb-3 bg-dark-100 rounded-xl p-8 items-center justify-center border-2 border-dashed border-neutral-100">
+              <View
+                className={`mb-3 rounded-xl p-8 items-center justify-center border-2 border-dashed ${
+                  isDark
+                    ? "bg-dark-100 border-neutral-100"
+                    : "bg-gray-100 border-gray-300"
+                }`}
+              >
                 <Icons.media
                   name={IconNames.cameraOutline as any}
                   size={48}
-                  color="#9CA4AB"
+                  color={isDark ? "#9CA4AB" : "#6E6E73"}
                 />
-                <Text className="text-light-400 text-xs mt-2 text-center">
+                <Text
+                  className={`text-xs mt-2 text-center ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
                   No selfie uploaded
                 </Text>
-                <Text className="text-light-500 text-xs mt-1 text-center">
+                <Text
+                  className={`text-xs mt-1 text-center ${
+                    isDark ? "text-light-500" : "text-gray-400"
+                  }`}
+                >
                   Hold your license next to your face
                 </Text>
               </View>
@@ -606,7 +759,11 @@ export default function KYCWizard({
                 </Text>
               )}
             </TouchableOpacity>
-            <Text className="text-light-400 text-xs mt-2">
+            <Text
+              className={`text-xs mt-2 ${
+                isDark ? "text-light-400" : "text-gray-500"
+              }`}
+            >
               Take a clear selfie holding your license next to your face. Make
               sure both your face and the license are clearly visible.
             </Text>
@@ -628,14 +785,34 @@ export default function KYCWizard({
 
       {/* Step 4: Vehicle Picture */}
       {currentStep === 4 && (
-        <View className="bg-secondary rounded-2xl p-5 border border-neutral-100 mb-4">
-          <Text className="text-light-100 text-lg font-semibold mb-1">
+        <View
+          className={`rounded-2xl p-5 border mb-4 ${
+            isDark
+              ? "bg-secondary border-neutral-100"
+              : "bg-white border-gray-200"
+          }`}
+        >
+          <Text
+            className={`text-lg font-semibold mb-1 ${
+              isDark ? "text-light-100" : "text-black"
+            }`}
+          >
             Vehicle Picture
           </Text>
-          <Text className="text-light-400 text-xs mb-4">
+          <Text
+            className={`text-xs mb-4 ${
+              isDark ? "text-light-400" : "text-gray-500"
+            }`}
+          >
             Upload a clear picture of your vehicle
           </Text>
-          <Text className="text-light-300 text-sm mb-3">Vehicle Picture</Text>
+          <Text
+            className={`text-sm mb-3 ${
+              isDark ? "text-light-300" : "text-gray-600"
+            }`}
+          >
+            Vehicle Picture
+          </Text>
           {vehiclePicture ? (
             <View className="mb-3">
               <View className="relative">
@@ -660,13 +837,23 @@ export default function KYCWizard({
               </View>
             </View>
           ) : (
-            <View className="mb-3 bg-dark-100 rounded-xl p-8 items-center justify-center border-2 border-dashed border-neutral-100">
+            <View
+              className={`mb-3 rounded-xl p-8 items-center justify-center border-2 border-dashed ${
+                isDark
+                  ? "bg-dark-100 border-neutral-100"
+                  : "bg-gray-100 border-gray-300"
+              }`}
+            >
               <Icons.media
                 name={IconNames.cameraOutline as any}
                 size={48}
-                color="#9CA4AB"
+                color={isDark ? "#9CA4AB" : "#6E6E73"}
               />
-              <Text className="text-light-400 text-xs mt-2 text-center">
+              <Text
+                className={`text-xs mt-2 text-center ${
+                  isDark ? "text-light-400" : "text-gray-500"
+                }`}
+              >
                 No vehicle picture uploaded
               </Text>
             </View>
@@ -686,7 +873,11 @@ export default function KYCWizard({
               </Text>
             )}
           </TouchableOpacity>
-          <Text className="text-light-400 text-xs mt-2">
+          <Text
+            className={`text-xs mt-2 ${
+              isDark ? "text-light-400" : "text-gray-500"
+            }`}
+          >
             Upload a clear picture of your{" "}
             {vehicleType === "motorcycle" ? "motorcycle" : "car/van"}
           </Text>
@@ -698,9 +889,19 @@ export default function KYCWizard({
         {currentStep > 1 && (
           <TouchableOpacity
             onPress={() => setCurrentStep(currentStep - 1)}
-            className="flex-1 bg-dark-100 border border-neutral-100 rounded-xl py-3 items-center"
+            className={`flex-1 border rounded-xl py-3 items-center ${
+              isDark
+                ? "bg-dark-100 border-neutral-100"
+                : "bg-gray-100 border-gray-200"
+            }`}
           >
-            <Text className="text-light-200 font-semibold">Previous</Text>
+            <Text
+              className={`font-semibold ${
+                isDark ? "text-light-200" : "text-black"
+              }`}
+            >
+              Previous
+            </Text>
           </TouchableOpacity>
         )}
         {currentStep < 4 && (

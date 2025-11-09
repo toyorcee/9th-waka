@@ -4,60 +4,112 @@ import RiderLocation from "../models/RiderLocation.js";
 import Transaction from "../models/Transaction.js";
 import User from "../models/User.js";
 import { io } from "../server.js";
-import { geocodeAddress } from "../services/geocodingService.js";
+import {
+  calculateDistance,
+  geocodeAddress,
+} from "../services/geocodingService.js";
 import { createAndSendNotification } from "../services/notificationService.js";
+import { calculateRoadDistance } from "../services/routingService.js";
 
 const appendTimeline = (order, status, note) => {
   order.timeline.push({ status, note, at: new Date() });
 };
 
-// Calculate price based on tiered distance (Sunday to Saturday week)
-// Base fare + tiered per-km rates
+/**
+ * Calculate delivery price using tiered distance model
+ *
+ * Pricing Structure (configurable via .env):
+ * - Base fare: PRICE_MIN_FARE (default: ₦800)
+ * - 0-8km: PRICE_PER_KM_SHORT (default: ₦100/km)
+ * - 9-15km: PRICE_PER_KM_MEDIUM (default: ₦140/km)
+ * - 16km+: PRICE_PER_KM_LONG (default: ₦200/km)
+ *
+ * Distance Calculation:
+ * - Uses OpenRouteService API for accurate road distance
+ * - Falls back to Haversine distance × multiplier if routing API unavailable
+ *
+ * Vehicle Multiplier:
+ * - Car: base price × PRICE_CAR_MULTIPLIER (1.25 = 25% more)
+ * - Motorcycle: base price (no multiplier)
+ *
+ * Example: 10km straight-line → 13.5km effective → ₦800 + (8×₦100) + (5.5×₦140) = ₦2,370
+ */
 const calculateDeliveryPrice = (distanceKm, vehicleType = "motorcycle") => {
-  const baseFare = Number(process.env.PRICE_BASE_FARE || 700);
-  const minFare = Number(process.env.PRICE_MIN_FARE || 1500);
-
-  // Tiered per-km rates
-  const shortRate = Number(process.env.PRICE_PER_KM_SHORT || 130); // 0-8km
-  const mediumRate = Number(process.env.PRICE_PER_KM_MEDIUM || 160); // 9-20km
-  const longRate = Number(process.env.PRICE_PER_KM_LONG || 200); // 21km+
-
-  // Vehicle type multiplier (car is more expensive)
-  const vehicleMultiplier = vehicleType === "car" ? 1.25 : 1.0; // Car is 25% more
+  // Environment variables with fallbacks
+  const MIN_FARE = Number(process.env.PRICE_MIN_FARE) || 800;
+  const PER_KM_SHORT = Number(process.env.PRICE_PER_KM_SHORT) || 100; // 0-8km
+  const PER_KM_MEDIUM = Number(process.env.PRICE_PER_KM_MEDIUM) || 140; // 9-15km
+  const PER_KM_LONG = Number(process.env.PRICE_PER_KM_LONG) || 200; // 16km+
+  const SHORT_DISTANCE_MAX = Number(process.env.PRICE_SHORT_DISTANCE_MAX) || 8;
+  const MEDIUM_DISTANCE_MAX =
+    Number(process.env.PRICE_MEDIUM_DISTANCE_MAX) || 15;
+  const CAR_MULTIPLIER = Number(process.env.PRICE_CAR_MULTIPLIER) || 1.25;
 
   if (!distanceKm || distanceKm <= 0) {
-    return minFare;
+    return MIN_FARE;
   }
 
-  let calculatedPrice = baseFare;
+  // distanceKm is already road distance from routing API (or adjusted Haversine if fallback)
+  const adjustedDistance = distanceKm;
 
-  // Tiered calculation
-  if (distanceKm <= 8) {
-    // Short distance: 0-8km
-    calculatedPrice += distanceKm * shortRate;
-  } else if (distanceKm <= 20) {
-    // Medium distance: 9-20km
-    calculatedPrice += 8 * shortRate; // First 8km
-    calculatedPrice += (distanceKm - 8) * mediumRate; // Remaining km
+  let price;
+
+  // Calculate price with MIN_FARE as base fare
+  if (adjustedDistance <= SHORT_DISTANCE_MAX) {
+    // Short distance: 0-8km (or configured max)
+    price = MIN_FARE + adjustedDistance * PER_KM_SHORT;
+  } else if (adjustedDistance <= MEDIUM_DISTANCE_MAX) {
+    // Medium distance: 9-15km (or configured range)
+    price =
+      MIN_FARE +
+      SHORT_DISTANCE_MAX * PER_KM_SHORT +
+      (adjustedDistance - SHORT_DISTANCE_MAX) * PER_KM_MEDIUM;
   } else {
-    // Long distance: 21km+
-    calculatedPrice += 8 * shortRate; // First 8km (0-8)
-    calculatedPrice += 12 * mediumRate; // Next 12km (9-20)
-    calculatedPrice += (distanceKm - 20) * longRate; // Remaining km (21+)
+    // Long distance: 16km+ (or above configured max)
+    price =
+      MIN_FARE +
+      SHORT_DISTANCE_MAX * PER_KM_SHORT +
+      (MEDIUM_DISTANCE_MAX - SHORT_DISTANCE_MAX) * PER_KM_MEDIUM +
+      (adjustedDistance - MEDIUM_DISTANCE_MAX) * PER_KM_LONG;
   }
 
-  // Apply vehicle multiplier
-  calculatedPrice = calculatedPrice * vehicleMultiplier;
+  // Vehicle type multiplier (car is more expensive)
+  if (vehicleType === "car") {
+    price = Math.round(price * CAR_MULTIPLIER);
+  } else {
+    price = Math.round(price);
+  }
 
   // Ensure minimum fare
-  return Math.max(Math.round(calculatedPrice), minFare);
+  return Math.max(price, MIN_FARE);
+};
+
+// Check if coordinates are within Lagos bounds
+const isInsideLagos = (lat, lng) => {
+  // Lagos bounds: South-West (6.3930, 2.6917) to North-East (6.6730, 4.3510)
+  const LAGOS_SOUTH = 6.393;
+  const LAGOS_NORTH = 6.673;
+  const LAGOS_WEST = 2.6917;
+  const LAGOS_EAST = 4.351;
+
+  return (
+    lat >= LAGOS_SOUTH &&
+    lat <= LAGOS_NORTH &&
+    lng >= LAGOS_WEST &&
+    lng <= LAGOS_EAST
+  );
 };
 
 // Estimate price before creating order
 export const estimatePrice = async (req, res) => {
   try {
     const { pickup, dropoff } = req.body || {};
+
     if (!pickup?.address || !dropoff?.address) {
+      console.error("[ESTIMATE] Missing addresses:", {
+        hasPickup: !!pickup?.address,
+        hasDropoff: !!dropoff?.address,
+      });
       return res.status(400).json({
         success: false,
         error: "Pickup and dropoff addresses are required",
@@ -79,7 +131,7 @@ export const estimatePrice = async (req, res) => {
           pickupData.lng = geo.lng;
         }
       } catch (err) {
-        console.warn("[ESTIMATE] Failed to geocode pickup:", err.message);
+        console.error("[ESTIMATE] Failed to geocode pickup:", err.message, err);
       }
     }
 
@@ -94,7 +146,11 @@ export const estimatePrice = async (req, res) => {
           dropoffData.lng = geo.lng;
         }
       } catch (err) {
-        console.warn("[ESTIMATE] Failed to geocode dropoff:", err.message);
+        console.error(
+          "[ESTIMATE] Failed to geocode dropoff:",
+          err.message,
+          err
+        );
       }
     }
 
@@ -104,16 +160,54 @@ export const estimatePrice = async (req, res) => {
       dropoffData.lat &&
       dropoffData.lng
     ) {
-      distanceKm = calculateDistance(
+      // Validate coordinates are numbers
+      if (
+        typeof pickupData.lat !== "number" ||
+        typeof pickupData.lng !== "number" ||
+        typeof dropoffData.lat !== "number" ||
+        typeof dropoffData.lng !== "number" ||
+        isNaN(pickupData.lat) ||
+        isNaN(pickupData.lng) ||
+        isNaN(dropoffData.lat) ||
+        isNaN(dropoffData.lng)
+      ) {
+        console.error("[ESTIMATE] Invalid coordinates:", {
+          pickup: { lat: pickupData.lat, lng: pickupData.lng },
+          dropoff: { lat: dropoffData.lat, lng: dropoffData.lng },
+        });
+        return res.status(400).json({
+          success: false,
+          error: "Invalid coordinates provided",
+        });
+      }
+
+      // Validate both locations are within Lagos
+      if (
+        !isInsideLagos(pickupData.lat, pickupData.lng) ||
+        !isInsideLagos(dropoffData.lat, dropoffData.lng)
+      ) {
+        console.warn("[ESTIMATE] Location outside Lagos bounds:", {
+          pickup: { lat: pickupData.lat, lng: pickupData.lng },
+          dropoff: { lat: dropoffData.lat, lng: dropoffData.lng },
+        });
+        return res.status(400).json({
+          success: false,
+          error: "We currently only support deliveries within Lagos State.",
+        });
+      }
+
+      distanceKm = await calculateRoadDistance(
         pickupData.lat,
         pickupData.lng,
         dropoffData.lat,
         dropoffData.lng
       );
-      // Calculate for both vehicle types
+
+      // Calculate for both vehicle types using new pricing model
       const bikePrice = calculateDeliveryPrice(distanceKm, "motorcycle");
       const carPrice = calculateDeliveryPrice(distanceKm, "car");
       estimatedPrice = bikePrice;
+
       res.json({
         success: true,
         estimatedPrice: Math.round(estimatedPrice),
@@ -124,7 +218,13 @@ export const estimatePrice = async (req, res) => {
       });
     } else {
       // Use minimum fare if can't calculate distance
+      console.warn("[ESTIMATE] Missing coordinates, using minimum fare");
+      console.warn("[ESTIMATE] Missing coordinates details:", {
+        pickup: { lat: pickupData.lat, lng: pickupData.lng },
+        dropoff: { lat: dropoffData.lat, lng: dropoffData.lng },
+      });
       estimatedPrice = calculateDeliveryPrice(0);
+      console.log("[ESTIMATE] Minimum fare calculated:", estimatedPrice);
       res.json({
         success: true,
         estimatedPrice: Math.round(estimatedPrice),
@@ -135,7 +235,43 @@ export const estimatePrice = async (req, res) => {
       });
     }
   } catch (e) {
-    res.status(500).json({ success: false, error: e.message });
+    console.error("[ESTIMATE] ❌ ERROR in price estimation:", e);
+    console.error("[ESTIMATE] Error name:", e?.name);
+    console.error("[ESTIMATE] Error message:", e?.message);
+    console.error("[ESTIMATE] Error stack:", e?.stack);
+    console.error(
+      "[ESTIMATE] Full error object:",
+      JSON.stringify(e, Object.getOwnPropertyNames(e))
+    );
+    console.error(
+      "[ESTIMATE] Request body that caused error:",
+      JSON.stringify(req.body, null, 2)
+    );
+    console.error(
+      "[ESTIMATE] Request user:",
+      req.user?._id || req.user?.id || "No user"
+    );
+
+    // Log specific error types
+    if (e instanceof TypeError) {
+      console.error(
+        "[ESTIMATE] TypeError details - likely a function call issue"
+      );
+    }
+    if (e instanceof ReferenceError) {
+      console.error(
+        "[ESTIMATE] ReferenceError details - likely a variable/function not found"
+      );
+    }
+    if (e instanceof Error) {
+      console.error("[ESTIMATE] Generic Error - check the message above");
+    }
+
+    res.status(500).json({
+      success: false,
+      error: e.message || "Internal server error during price estimation",
+      errorType: e?.name || "Unknown",
+    });
   }
 };
 
@@ -201,7 +337,7 @@ export const createOrder = async (req, res) => {
       dropoffData.lat &&
       dropoffData.lng
     ) {
-      distanceKm = calculateDistance(
+      distanceKm = await calculateRoadDistance(
         pickupData.lat,
         pickupData.lng,
         dropoffData.lat,
@@ -702,7 +838,6 @@ export const respondToPriceRequest = async (req, res) => {
   }
 };
 
-// Cancel order endpoint - handles cancellation properly without affecting riders/admins
 export const cancelOrder = async (req, res) => {
   try {
     const { reason } = req.body || {};
@@ -715,7 +850,6 @@ export const cancelOrder = async (req, res) => {
     const isRider = order.riderId && String(order.riderId) === String(user._id);
     const isAdmin = user.role === "admin";
 
-    // Only customer, assigned rider, or admin can cancel
     if (!isCustomer && !isRider && !isAdmin) {
       return res.status(403).json({
         success: false,
@@ -723,20 +857,29 @@ export const cancelOrder = async (req, res) => {
       });
     }
 
-    // Prevent cancellation after pickup - order is already in progress
-    if (["picked_up", "delivering", "delivered"].includes(order.status)) {
-      return res.status(400).json({
-        success: false,
-        error:
-          "Cannot cancel order after pickup. Order is already in progress.",
-      });
-    }
-
-    // If order is already cancelled
     if (order.status === "cancelled") {
       return res.status(400).json({
         success: false,
         error: "Order is already cancelled",
+      });
+    }
+
+    const cancellableStatuses = ["pending", "assigned"];
+
+    if (!cancellableStatuses.includes(order.status)) {
+      const statusMessages = {
+        picked_up:
+          "Cannot cancel order after pickup. The rider has already collected the items.",
+        delivering:
+          "Cannot cancel order while in transit. The order is being delivered.",
+        delivered:
+          "Cannot cancel a completed order. The order has already been delivered.",
+      };
+
+      return res.status(400).json({
+        success: false,
+        error:
+          statusMessages[order.status] || "Cannot cancel order at this stage.",
       });
     }
 

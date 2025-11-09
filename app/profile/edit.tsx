@@ -1,5 +1,7 @@
 import { IconNames, Icons } from "@/constants/icons";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useTabBarPadding } from "@/hooks/useTabBarPadding";
 import { toAbsoluteUrl } from "@/services/url";
 import {
   checkEmailAvailability,
@@ -21,11 +23,16 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 export default function EditProfileScreen() {
   const { user, checkAuthStatus } = useAuth();
+  const { theme } = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { tabBarPadding } = useTabBarPadding();
+  const isDark = theme === "dark";
   const params = useLocalSearchParams<{ email?: string }>();
   const [fullName, setFullName] = useState(user?.fullName || "");
   const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || "");
@@ -554,8 +561,14 @@ export default function EditProfileScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-primary">
-      <View className="pt-20 px-6 pb-10">
+    <ScrollView
+      className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
+      contentContainerStyle={{ paddingBottom: tabBarPadding }}
+    >
+      <View
+        className="px-6"
+        style={{ paddingTop: insets.top + 20, paddingBottom: 20 }}
+      >
         {/* Header */}
         <View className="flex-row items-center justify-between mb-6">
           <TouchableOpacity
@@ -571,17 +584,34 @@ export default function EditProfileScreen() {
             <Icons.navigation
               name={IconNames.arrowBack as any}
               size={24}
-              color="#E6E6F0"
+              color={isDark ? "#E6E6F0" : "#000000"}
             />
           </TouchableOpacity>
-          <Text className="text-light-100 text-2xl font-bold">
+          <Text
+            className={`text-2xl font-bold ${
+              isDark ? "text-light-100" : "text-black"
+            }`}
+          >
             {user?.role === "rider" ? "Complete Your KYC" : "Edit Profile"}
           </Text>
           <View className="w-10" />
         </View>
 
         {/* Profile Picture Section */}
-        <View className="bg-secondary rounded-2xl p-6 mb-6 border border-neutral-100 items-center">
+        <View
+          className={`rounded-2xl p-6 mb-6 border items-center ${
+            isDark
+              ? "bg-secondary border-neutral-100"
+              : "bg-white border-gray-200"
+          }`}
+          style={{
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: isDark ? 0.1 : 0.05,
+            shadowRadius: 8,
+            elevation: 4,
+          }}
+        >
           <View className="relative mb-4">
             <View className="w-32 h-32 rounded-full bg-accent items-center justify-center overflow-hidden">
               {profilePicture ? (
@@ -634,8 +664,25 @@ export default function EditProfileScreen() {
 
         {/* KYC Progress Indicator for Riders */}
         {user?.role === "rider" && kycSteps && (
-          <View className="bg-secondary rounded-2xl p-5 mb-6 border border-neutral-100">
-            <Text className="text-light-100 text-lg font-bold mb-4">
+          <View
+            className={`rounded-2xl p-5 mb-6 border ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            }`}
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: isDark ? 0.1 : 0.05,
+              shadowRadius: 8,
+              elevation: 4,
+            }}
+          >
+            <Text
+              className={`text-lg font-bold mb-4 ${
+                isDark ? "text-light-100" : "text-black"
+              }`}
+            >
               KYC Verification Progress
             </Text>
             <View className="gap-3">
@@ -683,12 +730,20 @@ export default function EditProfileScreen() {
                 <View className="flex-1">
                   <Text
                     className={`text-sm font-semibold ${
-                      kycSteps.identity ? "text-green-400" : "text-light-200"
+                      kycSteps.identity
+                        ? "text-green-400"
+                        : isDark
+                        ? "text-light-200"
+                        : "text-gray-700"
                     }`}
                   >
                     Identity Verification
                   </Text>
-                  <Text className="text-light-400 text-xs">
+                  <Text
+                    className={`text-xs ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
                     {kycSteps.identity
                       ? "NIN or BVN added"
                       : "Add your NIN or BVN (required)"}
@@ -740,12 +795,20 @@ export default function EditProfileScreen() {
                 <View className="flex-1">
                   <Text
                     className={`text-sm font-semibold ${
-                      kycSteps.address ? "text-green-400" : "text-light-200"
+                      kycSteps.address
+                        ? "text-green-400"
+                        : isDark
+                        ? "text-light-200"
+                        : "text-gray-700"
                     }`}
                   >
                     Address Information
                   </Text>
-                  <Text className="text-light-400 text-xs">
+                  <Text
+                    className={`text-xs ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
                     {kycSteps.address
                       ? "Address added"
                       : "Add your residential address"}
@@ -799,12 +862,18 @@ export default function EditProfileScreen() {
                     className={`text-sm font-semibold ${
                       kycSteps.driverLicense
                         ? "text-green-400"
-                        : "text-light-200"
+                        : isDark
+                        ? "text-light-200"
+                        : "text-gray-700"
                     }`}
                   >
                     Driver License
                   </Text>
-                  <Text className="text-light-400 text-xs">
+                  <Text
+                    className={`text-xs ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
                     {kycSteps.driverLicense
                       ? "License number and picture added"
                       : "Add license number and picture"}
@@ -856,12 +925,20 @@ export default function EditProfileScreen() {
                 <View className="flex-1">
                   <Text
                     className={`text-sm font-semibold ${
-                      kycSteps.vehicle ? "text-green-400" : "text-light-200"
+                      kycSteps.vehicle
+                        ? "text-green-400"
+                        : isDark
+                        ? "text-light-200"
+                        : "text-gray-700"
                     }`}
                   >
                     Vehicle Picture
                   </Text>
-                  <Text className="text-light-400 text-xs">
+                  <Text
+                    className={`text-xs ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
                     {kycSteps.vehicle
                       ? "Vehicle picture uploaded"
                       : "Upload a picture of your vehicle"}
@@ -871,7 +948,11 @@ export default function EditProfileScreen() {
             </View>
 
             {kycSteps.allComplete && (
-              <View className="mt-4 pt-4 border-t border-neutral-100">
+              <View
+                className={`mt-4 pt-4 border-t ${
+                  isDark ? "border-neutral-100" : "border-gray-200"
+                }`}
+              >
                 <View className="flex-row items-center bg-green-500/20 rounded-xl p-3">
                   <Icons.safety
                     name={IconNames.checkmarkCircle as any}
@@ -889,11 +970,30 @@ export default function EditProfileScreen() {
 
         {/* Form Fields */}
         <View className="gap-4 mb-6">
-          <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
-            <Text className="text-light-300 text-sm mb-2">Email</Text>
+          <View
+            className={`rounded-2xl p-5 border ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            }`}
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: isDark ? 0.05 : 0.03,
+              shadowRadius: 4,
+              elevation: 2,
+            }}
+          >
+            <Text
+              className={`text-sm mb-2 ${
+                isDark ? "text-light-300" : "text-gray-600"
+              }`}
+            >
+              Email
+            </Text>
             <View className="relative">
-            <TextInput
-              value={email}
+              <TextInput
+                value={email}
                 onChangeText={(text) => {
                   setEmail(text);
                   setEmailAvailable(null);
@@ -901,12 +1001,16 @@ export default function EditProfileScreen() {
                   setEmailMessage("");
                   checkEmailDebounced(text);
                 }}
-              placeholder="your@email.com"
-              placeholderTextColor="#9CA4AB"
+                placeholder="your@email.com"
+                placeholderTextColor="#9CA4AB"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
-                className={`text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base pr-12 ${
+                className={`rounded-xl px-4 py-3 text-base pr-12 ${
+                  isDark
+                    ? "text-light-100 bg-dark-100"
+                    : "text-black bg-white border border-gray-200"
+                } ${
                   emailAvailable === true
                     ? "border-2 border-green-500"
                     : emailAvailable === false
@@ -934,7 +1038,7 @@ export default function EditProfileScreen() {
                     name={IconNames.closeCircle as any}
                     size={20}
                     color="#EF4444"
-            />
+                  />
                 </View>
               )}
             </View>
@@ -952,42 +1056,115 @@ export default function EditProfileScreen() {
               </Text>
             )}
             {!emailMessage && (
-            <Text className="text-light-400 text-xs mt-1">
+              <Text
+                className={`text-xs mt-1 ${
+                  isDark ? "text-light-400" : "text-gray-500"
+                }`}
+              >
                 {email === user?.email
                   ? "Your current email address"
                   : "Enter a new email address to change it"}
-            </Text>
+              </Text>
             )}
           </View>
 
-          <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
-            <Text className="text-light-300 text-sm mb-2">Full Name</Text>
+          <View
+            className={`rounded-2xl p-5 border ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            }`}
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: isDark ? 0.05 : 0.03,
+              shadowRadius: 4,
+              elevation: 2,
+            }}
+          >
+            <Text
+              className={`text-sm mb-2 ${
+                isDark ? "text-light-300" : "text-gray-600"
+              }`}
+            >
+              Full Name
+            </Text>
             <TextInput
               value={fullName}
               onChangeText={setFullName}
               placeholder="Enter your full name"
               placeholderTextColor="#9CA4AB"
-              className="text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base"
+              className={`rounded-xl px-4 py-3 text-base ${
+                isDark
+                  ? "text-light-100 bg-dark-100"
+                  : "text-black bg-white border border-gray-200"
+              }`}
             />
           </View>
 
-          <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
-            <Text className="text-light-300 text-sm mb-2">Phone Number</Text>
+          <View
+            className={`rounded-2xl p-5 border ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            }`}
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: isDark ? 0.05 : 0.03,
+              shadowRadius: 4,
+              elevation: 2,
+            }}
+          >
+            <Text
+              className={`text-sm mb-2 ${
+                isDark ? "text-light-300" : "text-gray-600"
+              }`}
+            >
+              Phone Number
+            </Text>
             <TextInput
               value={phoneNumber}
               onChangeText={setPhoneNumber}
               placeholder="Enter your phone number"
               placeholderTextColor="#9CA4AB"
               keyboardType="phone-pad"
-              className="text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base"
+              className={`rounded-xl px-4 py-3 text-base ${
+                isDark
+                  ? "text-light-100 bg-dark-100"
+                  : "text-black bg-white border border-gray-200"
+              }`}
             />
           </View>
 
           {/* Vehicle Type (Riders only - Editable selector) */}
           {user?.role === "rider" && (
-            <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
-              <Text className="text-light-300 text-sm mb-3">Vehicle Type</Text>
-              <View className="flex-row bg-dark-100 rounded-2xl p-1">
+            <View
+              className={`rounded-2xl p-5 border ${
+                isDark
+                  ? "bg-secondary border-neutral-100"
+                  : "bg-white border-gray-200"
+              }`}
+              style={{
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: isDark ? 0.05 : 0.03,
+                shadowRadius: 4,
+                elevation: 2,
+              }}
+            >
+              <Text
+                className={`text-sm mb-3 ${
+                  isDark ? "text-light-300" : "text-gray-600"
+                }`}
+              >
+                Vehicle Type
+              </Text>
+              <View
+                className={`flex-row rounded-2xl p-1 ${
+                  isDark ? "bg-dark-100" : "bg-white border border-gray-200"
+                }`}
+              >
                 <TouchableOpacity
                   onPress={() => setVehicleType("motorcycle")}
                   className={`flex-1 py-3 rounded-xl ${
@@ -998,11 +1175,13 @@ export default function EditProfileScreen() {
                     className={`text-center font-semibold text-sm ${
                       vehicleType === "motorcycle"
                         ? "text-primary"
-                        : "text-light-300"
+                        : isDark
+                        ? "text-light-300"
+                        : "text-gray-600"
                     }`}
                   >
                     🏍️ Motorcycle
-                </Text>
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setVehicleType("car")}
@@ -1012,14 +1191,22 @@ export default function EditProfileScreen() {
                 >
                   <Text
                     className={`text-center font-semibold text-sm ${
-                      vehicleType === "car" ? "text-primary" : "text-light-300"
+                      vehicleType === "car"
+                        ? "text-primary"
+                        : isDark
+                        ? "text-light-300"
+                        : "text-gray-600"
                     }`}
                   >
                     🚗 Car/Van/Tricycle
                   </Text>
                 </TouchableOpacity>
               </View>
-              <Text className="text-light-400 text-xs mt-2">
+              <Text
+                className={`text-xs mt-2 ${
+                  isDark ? "text-light-400" : "text-gray-500"
+                }`}
+              >
                 Select your vehicle type for deliveries
               </Text>
             </View>
@@ -1027,8 +1214,25 @@ export default function EditProfileScreen() {
 
           {/* Vehicle Picture Upload (Riders only) */}
           {user?.role === "rider" && (
-            <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
-              <Text className="text-light-300 text-sm mb-3">
+            <View
+              className={`rounded-2xl p-5 border ${
+                isDark
+                  ? "bg-secondary border-neutral-100"
+                  : "bg-white border-gray-200"
+              }`}
+              style={{
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: isDark ? 0.05 : 0.03,
+                shadowRadius: 4,
+                elevation: 2,
+              }}
+            >
+              <Text
+                className={`text-sm mb-3 ${
+                  isDark ? "text-light-300" : "text-gray-600"
+                }`}
+              >
                 Vehicle Picture
               </Text>
               {vehiclePicture ? (
@@ -1055,13 +1259,23 @@ export default function EditProfileScreen() {
                   </View>
                 </View>
               ) : (
-                <View className="mb-3 bg-dark-100 rounded-xl p-8 items-center justify-center border-2 border-dashed border-neutral-100">
+                <View
+                  className={`mb-3 rounded-xl p-8 items-center justify-center border-2 border-dashed ${
+                    isDark
+                      ? "bg-dark-100 border-neutral-100"
+                      : "bg-white border-gray-300"
+                  }`}
+                >
                   <Icons.media
                     name={IconNames.cameraOutline as any}
                     size={48}
                     color="#9CA4AB"
                   />
-                  <Text className="text-light-400 text-xs mt-2 text-center">
+                  <Text
+                    className={`text-xs mt-2 text-center ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
                     No vehicle picture uploaded
                   </Text>
                 </View>
@@ -1081,7 +1295,11 @@ export default function EditProfileScreen() {
                   </Text>
                 )}
               </TouchableOpacity>
-              <Text className="text-light-400 text-xs mt-2">
+              <Text
+                className={`text-xs mt-2 ${
+                  isDark ? "text-light-400" : "text-gray-500"
+                }`}
+              >
                 Upload a clear picture of your{" "}
                 {user?.vehicleType === "motorcycle" ? "motorcycle" : "car/van"}
               </Text>
@@ -1091,8 +1309,25 @@ export default function EditProfileScreen() {
           {/* KYC Fields for Riders */}
           {user?.role === "rider" && (
             <>
-              <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
-                <Text className="text-light-300 text-sm mb-2">
+              <View
+                className={`rounded-2xl p-5 border ${
+                  isDark
+                    ? "bg-secondary border-neutral-100"
+                    : "bg-white border-gray-200"
+                }`}
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: isDark ? 0.05 : 0.03,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }}
+              >
+                <Text
+                  className={`text-sm mb-2 ${
+                    isDark ? "text-light-300" : "text-gray-600"
+                  }`}
+                >
                   NIN (National Identification Number)
                 </Text>
                 <View className="relative">
@@ -1106,9 +1341,11 @@ export default function EditProfileScreen() {
                     placeholder="Enter your NIN (optional)"
                     placeholderTextColor="#9CA4AB"
                     keyboardType="numeric"
-                    className={`text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base pr-12 ${
-                      ninVerified ? "border-2 border-green-500" : ""
-                    }`}
+                    className={`rounded-xl px-4 py-3 text-base pr-12 ${
+                      isDark
+                        ? "text-light-100 bg-dark-100"
+                        : "text-black bg-white border border-gray-200"
+                    } ${ninVerified ? "border-2 border-green-500" : ""}`}
                   />
                   {verifyingNin && (
                     <View className="absolute right-4 top-3">
@@ -1133,15 +1370,36 @@ export default function EditProfileScreen() {
                   </View>
                 )}
                 {!ninVerified && !verifyingNin && (
-                  <Text className="text-light-400 text-xs mt-1">
+                  <Text
+                    className={`text-xs mt-1 ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
                     Required to accept delivery orders. Provide either NIN or
                     BVN.
                   </Text>
                 )}
               </View>
 
-              <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
-                <Text className="text-light-300 text-sm mb-2">
+              <View
+                className={`rounded-2xl p-5 border ${
+                  isDark
+                    ? "bg-secondary border-neutral-100"
+                    : "bg-white border-gray-200"
+                }`}
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: isDark ? 0.05 : 0.03,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }}
+              >
+                <Text
+                  className={`text-sm mb-2 ${
+                    isDark ? "text-light-300" : "text-gray-600"
+                  }`}
+                >
                   BVN (Bank Verification Number)
                 </Text>
                 <View className="relative">
@@ -1155,9 +1413,11 @@ export default function EditProfileScreen() {
                     placeholder="Enter your BVN (optional)"
                     placeholderTextColor="#9CA4AB"
                     keyboardType="numeric"
-                    className={`text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base pr-12 ${
-                      bvnVerified ? "border-2 border-green-500" : ""
-                    }`}
+                    className={`rounded-xl px-4 py-3 text-base pr-12 ${
+                      isDark
+                        ? "text-light-100 bg-dark-100"
+                        : "text-black bg-white border border-gray-200"
+                    } ${bvnVerified ? "border-2 border-green-500" : ""}`}
                   />
                   {verifyingBvn && (
                     <View className="absolute right-4 top-3">
@@ -1182,15 +1442,38 @@ export default function EditProfileScreen() {
                   </View>
                 )}
                 {!bvnVerified && !verifyingBvn && (
-                  <Text className="text-light-400 text-xs mt-1">
+                  <Text
+                    className={`text-xs mt-1 ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
                     Required to accept delivery orders. Provide either NIN or
                     BVN.
                   </Text>
                 )}
               </View>
 
-              <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
-                <Text className="text-light-300 text-sm mb-2">Address</Text>
+              <View
+                className={`rounded-2xl p-5 border ${
+                  isDark
+                    ? "bg-secondary border-neutral-100"
+                    : "bg-white border-gray-200"
+                }`}
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: isDark ? 0.05 : 0.03,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }}
+              >
+                <Text
+                  className={`text-sm mb-2 ${
+                    isDark ? "text-light-300" : "text-gray-600"
+                  }`}
+                >
+                  Address
+                </Text>
                 <TextInput
                   value={address}
                   onChangeText={setAddress}
@@ -1198,16 +1481,41 @@ export default function EditProfileScreen() {
                   placeholderTextColor="#9CA4AB"
                   multiline
                   numberOfLines={3}
-                  className="text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base"
+                  className={`rounded-xl px-4 py-3 text-base ${
+                    isDark
+                      ? "text-light-100 bg-dark-100"
+                      : "text-black bg-white border border-gray-200"
+                  }`}
                   textAlignVertical="top"
                 />
-                <Text className="text-light-400 text-xs mt-1">
+                <Text
+                  className={`text-xs mt-1 ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
                   Your residential or business address
                 </Text>
               </View>
 
-              <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
-                <Text className="text-light-300 text-sm mb-2">
+              <View
+                className={`rounded-2xl p-5 border ${
+                  isDark
+                    ? "bg-secondary border-neutral-100"
+                    : "bg-white border-gray-200"
+                }`}
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: isDark ? 0.05 : 0.03,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }}
+              >
+                <Text
+                  className={`text-sm mb-2 ${
+                    isDark ? "text-light-300" : "text-gray-600"
+                  }`}
+                >
                   Driver License Number
                 </Text>
                 <View className="relative">
@@ -1240,7 +1548,11 @@ export default function EditProfileScreen() {
                     }}
                     placeholder="Enter your driver license number"
                     placeholderTextColor="#9CA4AB"
-                    className={`text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base pr-12 ${
+                    className={`rounded-xl px-4 py-3 text-base pr-12 ${
+                      isDark
+                        ? "text-light-100 bg-dark-100"
+                        : "text-black bg-white border border-gray-200"
+                    } ${
                       driverLicenseVerified ? "border-2 border-green-500" : ""
                     }`}
                   />
@@ -1262,7 +1574,11 @@ export default function EditProfileScreen() {
                   </View>
                 )}
                 {!driverLicenseVerified && (
-                  <Text className="text-light-400 text-xs mt-1">
+                  <Text
+                    className={`text-xs mt-1 ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
                     {driverLicensePicture
                       ? "Add license number to verify"
                       : "Add both license number and selfie to verify"}
@@ -1271,15 +1587,36 @@ export default function EditProfileScreen() {
               </View>
 
               {/* Driver License Selfie Upload */}
-              <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
-                <Text className="text-light-300 text-sm mb-3">
+              <View
+                className={`rounded-2xl p-5 border ${
+                  isDark
+                    ? "bg-secondary border-neutral-100"
+                    : "bg-white border-gray-200"
+                }`}
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: isDark ? 0.05 : 0.03,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }}
+              >
+                <Text
+                  className={`text-sm mb-3 ${
+                    isDark ? "text-light-300" : "text-gray-600"
+                  }`}
+                >
                   Selfie with License
                 </Text>
                 <View className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3 mb-3">
                   <Text className="text-blue-300 text-xs font-semibold mb-1">
                     📸 Security Requirement
                   </Text>
-                  <Text className="text-light-300 text-xs">
+                  <Text
+                    className={`text-xs ${
+                      isDark ? "text-light-300" : "text-gray-600"
+                    }`}
+                  >
                     Take a clear selfie holding your driver license next to your
                     face. This helps us verify your identity and prevent fraud.
                   </Text>
@@ -1309,16 +1646,30 @@ export default function EditProfileScreen() {
                     </View>
                   </View>
                 ) : (
-                  <View className="mb-3 bg-dark-100 rounded-xl p-8 items-center justify-center border-2 border-dashed border-neutral-100">
+                  <View
+                    className={`mb-3 rounded-xl p-8 items-center justify-center border-2 border-dashed ${
+                      isDark
+                        ? "bg-dark-100 border-neutral-100"
+                        : "bg-white border-gray-300"
+                    }`}
+                  >
                     <Icons.media
                       name={IconNames.cameraOutline as any}
                       size={48}
                       color="#9CA4AB"
                     />
-                    <Text className="text-light-400 text-xs mt-2 text-center">
+                    <Text
+                      className={`text-xs mt-2 text-center ${
+                        isDark ? "text-light-400" : "text-gray-500"
+                      }`}
+                    >
                       No selfie uploaded
                     </Text>
-                    <Text className="text-light-500 text-xs mt-1 text-center">
+                    <Text
+                      className={`text-xs mt-1 text-center ${
+                        isDark ? "text-light-500" : "text-gray-400"
+                      }`}
+                    >
                       Hold your license next to your face
                     </Text>
                   </View>
@@ -1338,7 +1689,11 @@ export default function EditProfileScreen() {
                     </Text>
                   )}
                 </TouchableOpacity>
-                <Text className="text-light-400 text-xs mt-2">
+                <Text
+                  className={`text-xs mt-2 ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
                   Take a clear selfie holding your license next to your face.
                   Make sure both your face and the license are clearly visible.
                 </Text>
@@ -1361,31 +1716,73 @@ export default function EditProfileScreen() {
           {/* KYC Fields for Customers */}
           {user?.role === "customer" && (
             <>
-            <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
-              <Text className="text-light-300 text-sm mb-2">
-                Default Address
-              </Text>
-              <TextInput
-                value={defaultAddress}
-                onChangeText={setDefaultAddress}
-                placeholder="Enter your default delivery address"
-                placeholderTextColor="#9CA4AB"
-                multiline
-                numberOfLines={3}
-                className="text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base"
-                textAlignVertical="top"
-              />
-              <Text className="text-light-400 text-xs mt-1">
+              <View
+                className={`rounded-2xl p-5 border ${
+                  isDark
+                    ? "bg-secondary border-neutral-100"
+                    : "bg-white border-gray-200"
+                }`}
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: isDark ? 0.05 : 0.03,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }}
+              >
+                <Text
+                  className={`text-sm mb-2 ${
+                    isDark ? "text-light-300" : "text-gray-600"
+                  }`}
+                >
+                  Default Address
+                </Text>
+                <TextInput
+                  value={defaultAddress}
+                  onChangeText={setDefaultAddress}
+                  placeholder="Enter your default delivery address"
+                  placeholderTextColor="#9CA4AB"
+                  multiline
+                  numberOfLines={3}
+                  className={`rounded-xl px-4 py-3 text-base ${
+                    isDark
+                      ? "text-light-100 bg-dark-100"
+                      : "text-black bg-white border border-gray-200"
+                  }`}
+                  textAlignVertical="top"
+                />
+                <Text
+                  className={`text-xs mt-1 ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
                   💡 Tip: Save your address here to quickly fill it when
                   creating orders. You can use the checkbox when placing an
                   order to auto-fill your pickup address.
-              </Text>
+                </Text>
               </View>
 
               {/* Optional Identity Verification for Customers */}
-              <View className="bg-secondary rounded-2xl p-5 border border-neutral-100">
+              <View
+                className={`rounded-2xl p-5 border ${
+                  isDark
+                    ? "bg-secondary border-neutral-100"
+                    : "bg-white border-gray-200"
+                }`}
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: isDark ? 0.05 : 0.03,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }}
+              >
                 <View className="flex-row items-center mb-3">
-                  <Text className="text-light-100 text-base font-semibold flex-1">
+                  <Text
+                    className={`text-base font-semibold flex-1 ${
+                      isDark ? "text-light-100" : "text-black"
+                    }`}
+                  >
                     Identity Verification (Optional)
                   </Text>
                 </View>
@@ -1393,14 +1790,22 @@ export default function EditProfileScreen() {
                   <Text className="text-blue-300 text-xs font-semibold mb-1">
                     🔒 Security & Dispute Protection
                   </Text>
-                  <Text className="text-light-300 text-xs">
+                  <Text
+                    className={`text-xs ${
+                      isDark ? "text-light-300" : "text-gray-600"
+                    }`}
+                  >
                     Verify your identity to protect your account and enable
                     faster dispute resolution. This is optional but recommended
                     for your security.
                   </Text>
                 </View>
 
-                <Text className="text-light-300 text-sm mb-2">
+                <Text
+                  className={`text-sm mb-2 ${
+                    isDark ? "text-light-300" : "text-gray-600"
+                  }`}
+                >
                   NIN (National Identification Number)
                 </Text>
                 <View className="relative">
@@ -1414,15 +1819,17 @@ export default function EditProfileScreen() {
                     placeholder="Enter your NIN (optional)"
                     placeholderTextColor="#9CA4AB"
                     keyboardType="numeric"
-                    className={`text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base pr-12 ${
-                      ninVerified ? "border-2 border-green-500" : ""
-                    }`}
+                    className={`rounded-xl px-4 py-3 text-base pr-12 ${
+                      isDark
+                        ? "text-light-100 bg-dark-100"
+                        : "text-black bg-white border border-gray-200"
+                    } ${ninVerified ? "border-2 border-green-500" : ""}`}
                   />
                   {verifyingNin && (
                     <View className="absolute right-4 top-3">
                       <ActivityIndicator size="small" color="#AB8BFF" />
-            </View>
-          )}
+                    </View>
+                  )}
                   {ninVerified && !verifyingNin && (
                     <View className="absolute right-4 top-3">
                       <Icons.safety
@@ -1441,12 +1848,20 @@ export default function EditProfileScreen() {
                   </View>
                 )}
                 {!ninVerified && !verifyingNin && (
-                  <Text className="text-light-400 text-xs mt-1">
+                  <Text
+                    className={`text-xs mt-1 ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
                     Optional: Helps with account security and dispute resolution
                   </Text>
                 )}
 
-                <Text className="text-light-300 text-sm mb-2 mt-4">
+                <Text
+                  className={`text-sm mb-2 mt-4 ${
+                    isDark ? "text-light-300" : "text-gray-600"
+                  }`}
+                >
                   BVN (Bank Verification Number)
                 </Text>
                 <View className="relative">
@@ -1460,9 +1875,11 @@ export default function EditProfileScreen() {
                     placeholder="Enter your BVN (optional)"
                     placeholderTextColor="#9CA4AB"
                     keyboardType="numeric"
-                    className={`text-light-100 bg-dark-100 rounded-xl px-4 py-3 text-base pr-12 ${
-                      bvnVerified ? "border-2 border-green-500" : ""
-                    }`}
+                    className={`rounded-xl px-4 py-3 text-base pr-12 ${
+                      isDark
+                        ? "text-light-100 bg-dark-100"
+                        : "text-black bg-white border border-gray-200"
+                    } ${bvnVerified ? "border-2 border-green-500" : ""}`}
                   />
                   {verifyingBvn && (
                     <View className="absolute right-4 top-3">
@@ -1487,7 +1904,11 @@ export default function EditProfileScreen() {
                   </View>
                 )}
                 {!bvnVerified && !verifyingBvn && (
-                  <Text className="text-light-400 text-xs mt-1">
+                  <Text
+                    className={`text-xs mt-1 ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
                     Optional: Provide either NIN or BVN for identity
                     verification
                   </Text>

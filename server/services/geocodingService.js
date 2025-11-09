@@ -15,53 +15,75 @@ const geocodeAddress = async (address) => {
 
   // Enhanced parameters for Nigeria
   const countrycode = process.env.OPENCAGE_COUNTRY_CODE || "ng";
-  const limit = 1;
-  const minConfidence = 5;
+  const limit = 1; // Just get the first result
 
+  // Enhance query with Lagos if not already included (same as suggestions)
   let enhancedAddress = address.trim();
   if (
-    !enhancedAddress.toLowerCase().includes("nigeria") &&
-    !enhancedAddress.toLowerCase().includes("lagos")
+    !enhancedAddress.toLowerCase().includes("lagos") &&
+    !enhancedAddress.toLowerCase().includes("nigeria")
   ) {
-    enhancedAddress = `${address}, Lagos, Nigeria`;
+    enhancedAddress = `${enhancedAddress}, Lagos, Nigeria`;
   }
 
   const encodedAddress = encodeURIComponent(enhancedAddress);
-  const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodedAddress}&key=${apiKey}&countrycode=${countrycode}&limit=${limit}&min_confidence=${minConfidence}&no_annotations=1`;
+  // Remove bounds - let OpenCage find it with countrycode and "Lagos, Nigeria" in query
+  // Bounds were too restrictive and causing 0 results
+  const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodedAddress}&key=${apiKey}&countrycode=${countrycode}&limit=${limit}&no_annotations=1&no_dedupe=1`;
+
+  console.log("[GEOCODING] Geocoding address:", {
+    original: address.substring(0, 30),
+    enhanced: enhancedAddress.substring(0, 50),
+  });
 
   try {
     const response = await fetch(url);
     const data = await response.json();
 
+    console.log("[GEOCODING] Geocode response:", {
+      statusCode: data.status?.code,
+      statusMessage: data.status?.message,
+      resultsCount: data.results?.length || 0,
+    });
+
     if (data.status.code !== 200) {
+      console.error("[GEOCODING] OpenCage API error:", data.status.message);
       throw new Error(
         `OpenCage API error: ${data.status.message || "Unknown error"}`
       );
     }
 
     if (!data.results || data.results.length === 0) {
-      return null; 
+      console.warn(
+        "[GEOCODING] No results found for:",
+        address.substring(0, 30)
+      );
+      return null;
     }
 
+    // Just use the first result - bounds already ensure it's in Lagos
     const result = data.results[0];
     const { lat, lng } = result.geometry;
-    const confidence = result.confidence || 0;
 
-    if (confidence < minConfidence) {
-      console.warn(
-        `[GEOCODING] Low confidence (${confidence}) for address: ${address}`
-      );
-    }
+    console.log("[GEOCODING] Geocoded successfully:", {
+      address: address.substring(0, 30),
+      lat,
+      lng,
+      formatted: result.formatted,
+    });
 
     return {
       lat: Number(lat),
       lng: Number(lng),
       formatted: result.formatted,
-      confidence: confidence,
-      components: result.components || {}, 
+      confidence: result.confidence || 0,
+      components: result.components || {},
     };
   } catch (error) {
-    console.error("[GEOCODING] Error geocoding address:", error.message);
+    console.error("[GEOCODING] Error geocoding address:", {
+      message: error.message,
+      address: address.substring(0, 30),
+    });
     throw error;
   }
 };
@@ -81,13 +103,37 @@ const getAddressSuggestions = async (query, limit = 5) => {
   }
 
   const countrycode = process.env.OPENCAGE_COUNTRY_CODE || "ng";
-  const encodedQuery = encodeURIComponent(query.trim());
+  // Lagos bounds: South-West (6.3930, 2.6917) to North-East (6.6730, 4.3510)
+  const bounds = "6.3930,2.6917,6.6730,4.3510";
 
-  const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodedQuery}&key=${apiKey}&countrycode=${countrycode}&limit=${limit}&no_annotations=1&no_dedupe=1`;
+  // Enhance query with Lagos if not already included (helps with matching)
+  let enhancedQuery = query.trim();
+  if (
+    !enhancedQuery.toLowerCase().includes("lagos") &&
+    !enhancedQuery.toLowerCase().includes("nigeria")
+  ) {
+    enhancedQuery = `${enhancedQuery}, Lagos, Nigeria`;
+  }
+
+  const encodedQuery = encodeURIComponent(enhancedQuery);
+
+  const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodedQuery}&key=${apiKey}&countrycode=${countrycode}&bounds=${bounds}&limit=${limit}&no_annotations=1&no_dedupe=1`;
+
+  console.log("[GEOCODING] Fetching suggestions:", {
+    query: query.substring(0, 30),
+    url: url.replace(apiKey, "***"),
+  });
 
   try {
     const response = await fetch(url);
     const data = await response.json();
+
+    console.log("[GEOCODING] OpenCage response:", {
+      statusCode: data.status?.code,
+      statusMessage: data.status?.message,
+      resultsCount: data.results?.length || 0,
+      rateLimit: data.rate,
+    });
 
     if (data.status.code !== 200) {
       console.warn(
@@ -99,6 +145,10 @@ const getAddressSuggestions = async (query, limit = 5) => {
     }
 
     if (!data.results || data.results.length === 0) {
+      console.warn(
+        "[GEOCODING] No results returned for query:",
+        query.substring(0, 30)
+      );
       return [];
     }
 
@@ -152,7 +202,7 @@ const calculateDistance = (lat1, lng1, lat2, lng2) => {
       Math.sin(dLng / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const distance = R * c;
-  return Math.round(distance * 10) / 10; 
+  return Math.round(distance * 10) / 10;
 };
 
 export { calculateDistance, geocodeAddress, getAddressSuggestions };
