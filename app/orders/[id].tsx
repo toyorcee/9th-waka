@@ -28,6 +28,7 @@ import {
   Linking,
   Modal,
   ScrollView,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -72,6 +73,7 @@ export default function OrderDetailScreen() {
   const [recipientName, setRecipientName] = useState("");
   const [recipientPhone, setRecipientPhone] = useState("");
   const [proofNote, setProofNote] = useState("");
+  const [paymentReceived, setPaymentReceived] = useState(false);
   const [uploadingProof, setUploadingProof] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -282,6 +284,7 @@ export default function OrderDetailScreen() {
         recipientName: recipientName || undefined,
         recipientPhone: recipientPhone || undefined,
         note: proofNote || undefined,
+        paymentReceived: paymentReceived,
       });
       Toast.show({
         type: "success",
@@ -293,6 +296,7 @@ export default function OrderDetailScreen() {
       setRecipientName("");
       setRecipientPhone("");
       setProofNote("");
+      setPaymentReceived(false);
       await load();
     } catch (e: any) {
       Toast.show({
@@ -1478,6 +1482,56 @@ export default function OrderDetailScreen() {
                   </View>
                 )}
               </View>
+
+              {/* Payment Status */}
+              <View
+                className={`mt-4 pt-4 border-t ${
+                  isDark ? "border-neutral-100/50" : "border-gray-200"
+                }`}
+              >
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-1">
+                    <Text
+                      className={`text-sm mb-1 ${
+                        isDark ? "text-light-300" : "text-gray-600"
+                      }`}
+                    >
+                      Payment Status
+                    </Text>
+                    <View className="flex-row items-center">
+                      <View
+                        className={`w-3 h-3 rounded-full mr-2 ${
+                          order.payment?.status === "paid"
+                            ? "bg-active"
+                            : order.payment?.status === "failed"
+                            ? "bg-danger"
+                            : "bg-warning"
+                        }`}
+                      />
+                      <Text
+                        className={`font-semibold capitalize ${
+                          order.payment?.status === "paid"
+                            ? "text-active"
+                            : order.payment?.status === "failed"
+                            ? "text-danger"
+                            : "text-warning"
+                        }`}
+                      >
+                        {order.payment?.status || "pending"}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                {order.payment?.status === "paid" && (
+                  <Text
+                    className={`text-xs mt-2 ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
+                    Rider confirmed payment received
+                  </Text>
+                )}
+              </View>
             </View>
           )}
 
@@ -1936,7 +1990,7 @@ export default function OrderDetailScreen() {
                 </View>
 
                 {/* Note (Optional) */}
-                <View className="mb-6">
+                <View className="mb-4">
                   <Text className="text-light-300 mb-2">Note (Optional)</Text>
                   <TextInput
                     value={proofNote}
@@ -1948,6 +2002,41 @@ export default function OrderDetailScreen() {
                     className="text-light-100 bg-dark-100 rounded-xl px-4 py-3"
                     style={{ textAlignVertical: "top" }}
                   />
+                </View>
+
+                {/* Payment Confirmation */}
+                <View className="mb-6">
+                  <View
+                    className={`flex-row items-center p-4 rounded-xl border ${
+                      isDark
+                        ? "bg-active/20 border-active/30"
+                        : "bg-green-50 border-green-200"
+                    }`}
+                  >
+                    <View className="flex-1 mr-3">
+                      <Text
+                        className={`text-sm font-semibold mb-1 ${
+                          isDark ? "text-active" : "text-green-700"
+                        }`}
+                      >
+                        Payment Received
+                      </Text>
+                      <Text
+                        className={`text-xs ${
+                          isDark ? "text-light-400" : "text-gray-600"
+                        }`}
+                      >
+                        Confirm that you received payment from the recipient
+                      </Text>
+                    </View>
+                    <Switch
+                      value={paymentReceived}
+                      onValueChange={setPaymentReceived}
+                      trackColor={{ false: "#3A3A3C", true: "#30D158" }}
+                      thumbColor={paymentReceived ? "#FFFFFF" : "#9CA4AB"}
+                      ios_backgroundColor="#3A3A3C"
+                    />
+                  </View>
                 </View>
 
                 <TouchableOpacity

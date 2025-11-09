@@ -211,6 +211,7 @@ export async function updateDeliveryProof(
     recipientName?: string;
     recipientPhone?: string;
     note?: string;
+    paymentReceived?: boolean;
   }
 ): Promise<Order> {
   const response = await apiClient.patch(`/orders/${id}/delivery`, data);

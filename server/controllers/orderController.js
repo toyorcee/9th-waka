@@ -1373,11 +1373,18 @@ export const updateDeliveryProof = async (req, res) => {
       return res.status(404).json({ success: false, error: "Order not found" });
     if (String(order.riderId) !== String(req.user._id))
       return res.status(403).json({ success: false, error: "Not your order" });
-    const { photoUrl, recipientName, recipientPhone, note } = req.body || {};
+    const { photoUrl, recipientName, recipientPhone, note, paymentReceived } =
+      req.body || {};
     if (photoUrl) order.delivery.photoUrl = photoUrl;
     if (recipientName) order.delivery.recipientName = recipientName;
     if (recipientPhone) order.delivery.recipientPhone = recipientPhone;
     if (note) order.delivery.note = note;
+    // Rider confirms payment received from recipient
+    if (paymentReceived === true) {
+      order.payment.status = "paid";
+      order.payment.ref = `cash-${order._id}-${Date.now()}`;
+      appendTimeline(order, order.status, "Payment confirmed by rider");
+    }
     appendTimeline(order, order.status, "Delivery proof updated");
     await order.save();
 

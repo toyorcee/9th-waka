@@ -344,22 +344,22 @@ export default function DeliveriesScreen() {
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center flex-1">
                 <View className="relative mr-4">
-                  <View
+                <View
                     className="rounded-full p-3"
                     style={{
                       backgroundColor: online ? "#30D158" : "#9CA4AB",
                     }}
-                  >
-                    <Icons.status
-                      name={
-                        online
-                          ? (IconNames.radioButtonOn as any)
-                          : (IconNames.radioButtonOff as any)
-                      }
-                      size={24}
+                >
+                  <Icons.status
+                    name={
+                      online
+                        ? (IconNames.radioButtonOn as any)
+                        : (IconNames.radioButtonOff as any)
+                    }
+                    size={24}
                       color="#FFFFFF"
-                    />
-                  </View>
+                  />
+                </View>
                   {online && (
                     <View
                       className="absolute -top-1 -right-1 w-4 h-4 rounded-full border-2"
@@ -372,13 +372,13 @@ export default function DeliveriesScreen() {
                 </View>
                 <View className="flex-1 mr-4">
                   <View className="flex-row items-center mb-1">
-                    <Text
+                  <Text
                       className={`text-2xl font-bold mr-2 ${
-                        isDark ? "text-light-100" : "text-black"
-                      }`}
-                    >
-                      {online ? "You're Online" : "Go Online"}
-                    </Text>
+                      isDark ? "text-light-100" : "text-black"
+                    }`}
+                  >
+                    {online ? "You're Online" : "Go Online"}
+                  </Text>
                     {online && (
                       <View
                         className="rounded-full px-2.5 py-0.5"
@@ -401,18 +401,18 @@ export default function DeliveriesScreen() {
                   </Text>
                   {online && (
                     <View className="flex-row items-center mt-2">
-                      <Icons.location
-                        name={IconNames.locationOutline as any}
+                <Icons.location
+                  name={IconNames.locationOutline as any}
                         size={16}
                         color="#30D158"
                         style={{ marginRight: 6 }}
-                      />
-                      <Text
+                />
+                <Text
                         className="text-sm font-semibold"
                         style={{ color: "#30D158" }}
-                      >
+                >
                         Location Active
-                      </Text>
+                </Text>
                     </View>
                   )}
                 </View>

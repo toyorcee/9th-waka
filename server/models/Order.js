@@ -104,6 +104,13 @@ const OrderSchema = new mongoose.Schema(
         default: "pending",
       },
       ref: { type: String, default: null },
+      adminConfirmed: { type: Boolean, default: false },
+      adminConfirmedAt: { type: Date, default: null },
+      adminConfirmedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
     },
   },
   { timestamps: true }
