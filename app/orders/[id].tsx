@@ -440,6 +440,27 @@ export default function OrderDetailScreen() {
   const timeline = order.timeline || [];
   const delivery = order.delivery || {};
 
+  const openMaps = (lat: number, lng: number) => {
+    const url = `https://maps.google.com/maps?q=${lat},${lng}`;
+    Linking.canOpenURL(url)
+      .then((supported) => {
+        if (supported) {
+          return Linking.openURL(url);
+        } else {
+          const geoUrl = `geo:${lat},${lng}`;
+          return Linking.openURL(geoUrl);
+        }
+      })
+      .catch((err: any) => {
+        console.error("Failed to open maps", err);
+        Toast.show({
+          type: "error",
+          text1: "Unable to open maps",
+          text2: "Please install a maps app",
+        });
+      });
+  };
+
   // Helper functions
   const formatDate = (date: string | Date) => {
     if (!date) return "N/A";
@@ -1509,10 +1530,9 @@ export default function OrderDetailScreen() {
                 <TouchableOpacity
                   onPress={() => {
                     const location = realTimeLocation || order.riderLocation;
-                    const url = `https://www.google.com/maps?q=${location?.lat},${location?.lng}`;
-                    Linking.openURL(url).catch((err: any) =>
-                      console.error("Failed to open maps", err)
-                    );
+                    if (location?.lat && location?.lng) {
+                      openMaps(location.lat, location.lng);
+                    }
                   }}
                   className="bg-accent rounded-xl px-4 py-3 mt-2"
                 >
@@ -1575,10 +1595,7 @@ export default function OrderDetailScreen() {
                             <TouchableOpacity
                               key={idx}
                               onPress={() => {
-                                const url = `https://www.google.com/maps?q=${entry.lat},${entry.lng}`;
-                                Linking.openURL(url).catch((err: any) =>
-                                  console.error("Failed to open maps", err)
-                                );
+                                openMaps(entry.lat, entry.lng);
                               }}
                               className={`border rounded-lg px-3 py-2 ${
                                 isDark
