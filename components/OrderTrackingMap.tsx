@@ -1,8 +1,9 @@
 import { SocketEvents } from "@/constants/socketEvents";
 import { useTheme } from "@/contexts/ThemeContext";
+import { calculateAddressDistance } from "@/services/geocodingApi";
 import { getOrder } from "@/services/orderApi";
 import { socketClient } from "@/services/socketClient";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Linking,
@@ -16,7 +17,7 @@ let WebView: any;
 try {
   WebView = require("react-native-webview").WebView;
 } catch (e) {
-  console.warn("react-native-webview not installed, using fallback");
+  console.warn("react-native-webview not installed");
 }
 
 interface OrderTrackingMapProps {
@@ -37,18 +38,13 @@ export default function OrderTrackingMap({
     lat: number;
     lng: number;
   } | null>(null);
-  const webViewRef = useRef<any>(null);
-  const mapUpdateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
-    null
-  );
+  const [routeInfo, setRouteInfo] = useState<{
+    distance: number;
+    duration: number;
+  } | null>(null);
 
   useEffect(() => {
     loadOrder();
-    return () => {
-      if (mapUpdateIntervalRef.current) {
-        clearInterval(mapUpdateIntervalRef.current);
-      }
-    };
   }, [orderId]);
 
   useEffect(() => {
@@ -57,7 +53,10 @@ export default function OrderTrackingMap({
     const handleLocationUpdate = (data: any) => {
       if (data.orderId === orderId) {
         setRiderLocation({ lat: data.lat, lng: data.lng });
-        updateMapWithLocation(data.lat, data.lng);
+        // Recalculate route when rider moves
+        if (order?.pickup?.lat && order?.dropoff?.lat) {
+          fetchRoute();
+        }
       }
     };
 
@@ -96,6 +95,12 @@ export default function OrderTrackingMap({
     };
   }, [order, orderId]);
 
+  useEffect(() => {
+    if (order?.pickup?.lat && order?.dropoff?.lat) {
+      fetchRoute();
+    }
+  }, [order, riderLocation]);
+
   const loadOrder = async () => {
     try {
       const orderData = await getOrder(orderId);
@@ -113,113 +118,43 @@ export default function OrderTrackingMap({
     }
   };
 
-  const updateMapWithLocation = (lat: number, lng: number) => {
-    if (!webViewRef.current || !order || !WebView) return;
+  const fetchRoute = async () => {
+    if (!order?.pickup?.lat || !order?.dropoff?.lat) return;
 
-    const pickup = order.pickup;
-    const dropoff = order.dropoff;
+    try {
+      // Use backend API for distance calculation (secure - uses Mapbox on server)
+      const result = await calculateAddressDistance({
+        lat1: order.pickup.lat,
+        lng1: order.pickup.lng,
+        lat2: order.dropoff.lat,
+        lng2: order.dropoff.lng,
+      });
 
-    // Update map with new location
-    const mapHtml = generateMapHTML(pickup, dropoff, { lat, lng });
-    webViewRef.current.injectJavaScript(`
-      document.body.innerHTML = \`${mapHtml
-        .replace(/`/g, "\\`")
-        .replace(/\$/g, "\\$")}\`;
-    `);
+      if (result) {
+        // Use duration from Mapbox if available, otherwise estimate
+        const durationMinutes =
+          result.durationMinutes || (result.distanceKm / 30) * 60; // Estimate: 30 km/h average in Lagos
+
+        setRouteInfo({
+          distance: result.distanceKm,
+          duration: durationMinutes,
+        });
+      }
+    } catch (error) {
+      console.error("[ROUTING] Error fetching route:", error);
+    }
   };
 
-  const generateMapHTML = (
-    pickup: any,
-    dropoff: any,
-    riderLoc: { lat: number; lng: number } | null
-  ) => {
-    if (!pickup?.lat || !dropoff?.lat) {
-      return `
-        <html>
-          <body style="margin:0;padding:20px;background:#030014;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;">
-            <p>Loading map...</p>
-          </body>
-        </html>
-      `;
-    }
+  const openInMapsApp = () => {
+    if (!order?.pickup?.lat || !order?.dropoff?.lat) return;
 
-    // Use Google Maps JavaScript API with a simple approach
-    // Note: This requires a Google Maps API key - you'll need to add it to your environment
-    const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
-
-    // If no API key, use a simple iframe with directions URL
-    if (!apiKey) {
-      const waypoints = riderLoc
-        ? `${pickup.lat},${pickup.lng}|${riderLoc.lat},${riderLoc.lng}|${dropoff.lat},${dropoff.lng}`
-        : `${pickup.lat},${pickup.lng}|${dropoff.lat},${dropoff.lng}`;
-
-      return `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-              body { margin: 0; padding: 0; overflow: hidden; }
-              iframe { width: 100%; height: 100vh; border: 0; }
-            </style>
-          </head>
-          <body>
-            <iframe
-              src="https://www.google.com/maps/dir/${waypoints}"
-              allowfullscreen
-            ></iframe>
-          </body>
-        </html>
-      `;
-    }
-
-    // With API key, use embed API for better control
-    const waypointsStr = riderLoc
-      ? `&waypoints=${pickup.lat},${pickup.lng}|${riderLoc.lat},${riderLoc.lng}|${dropoff.lat},${dropoff.lng}`
-      : "";
-
-    return `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <style>
-            body { margin: 0; padding: 0; overflow: hidden; }
-            iframe { width: 100%; height: 100vh; border: 0; }
-          </style>
-        </head>
-        <body>
-          <iframe
-            id="map"
-            src="https://www.google.com/maps/embed/v1/directions?key=${apiKey}&origin=${
-      pickup.lat
-    },${pickup.lng}&destination=${dropoff.lat},${
-      dropoff.lng
-    }${waypointsStr}&zoom=13&maptype=roadmap"
-            allowfullscreen
-          ></iframe>
-          <script>
-            // Auto-refresh every 30 seconds to update rider location
-            setInterval(() => {
-              const iframe = document.getElementById('map');
-              if (iframe && ${
-                riderLoc ? `"${riderLoc.lat},${riderLoc.lng}"` : "null"
-              }) {
-                const waypoints = "${pickup.lat},${pickup.lng}|${
-      riderLoc ? `${riderLoc.lat},${riderLoc.lng}` : ""
-    }|${dropoff.lat},${dropoff.lng}".split("|").filter(Boolean);
-                const waypointsStr = waypoints.length > 0 ? "&waypoints=" + waypoints.join("|") : "";
-                iframe.src = "https://www.google.com/maps/embed/v1/directions?key=${apiKey}&origin=${
-      pickup.lat
-    },${pickup.lng}&destination=${dropoff.lat},${
-      dropoff.lng
-    }" + waypointsStr + "&zoom=13&maptype=roadmap";
-              }
-            }, 30000);
-          </script>
-        </body>
-      </html>
-    `;
+    const waypoints = riderLocation
+      ? `${order.pickup.lat},${order.pickup.lng}/${riderLocation.lat},${riderLocation.lng}/${order.dropoff.lat},${order.dropoff.lng}`
+      : `${order.pickup.lat},${order.pickup.lng}/${order.dropoff.lat},${order.dropoff.lng}`;
+    const url = `https://www.google.com/maps/dir/${waypoints}`;
+    Linking.openURL(url).catch((err) =>
+      console.error("Failed to open maps", err)
+    );
   };
 
   if (loading) {
@@ -265,100 +200,23 @@ export default function OrderTrackingMap({
     );
   }
 
-  const mapHtml = generateMapHTML(order.pickup, order.dropoff, riderLocation);
+  // Generate Google Maps URL for WebView
+  const generateMapUrl = () => {
+    if (!order?.pickup?.lat || !order?.dropoff?.lat) return "";
 
-  // If WebView is not available, show a fallback with link to open in browser
-  if (!WebView) {
-    return (
-      <View
-        className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
-        style={{ paddingTop: insets.top }}
-      >
-        <View
-          className={`border-b px-4 py-3 flex-row items-center justify-between ${
-            isDark
-              ? "bg-secondary border-neutral-100"
-              : "bg-white border-gray-200"
-          }`}
-        >
-          <View className="flex-1">
-            <Text
-              className={`font-semibold text-base ${
-                isDark ? "text-light-100" : "text-black"
-              }`}
-            >
-              Live Order Tracking
-            </Text>
-            <Text
-              className={`text-xs ${
-                isDark ? "text-light-400" : "text-gray-500"
-              }`}
-            >
-              {order.items} • {order.status}
-            </Text>
-          </View>
-          {onClose && (
-            <TouchableOpacity
-              onPress={onClose}
-              className={`rounded-lg px-3 py-2 ${
-                isDark ? "bg-dark-100" : "bg-gray-100"
-              }`}
-            >
-              <Text
-                className={`font-semibold text-xs ${
-                  isDark ? "text-light-200" : "text-black"
-                }`}
-              >
-                Close
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-        <View
-          className="flex-1 items-center justify-center px-6"
-          style={{ paddingBottom: insets.bottom }}
-        >
-          <Text
-            className={`text-lg font-semibold mb-4 text-center ${
-              isDark ? "text-light-200" : "text-black"
-            }`}
-          >
-            Open in Google Maps
-          </Text>
-          <Text
-            className={`text-sm text-center mb-6 ${
-              isDark ? "text-light-400" : "text-gray-500"
-            }`}
-          >
-            Install react-native-webview for in-app map viewing, or open in your
-            browser
-          </Text>
-          <TouchableOpacity
-            onPress={() => {
-              const waypoints = riderLocation
-                ? `${order.pickup.lat},${order.pickup.lng}/${riderLocation.lat},${riderLocation.lng}/${order.dropoff.lat},${order.dropoff.lng}`
-                : `${order.pickup.lat},${order.pickup.lng}/${order.dropoff.lat},${order.dropoff.lng}`;
-              const url = `https://www.google.com/maps/dir/${waypoints}`;
-              Linking.openURL(url).catch((err) =>
-                console.error("Failed to open maps", err)
-              );
-            }}
-            className="bg-accent rounded-xl px-6 py-4"
-          >
-            <Text className="text-primary font-bold text-base">
-              Open Google Maps
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
+    const waypoints = riderLocation
+      ? `${order.pickup.lat},${order.pickup.lng}/${riderLocation.lat},${riderLocation.lng}/${order.dropoff.lat},${order.dropoff.lng}`
+      : `${order.pickup.lat},${order.pickup.lng}/${order.dropoff.lat},${order.dropoff.lng}`;
+
+    return `https://www.google.com/maps/dir/${waypoints}`;
+  };
 
   return (
     <View
       className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
       style={{ paddingTop: insets.top }}
     >
+      {/* Header */}
       <View
         className={`border-b px-4 py-3 flex-row items-center justify-between ${
           isDark
@@ -382,15 +240,7 @@ export default function OrderTrackingMap({
         </View>
         <View className="flex-row gap-2">
           <TouchableOpacity
-            onPress={() => {
-              const waypoints = riderLocation
-                ? `${order.pickup.lat},${order.pickup.lng}/${riderLocation.lat},${riderLocation.lng}/${order.dropoff.lat},${order.dropoff.lng}`
-                : `${order.pickup.lat},${order.pickup.lng}/${order.dropoff.lat},${order.dropoff.lng}`;
-              const url = `https://www.google.com/maps/dir/${waypoints}`;
-              Linking.openURL(url).catch((err) =>
-                console.error("Failed to open maps", err)
-              );
-            }}
+            onPress={openInMapsApp}
             className="bg-accent rounded-lg px-3 py-2"
           >
             <Text className="text-primary font-bold text-xs">
@@ -415,23 +265,79 @@ export default function OrderTrackingMap({
           )}
         </View>
       </View>
-      <WebView
-        ref={webViewRef}
-        source={{ html: mapHtml }}
-        style={{ flex: 1 }}
-        javaScriptEnabled={true}
-        domStorageEnabled={true}
-        startInLoadingState={true}
-        renderLoading={() => (
-          <View
-            className={`absolute inset-0 items-center justify-center ${
-              isDark ? "bg-primary" : "bg-white"
+
+      {/* Route Info Card */}
+      {routeInfo && (
+        <View
+          className={`mx-4 mt-4 rounded-xl p-4 border ${
+            isDark
+              ? "bg-secondary border-neutral-100"
+              : "bg-white border-gray-200"
+          }`}
+        >
+          <View className="flex-row items-center justify-between">
+            <View>
+              <Text
+                className={`text-sm ${
+                  isDark ? "text-light-400" : "text-gray-500"
+                }`}
+              >
+                Distance
+              </Text>
+              <Text
+                className={`text-lg font-bold ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
+                {routeInfo.distance.toFixed(1)} km
+              </Text>
+            </View>
+            <View>
+              <Text
+                className={`text-sm ${
+                  isDark ? "text-light-400" : "text-gray-500"
+                }`}
+              >
+                Est. Time
+              </Text>
+              <Text
+                className={`text-lg font-bold ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
+                {Math.round(routeInfo.duration)} min
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Google Maps WebView */}
+      {WebView && order?.pickup?.lat && order?.dropoff?.lat ? (
+        <WebView
+          source={{ uri: generateMapUrl() }}
+          style={{ flex: 1 }}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+        />
+      ) : (
+        <View
+          className="flex-1 items-center justify-center"
+          style={{ paddingBottom: insets.bottom }}
+        >
+          <Text
+            className={`text-center px-6 ${
+              isDark ? "text-light-300" : "text-gray-600"
             }`}
           >
-            <ActivityIndicator size="large" color="#AB8BFF" />
-          </View>
-        )}
-      />
+            {!order?.pickup?.lat || !order?.dropoff?.lat
+              ? "Map data not available"
+              : "Tap 'Open in Maps App' to view route"}
+          </Text>
+        </View>
+      )}
+
+      {/* Rider Location Status */}
       {riderLocation && (
         <View
           className={`absolute left-4 right-4 rounded-xl p-3 border ${

@@ -10,7 +10,9 @@ import {
   ActivityIndicator,
   BackHandler,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  Pressable,
   ScrollView,
   Text,
   TextInput,
@@ -30,7 +32,9 @@ export default function AuthScreen() {
   const [selectedRole, setSelectedRole] = useState<"customer" | "rider">(
     "customer"
   );
-  const [vehicleType, setVehicleType] = useState<"motorcycle" | "car" | "">("");
+  const [vehicleType, setVehicleType] = useState<
+    "bicycle" | "motorbike" | "tricycle" | "car" | "van" | ""
+  >("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -39,12 +43,23 @@ export default function AuthScreen() {
   const [passwordStrength, setPasswordStrength] = useState<
     "weak" | "medium" | "strong" | null
   >(null);
+  const [showVehiclePicker, setShowVehiclePicker] = useState(false);
+
+  const vehicleTypes = [
+    { value: "bicycle", label: "Bicycle", icon: "bicycle" },
+    { value: "motorbike", label: "Motorbike", icon: "motorbike" },
+    { value: "tricycle", label: "Tricycle", icon: "rickshaw" },
+    { value: "car", label: "Car", icon: "car-outline" },
+    { value: "van", label: "Van", icon: "van-utility" },
+  ] as const;
 
   const { login, register, user } = useAuth();
-  const { theme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const isDark = theme === "dark";
+
+  const isRouterReady = router && typeof router.replace === "function";
 
   const evaluatePassword = (value: string): "weak" | "medium" | "strong" => {
     const lengthScore = value.length >= 8;
@@ -88,29 +103,53 @@ export default function AuthScreen() {
       if (mode === "login") {
         await login(email, password);
 
-        // Check if user has accepted terms - need to wait for auth state to update
-        // We'll check this after checkAuthStatus completes in the login function
-        // For now, redirect to home and let the tabs layout handle it
         const pendingAction = await navigationHelper.getPendingAction();
         await navigationHelper.clearPendingAction();
 
-        router.replace(Routes.tabs.home);
+        if (isRouterReady && typeof router.replace === "function") {
+          try {
+            router.replace(Routes.tabs.home);
+          } catch (e) {}
 
-        setTimeout(() => {
-          if (pendingAction === "request") {
-            router.push(Routes.standalone.newOrder);
-          } else if (pendingAction === "track") {
-            router.push(Routes.tabs.track);
-          } else if (pendingAction === "sos") {
-            router.push(Routes.standalone.sos);
-          } else if (pendingAction === "orders") {
-            router.push(Routes.tabs.orders);
-          } else if (pendingAction === "deliveries") {
-            router.push(Routes.tabs.deliveries);
-          } else if (pendingAction === "earnings") {
-            router.push(Routes.tabs.earnings);
-          }
-        }, 100);
+          setTimeout(() => {
+            if (!isRouterReady) return;
+            try {
+              if (
+                pendingAction === "request" &&
+                typeof router.push === "function"
+              ) {
+                router.push(Routes.standalone.newOrder);
+              } else if (
+                pendingAction === "track" &&
+                typeof router.push === "function"
+              ) {
+                router.push(Routes.tabs.track);
+              } else if (
+                pendingAction === "sos" &&
+                typeof router.push === "function"
+              ) {
+                router.push(Routes.standalone.sos);
+              } else if (
+                pendingAction === "orders" &&
+                typeof router.push === "function"
+              ) {
+                router.push(Routes.tabs.orders);
+              } else if (
+                pendingAction === "deliveries" &&
+                typeof router.push === "function"
+              ) {
+                router.push(Routes.tabs.deliveries);
+              } else if (
+                pendingAction === "earnings" &&
+                typeof router.push === "function"
+              ) {
+                router.push(Routes.tabs.earnings);
+              }
+            } catch (e) {
+              // Ignore navigation errors
+            }
+          }, 100);
+        }
         setEmail("");
         setPassword("");
         setConfirmPassword("");
@@ -141,7 +180,11 @@ export default function AuthScreen() {
           vehicleType || (undefined as any)
         );
 
-        router.replace(`/verify?email=${encodeURIComponent(email)}`);
+        if (isRouterReady && typeof router.replace === "function") {
+          try {
+            router.replace(`/verify?email=${encodeURIComponent(email)}`);
+          } catch (e) {}
+        }
         setEmail("");
         setPassword("");
         setConfirmPassword("");
@@ -170,12 +213,31 @@ export default function AuthScreen() {
   };
 
   const handleGoBack = useCallback(() => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace(Routes.tabs.home);
+    if (!isRouterReady) {
+      return; // Don't navigate if router isn't ready
     }
-  }, [router]);
+    try {
+      if (router.canGoBack && typeof router.canGoBack === "function") {
+        const canGoBack = router.canGoBack();
+        if (canGoBack && typeof router.back === "function") {
+          router.back();
+          return;
+        }
+      }
+      if (typeof router.replace === "function") {
+        router.replace(Routes.tabs.home);
+      }
+    } catch (error) {
+      // Silently fail - navigation context not ready
+      if (typeof router.replace === "function") {
+        try {
+          router.replace(Routes.tabs.home);
+        } catch (e) {
+          // Ignore navigation errors
+        }
+      }
+    }
+  }, [router, isRouterReady]);
 
   useEffect(() => {
     const checkPendingAction = async () => {
@@ -206,6 +268,20 @@ export default function AuthScreen() {
       className="flex-1"
     >
       {/* Toasts rendered globally in _layout.tsx */}
+      {/* Background Image with Overlay - Fixed */}
+      <View className="absolute inset-0">
+        <Image
+          source={images.homeHero}
+          style={{ width: "100%", height: "100%" }}
+          contentFit="cover"
+        />
+        <View
+          className={`absolute inset-0 ${
+            isDark ? "bg-primary/10" : "bg-white/10"
+          }`}
+        />
+      </View>
+
       <ScrollView
         className="flex-1"
         contentContainerStyle={{
@@ -215,47 +291,109 @@ export default function AuthScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Background Image with Overlay */}
-        <View className="absolute inset-0">
-          <Image
-            source={images.homeHero}
-            style={{ width: "100%", height: "100%" }}
-            contentFit="cover"
-          />
-          <View
-            className={`absolute inset-0 ${
-              isDark ? "bg-primary/10" : "bg-gray-100/10"
-            }`}
-          />
-        </View>
-
         <View className="flex-1 justify-center px-6 py-12">
-          {/* Back Button */}
-          <TouchableOpacity
-            onPress={handleGoBack}
-            className={`absolute top-0 left-6 z-10 rounded-full p-2 ${
-              isDark ? "bg-secondary/80" : "bg-white/80"
-            }`}
+          {/* Back Button and Theme Toggle */}
+          <View
+            className="absolute top-0 left-0 right-0 z-10 flex-row justify-between items-center px-6"
             style={{ marginTop: insets.top + 8 }}
           >
-            <Icons.navigation
-              name={IconNames.arrowBack as any}
-              size={24}
-              color="#AB8BFF"
-            />
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleGoBack}
+              className={`rounded-full p-1.5 ${
+                isDark ? "bg-secondary/80" : "bg-gray-50/90"
+              }`}
+            >
+              <Icons.navigation
+                name={IconNames.arrowBack as any}
+                size={20}
+                color={isDark ? "#AB8BFF" : "#1E3A8A"}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={toggleTheme}
+              className={`rounded-full p-1.5 ${
+                isDark ? "bg-secondary/80" : "bg-gray-50/90"
+              }`}
+              accessibilityRole="button"
+              accessibilityLabel={
+                isDark ? "Switch to light mode" : "Switch to dark mode"
+              }
+            >
+              <Icons.action
+                name={isDark ? "moon-outline" : "sunny-outline"}
+                size={20}
+                color={isDark ? "#AB8BFF" : "#1E3A8A"}
+              />
+            </TouchableOpacity>
+          </View>
 
           {/* Logo/Branding Section */}
-          <View className="items-center mb-8">
+          <View className="items-center mb-6">
             <Image
               source={images.logo}
               style={{ width: 100, height: 50 }}
               contentFit="contain"
-              className="mb-3"
+              className="mb-4"
             />
-            <Text className="text-light-200 text-base text-center">
-              Modern Delivery • Safe • Fast
+            <Text
+              className={`text-2xl font-bold text-center mb-2 ${
+                isDark ? "text-light-100" : "text-white"
+              }`}
+            >
+              Welcome to 9thWaka
             </Text>
+            <Text
+              className={`text-base text-center px-4 ${
+                isDark ? "text-light-300" : "text-white/90"
+              }`}
+            >
+              Nigeria's Most Trusted Delivery Platform
+            </Text>
+            <View className="flex-row items-center justify-center mt-3 gap-4">
+              <View className="flex-row items-center">
+                <Icons.status
+                  name={IconNames.checkmarkCircle as any}
+                  size={16}
+                  color={isDark ? "#30D158" : "#FFFFFF"}
+                />
+                <Text
+                  className={`text-sm ml-1 ${
+                    isDark ? "text-light-300" : "text-white/90"
+                  }`}
+                >
+                  Fast
+                </Text>
+              </View>
+              <View className="flex-row items-center">
+                <Icons.status
+                  name={IconNames.checkmarkCircle as any}
+                  size={16}
+                  color={isDark ? "#30D158" : "#FFFFFF"}
+                />
+                <Text
+                  className={`text-sm ml-1 ${
+                    isDark ? "text-light-300" : "text-white/90"
+                  }`}
+                >
+                  Secure
+                </Text>
+              </View>
+              <View className="flex-row items-center">
+                <Icons.status
+                  name={IconNames.checkmarkCircle as any}
+                  size={16}
+                  color={isDark ? "#30D158" : "#FFFFFF"}
+                />
+                <Text
+                  className={`text-sm ml-1 ${
+                    isDark ? "text-light-300" : "text-white/90"
+                  }`}
+                >
+                  Reliable
+                </Text>
+              </View>
+            </View>
           </View>
 
           {/* Auth Card */}
@@ -263,20 +401,68 @@ export default function AuthScreen() {
             className={`rounded-3xl p-6 border backdrop-blur ${
               isDark
                 ? "bg-secondary/95 border-neutral-100/50"
-                : "bg-white/95 border-gray-200/50"
+                : "bg-gray-50/98 border-gray-300/60 shadow-lg"
             }`}
+            style={
+              !isDark
+                ? {
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 8 },
+                    shadowOpacity: 0.12,
+                    shadowRadius: 16,
+                    elevation: 8,
+                  }
+                : undefined
+            }
           >
+            {/* Welcome Message Inside Form */}
+            <View className="mb-6">
+              <Text
+                className={`text-xl font-bold text-center mb-2 ${
+                  isDark ? "text-light-100" : "text-white"
+                }`}
+              >
+                {mode === "login"
+                  ? "Welcome Back! 🚀"
+                  : "Start Your Journey Today! ✨"}
+              </Text>
+              <Text
+                className={`text-sm text-center ${
+                  isDark ? "text-light-400" : "text-white/90"
+                }`}
+              >
+                {mode === "login"
+                  ? "Access your account and continue delivering excellence"
+                  : "Join thousands of satisfied customers and riders across Nigeria"}
+              </Text>
+            </View>
+
             {/* Mode Toggle */}
-            <View className="flex-row bg-dark-100 rounded-2xl p-1 mb-6">
+            <View
+              className={`flex-row rounded-2xl p-1 mb-6 ${
+                isDark ? "bg-dark-100" : "bg-gray-100"
+              }`}
+            >
               <TouchableOpacity
                 onPress={() => setMode("login")}
                 className={`flex-1 py-3 rounded-xl ${
-                  mode === "login" ? "bg-accent" : ""
+                  mode === "login" ? (isDark ? "bg-accent" : "") : ""
                 }`}
+                style={
+                  mode === "login" && !isDark
+                    ? { backgroundColor: "#1E3A8A" }
+                    : undefined
+                }
               >
                 <Text
                   className={`text-center font-semibold ${
-                    mode === "login" ? "text-primary" : "text-light-300"
+                    mode === "login"
+                      ? isDark
+                        ? "text-primary"
+                        : "text-white"
+                      : isDark
+                      ? "text-light-300"
+                      : "text-gray-500"
                   }`}
                 >
                   Login
@@ -285,12 +471,23 @@ export default function AuthScreen() {
               <TouchableOpacity
                 onPress={() => setMode("signup")}
                 className={`flex-1 py-3 rounded-xl ${
-                  mode === "signup" ? "bg-accent" : ""
+                  mode === "signup" ? (isDark ? "bg-accent" : "") : ""
                 }`}
+                style={
+                  mode === "signup" && !isDark
+                    ? { backgroundColor: "#1E3A8A" }
+                    : undefined
+                }
               >
                 <Text
                   className={`text-center font-semibold ${
-                    mode === "signup" ? "text-primary" : "text-light-300"
+                    mode === "signup"
+                      ? isDark
+                        ? "text-primary"
+                        : "text-white"
+                      : isDark
+                      ? "text-light-300"
+                      : "text-gray-500"
                   }`}
                 >
                   Sign Up
@@ -301,25 +498,48 @@ export default function AuthScreen() {
             {/* Role Selection (Signup only) */}
             {mode === "signup" && (
               <View className="mb-6">
-                <Text
-                  className={`text-sm mb-3 font-medium ${
-                    isDark ? "text-light-200" : "text-black"
+                <View
+                  className={`mb-2 px-2 py-1 rounded-xl ${
+                    isDark ? "" : "bg-white"
                   }`}
                 >
-                  I want to register as
-                </Text>
-                <View className="flex-row bg-dark-100 rounded-2xl p-1">
+                  <Text
+                    className={`text-sm font-medium ${
+                      isDark ? "text-light-200" : "text-blue-900"
+                    }`}
+                  >
+                    I want to register as
+                  </Text>
+                </View>
+                <View
+                  className={`flex-row rounded-2xl p-1 ${
+                    isDark ? "bg-dark-100" : "bg-gray-100"
+                  }`}
+                >
                   <TouchableOpacity
                     onPress={() => setSelectedRole("customer")}
-                    className={`flex-1 py-3 rounded-xl ${
-                      selectedRole === "customer" ? "bg-accent" : ""
+                    className={`flex-1 py-1.5 rounded-xl ${
+                      selectedRole === "customer"
+                        ? isDark
+                          ? "bg-accent"
+                          : ""
+                        : ""
                     }`}
+                    style={
+                      selectedRole === "customer" && !isDark
+                        ? { backgroundColor: "#1E3A8A" }
+                        : undefined
+                    }
                   >
                     <Text
                       className={`text-center font-semibold text-sm ${
                         selectedRole === "customer"
-                          ? "text-primary"
-                          : "text-light-300"
+                          ? isDark
+                            ? "text-primary"
+                            : "text-white"
+                          : isDark
+                          ? "text-light-300"
+                          : "text-gray-500"
                       }`}
                     >
                       Customer
@@ -327,8 +547,12 @@ export default function AuthScreen() {
                     <Text
                       className={`text-center text-xs mt-1 ${
                         selectedRole === "customer"
-                          ? "text-primary/70"
-                          : "text-light-400"
+                          ? isDark
+                            ? "text-primary/70"
+                            : "text-white/70"
+                          : isDark
+                          ? "text-light-400"
+                          : "text-gray-400"
                       }`}
                     >
                       Request deliveries
@@ -336,15 +560,28 @@ export default function AuthScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => setSelectedRole("rider")}
-                    className={`flex-1 py-3 rounded-xl ${
-                      selectedRole === "rider" ? "bg-accent" : ""
+                    className={`flex-1 py-1.5 rounded-xl ${
+                      selectedRole === "rider"
+                        ? isDark
+                          ? "bg-accent"
+                          : ""
+                        : ""
                     }`}
+                    style={
+                      selectedRole === "rider" && !isDark
+                        ? { backgroundColor: "#1E3A8A" }
+                        : undefined
+                    }
                   >
                     <Text
                       className={`text-center font-semibold text-sm ${
                         selectedRole === "rider"
-                          ? "text-primary"
-                          : "text-light-300"
+                          ? isDark
+                            ? "text-primary"
+                            : "text-white"
+                          : isDark
+                          ? "text-light-300"
+                          : "text-gray-500"
                       }`}
                     >
                       Rider
@@ -352,8 +589,12 @@ export default function AuthScreen() {
                     <Text
                       className={`text-center text-xs mt-1 ${
                         selectedRole === "rider"
-                          ? "text-primary/70"
-                          : "text-light-400"
+                          ? isDark
+                            ? "text-primary/70"
+                            : "text-white/70"
+                          : isDark
+                          ? "text-light-400"
+                          : "text-gray-400"
                       }`}
                     >
                       Deliver packages
@@ -365,9 +606,19 @@ export default function AuthScreen() {
 
             {/* Email Input */}
             <View className="mb-4">
-              <Text className="text-light-200 text-sm mb-2 font-medium">
-                Email
-              </Text>
+              <View
+                className={`mb-2 px-2 py-1 rounded-xl ${
+                  isDark ? "" : "bg-white"
+                }`}
+              >
+                <Text
+                  className={`text-sm font-medium ${
+                    isDark ? "text-light-200" : "text-blue-900"
+                  }`}
+                >
+                  Email
+                </Text>
+              </View>
               <View className="flex-row items-center bg-dark-100 rounded-xl border border-neutral-100/50">
                 <View className="pl-4">
                   <Icons.communication
@@ -385,7 +636,7 @@ export default function AuthScreen() {
                   autoCapitalize="none"
                   autoCorrect={false}
                   className={`flex-1 px-4 py-4 ${
-                    isDark ? "text-light-100" : "text-black"
+                    isDark ? "text-light-100" : "text-white"
                   }`}
                 />
               </View>
@@ -393,9 +644,19 @@ export default function AuthScreen() {
 
             {/* Password Input */}
             <View className="mb-4">
-              <Text className="text-light-200 text-sm mb-2 font-medium">
-                Password
-              </Text>
+              <View
+                className={`mb-2 px-2 py-1 rounded-xl ${
+                  isDark ? "" : "bg-white"
+                }`}
+              >
+                <Text
+                  className={`text-sm font-medium ${
+                    isDark ? "text-light-200" : "text-blue-900"
+                  }`}
+                >
+                  Password
+                </Text>
+              </View>
               <View className="flex-row items-center bg-dark-100 rounded-xl border border-neutral-100/50">
                 <View className="pl-4">
                   <Icons.safety
@@ -424,7 +685,7 @@ export default function AuthScreen() {
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
                   className={`flex-1 px-4 py-4 ${
-                    isDark ? "text-light-100" : "text-black"
+                    isDark ? "text-light-100" : "text-white"
                   }`}
                 />
                 <TouchableOpacity
@@ -477,9 +738,19 @@ export default function AuthScreen() {
             {/* Confirm Password (Signup only) */}
             {mode === "signup" && (
               <View className="mb-6">
-                <Text className="text-light-200 text-sm mb-2 font-medium">
-                  Confirm Password
-                </Text>
+                <View
+                  className={`mb-2 px-2 py-1 rounded-xl ${
+                    isDark ? "" : "bg-white"
+                  }`}
+                >
+                  <Text
+                    className={`text-sm font-medium ${
+                      isDark ? "text-light-200" : "text-blue-900"
+                    }`}
+                  >
+                    Confirm Password
+                  </Text>
+                </View>
                 <View
                   className={`flex-row items-center bg-dark-100 rounded-xl border ${
                     confirmMismatch
@@ -509,7 +780,7 @@ export default function AuthScreen() {
                     secureTextEntry={!showConfirmPassword}
                     autoCapitalize="none"
                     className={`flex-1 px-4 py-4 ${
-                      isDark ? "text-light-100" : "text-black"
+                      isDark ? "text-light-100" : "text-white"
                     }`}
                   />
                   <TouchableOpacity
@@ -543,47 +814,52 @@ export default function AuthScreen() {
             {/* Rider: Vehicle Type (Signup only) */}
             {mode === "signup" && selectedRole === "rider" && (
               <View className="mb-6">
-                <Text
-                  className={`text-sm mb-3 font-medium ${
-                    isDark ? "text-light-200" : "text-black"
+                <View
+                  className={`mb-2 px-2 py-1 rounded-xl ${
+                    isDark ? "" : "bg-white"
                   }`}
                 >
-                  Vehicle Type
-                </Text>
-                <View className="flex-row bg-dark-100 rounded-2xl p-1">
-                  <TouchableOpacity
-                    onPress={() => setVehicleType("motorcycle")}
-                    className={`flex-1 py-3 rounded-xl ${
-                      vehicleType === "motorcycle" ? "bg-accent" : ""
+                  <Text
+                    className={`text-sm font-medium ${
+                      isDark ? "text-light-200" : "text-blue-900"
                     }`}
                   >
-                    <Text
-                      className={`text-center font-semibold text-sm ${
-                        vehicleType === "motorcycle"
-                          ? "text-primary"
-                          : "text-light-300"
-                      }`}
-                    >
-                      Motorcycle
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setVehicleType("car")}
-                    className={`flex-1 py-3 rounded-xl ${
-                      vehicleType === "car" ? "bg-accent" : ""
-                    }`}
-                  >
-                    <Text
-                      className={`text-center font-semibold text-sm ${
-                        vehicleType === "car"
-                          ? "text-primary"
-                          : "text-light-300"
-                      }`}
-                    >
-                      Car
-                    </Text>
-                  </TouchableOpacity>
+                    Vehicle Type
+                  </Text>
                 </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    // Show vehicle type picker modal
+                    setShowVehiclePicker(true);
+                  }}
+                  className={`flex-row items-center justify-between rounded-xl px-4 py-3 border ${
+                    isDark
+                      ? "bg-dark-100 border-neutral-100"
+                      : "bg-gray-100 border-gray-200"
+                  }`}
+                >
+                  <Text
+                    className={`flex-1 ${
+                      vehicleType
+                        ? isDark
+                          ? "text-light-100"
+                          : "text-black"
+                        : isDark
+                        ? "text-light-400"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    {vehicleType
+                      ? vehicleType.charAt(0).toUpperCase() +
+                        vehicleType.slice(1)
+                      : "Select your vehicle type"}
+                  </Text>
+                  <Icons.action
+                    name={IconNames.chevronDown as any}
+                    size={20}
+                    color={isDark ? "#9CA4AB" : "#6E6E73"}
+                  />
+                </TouchableOpacity>
               </View>
             )}
 
@@ -601,11 +877,25 @@ export default function AuthScreen() {
                   onPress={handleSubmit}
                   disabled={disabled}
                   className={`rounded-xl py-4 mb-4 flex-row items-center justify-center ${
-                    disabled ? "bg-accent/50" : "bg-accent"
+                    disabled
+                      ? isDark
+                        ? "bg-accent/50"
+                        : "bg-blue-800/50"
+                      : isDark
+                      ? "bg-accent"
+                      : ""
                   }`}
+                  style={
+                    !disabled && !isDark
+                      ? { backgroundColor: "#1E3A8A" }
+                      : undefined
+                  }
                 >
                   {isLoading ? (
-                    <ActivityIndicator color="#030014" size="small" />
+                    <ActivityIndicator
+                      color={isDark ? "#030014" : "#FFFFFF"}
+                      size="small"
+                    />
                   ) : (
                     <>
                       <View style={{ marginRight: 8 }}>
@@ -616,10 +906,14 @@ export default function AuthScreen() {
                               : IconNames.addCircle) as any
                           }
                           size={20}
-                          color="#030014"
+                          color={isDark ? "#030014" : "#FFFFFF"}
                         />
                       </View>
-                      <Text className="text-primary font-bold text-base">
+                      <Text
+                        className={`font-bold text-base ${
+                          isDark ? "text-primary" : "text-white"
+                        }`}
+                      >
                         {mode === "login" ? "Login" : "Create Account"}
                       </Text>
                     </>
@@ -631,7 +925,15 @@ export default function AuthScreen() {
             {/* Forgot Password Link (Login only) */}
             {mode === "login" && (
               <TouchableOpacity
-                onPress={() => router.push("/auth/forgot-password" as any)}
+                onPress={() => {
+                  if (isRouterReady && typeof router.push === "function") {
+                    try {
+                      router.push("/auth/forgot-password" as any);
+                    } catch (e) {
+                      // Ignore navigation errors
+                    }
+                  }
+                }}
                 className="py-2 items-center mb-3"
               >
                 <Text className="text-light-300 text-sm">
@@ -670,6 +972,115 @@ export default function AuthScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Vehicle Type Picker Modal */}
+      <Modal
+        visible={showVehiclePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowVehiclePicker(false)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)" }}
+          onPress={() => setShowVehiclePicker(false)}
+        >
+          <View
+            className={`absolute bottom-0 left-0 right-0 rounded-t-3xl ${
+              isDark ? "bg-secondary" : "bg-white"
+            }`}
+            style={{ paddingBottom: insets.bottom }}
+          >
+            <View className="px-6 pt-4 pb-2">
+              <View className="flex-row items-center justify-between mb-4">
+                <Text
+                  className={`text-xl font-bold ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
+                  Select Vehicle Type
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowVehiclePicker(false)}
+                  className="p-2"
+                >
+                  <Icons.action
+                    name={IconNames.close as any}
+                    size={24}
+                    color={isDark ? "#9CA4AB" : "#6E6E73"}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {vehicleTypes.map((type) => (
+                  <TouchableOpacity
+                    key={type.value}
+                    onPress={() => {
+                      setVehicleType(type.value);
+                      setShowVehiclePicker(false);
+                    }}
+                    className={`flex-row items-center p-4 mb-2 rounded-xl border ${
+                      vehicleType === type.value
+                        ? isDark
+                          ? "bg-accent/20 border-accent"
+                          : "bg-blue-900/20 border-blue-900"
+                        : isDark
+                        ? "bg-dark-100 border-neutral-100"
+                        : "bg-gray-100 border-gray-200"
+                    }`}
+                  >
+                    <View
+                      className={`mr-4 p-2 rounded-lg ${
+                        vehicleType === type.value
+                          ? isDark
+                            ? "bg-accent/30"
+                            : "bg-blue-900/30"
+                          : isDark
+                          ? "bg-dark-100"
+                          : "bg-gray-200"
+                      }`}
+                    >
+                      <Icons.motorcycle
+                        name={type.icon as any}
+                        size={24}
+                        color={
+                          vehicleType === type.value
+                            ? isDark
+                              ? "#AB8BFF"
+                              : "#1E3A8A"
+                            : isDark
+                            ? "#9CA4AB"
+                            : "#6E6E73"
+                        }
+                      />
+                    </View>
+                    <Text
+                      className={`flex-1 text-base font-semibold ${
+                        vehicleType === type.value
+                          ? isDark
+                            ? "text-accent"
+                            : "text-blue-900"
+                          : isDark
+                          ? "text-light-100"
+                          : "text-black"
+                      }`}
+                    >
+                      {type.label}
+                    </Text>
+                    {vehicleType === type.value && (
+                      <Icons.status
+                        name={IconNames.checkmarkCircle as any}
+                        size={24}
+                        color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                      />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }

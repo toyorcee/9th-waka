@@ -45,7 +45,7 @@ const OrderSchema = new mongoose.Schema(
     items: { type: String, default: "" },
     preferredVehicleType: {
       type: String,
-      enum: ["motorcycle", "car", null],
+      enum: ["bicycle", "motorbike", "tricycle", "car", "van", null],
       default: null,
     },
     price: { type: Number, default: 0 },

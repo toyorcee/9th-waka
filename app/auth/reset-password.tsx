@@ -6,9 +6,10 @@ import { apiClient } from "@/services/apiClient";
 import { Routes } from "@/services/navigationHelper";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -23,8 +24,10 @@ import Toast from "react-native-toast-message";
 export default function ResetPasswordScreen() {
   const router = useRouter();
   const { login } = useAuth();
-  const { theme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const insets = useSafeAreaInsets();
+
+  const isRouterReady = router && typeof router.replace === "function";
   const isDark = theme === "dark";
   const params = useLocalSearchParams<{
     email?: string;
@@ -39,6 +42,13 @@ export default function ResetPasswordScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
+  const [hasToken, setHasToken] = useState(false);
+
+  // Animation values for success state
+  const successScale = useRef(new Animated.Value(0)).current;
+  const successOpacity = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const resetMethod = (params.method as "email" | "phone") || "email";
   const identifier =
@@ -104,18 +114,60 @@ export default function ResetPasswordScreen() {
         phoneNumber: resetMethod === "phone" ? identifier : undefined,
       });
 
+      const hasAuthToken = response.data?.token && response.data?.user;
+      setHasToken(hasAuthToken);
+      setResetSuccess(true);
+
       Toast.show({
         type: "success",
         text1: "Password reset successful",
         text2: "Your password has been updated. Please sign in.",
       });
 
+      // Animate success state
+      Animated.parallel([
+        Animated.spring(successScale, {
+          toValue: 1,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+        Animated.timing(successOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 0.3,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
       // Auto-login if token is provided
-      if (response.data?.token && response.data?.user) {
+      if (hasAuthToken) {
         await login(response.data.token, response.data.user);
-        router.replace(Routes.tabs.home);
+        // Navigate after animation
+        setTimeout(() => {
+          if (isRouterReady && typeof router.replace === "function") {
+            try {
+              router.replace(Routes.tabs.home);
+            } catch (e) {
+              // Ignore navigation errors
+            }
+          }
+        }, 2000);
       } else {
-        router.replace(Routes.standalone.auth);
+        // Navigate after animation
+        setTimeout(() => {
+          if (isRouterReady && typeof router.replace === "function") {
+            try {
+              router.replace(Routes.standalone.auth);
+            } catch (e) {
+              // Ignore navigation errors
+            }
+          }
+        }, 2000);
       }
     } catch (error: any) {
       const errorMessage =
@@ -179,6 +231,20 @@ export default function ResetPasswordScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       className="flex-1"
     >
+      {/* Background Image with Overlay - Fixed */}
+      <View className="absolute inset-0">
+        <Image
+          source={images.homeHero}
+          style={{ width: "100%", height: "100%" }}
+          contentFit="cover"
+        />
+        <View
+          className={`absolute inset-0 ${
+            isDark ? "bg-primary/10" : "bg-white/10"
+          }`}
+        />
+      </View>
+
       <ScrollView
         className="flex-1"
         contentContainerStyle={{
@@ -188,53 +254,79 @@ export default function ResetPasswordScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Background Image with Overlay */}
-        <View className="absolute inset-0">
-          <Image
-            source={images.homeHero}
-            style={{ width: "100%", height: "100%" }}
-            contentFit="cover"
-          />
-          <View
-            className={`absolute inset-0 ${
-              isDark ? "bg-primary/10" : "bg-gray-100/10"
-            }`}
-          />
-        </View>
-
         <View className="flex-1 justify-center px-6 py-12">
-          {/* Back Button */}
-          <TouchableOpacity
-            onPress={() => {
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.replace("/auth/forgot-password");
-              }
-            }}
-            className={`absolute top-0 left-6 z-10 rounded-full p-2 ${
-              isDark ? "bg-secondary/80" : "bg-white/80"
-            }`}
+          {/* Back Button and Theme Toggle */}
+          <View
+            className="absolute top-0 left-0 right-0 z-10 flex-row justify-between items-center px-6"
             style={{ marginTop: insets.top + 8 }}
           >
-            <Icons.navigation
-              name={IconNames.arrowBack as any}
-              size={24}
-              color={isDark ? "#AB8BFF" : "#000000"}
-            />
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                if (!isRouterReady) return;
+                try {
+                  if (
+                    router.canGoBack &&
+                    typeof router.canGoBack === "function"
+                  ) {
+                    const canGoBack = router.canGoBack();
+                    if (canGoBack && typeof router.back === "function") {
+                      router.back();
+                      return;
+                    }
+                  }
+                  if (typeof router.replace === "function") {
+                    router.replace("/auth/forgot-password");
+                  }
+                } catch (error) {
+                  if (typeof router.replace === "function") {
+                    try {
+                      router.replace("/auth/forgot-password");
+                    } catch (e) {
+                      // Ignore navigation errors
+                    }
+                  }
+                }
+              }}
+              className={`rounded-full p-1.5 ${
+                isDark ? "bg-secondary/80" : "bg-gray-50/90"
+              }`}
+            >
+              <Icons.navigation
+                name={IconNames.arrowBack as any}
+                size={20}
+                color={isDark ? "#AB8BFF" : "#1E3A8A"}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={toggleTheme}
+              className={`rounded-full p-1.5 ${
+                isDark ? "bg-secondary/80" : "bg-gray-50/90"
+              }`}
+              accessibilityRole="button"
+              accessibilityLabel={
+                isDark ? "Switch to light mode" : "Switch to dark mode"
+              }
+            >
+              <Icons.action
+                name={isDark ? "moon-outline" : "sunny-outline"}
+                size={20}
+                color={isDark ? "#AB8BFF" : "#1E3A8A"}
+              />
+            </TouchableOpacity>
+          </View>
 
           {/* Logo/Branding Section */}
           <View className="items-center mb-8">
             <Image
-              source={isDark ? images.logo : images.logoDark}
+              source={images.logo}
               style={{ width: 100, height: 50 }}
               contentFit="contain"
               className="mb-3"
             />
             <Text
               className={`text-base text-center ${
-                isDark ? "text-light-200" : "text-gray-600"
+                isDark ? "text-light-200" : "text-white"
               }`}
             >
               Create New Password
@@ -242,23 +334,35 @@ export default function ResetPasswordScreen() {
           </View>
 
           {/* Auth Card */}
-          <View
+          <Animated.View
             className={`rounded-3xl p-6 border backdrop-blur ${
               isDark
                 ? "bg-secondary/95 border-neutral-100/50"
-                : "bg-white/95 border-gray-200/50"
+                : "bg-gray-50/98 border-gray-300/60 shadow-lg"
             }`}
+            style={[
+              !isDark
+                ? {
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 8 },
+                    shadowOpacity: 0.12,
+                    shadowRadius: 16,
+                    elevation: 8,
+                  }
+                : undefined,
+              { opacity: fadeAnim },
+            ]}
           >
             <Text
               className={`text-2xl font-bold mb-2 text-center ${
-                isDark ? "text-light-100" : "text-black"
+                isDark ? "text-light-100" : "text-white"
               }`}
             >
               Reset Password
             </Text>
             <Text
               className={`text-sm text-center mb-6 ${
-                isDark ? "text-light-400" : "text-gray-500"
+                isDark ? "text-light-400" : "text-white"
               }`}
             >
               Enter the 6-digit code sent to{" "}
@@ -268,13 +372,19 @@ export default function ResetPasswordScreen() {
 
             {/* Reset Code */}
             <View className="mb-4">
-              <Text
-                className={`text-xs mb-2 ${
-                  isDark ? "text-light-400" : "text-gray-500"
+              <View
+                className={`mb-2 px-2 py-1 rounded-xl ${
+                  isDark ? "" : "bg-white"
                 }`}
               >
-                Reset Code
-              </Text>
+                <Text
+                  className={`text-xs font-medium ${
+                    isDark ? "text-light-400" : "text-blue-900"
+                  }`}
+                >
+                  Reset Code
+                </Text>
+              </View>
               <TextInput
                 value={code}
                 onChangeText={setCode}
@@ -283,7 +393,7 @@ export default function ResetPasswordScreen() {
                 className={`rounded-xl p-4 tracking-widest text-center text-2xl border ${
                   isDark
                     ? "bg-dark-100 text-light-100 border-neutral-100"
-                    : "bg-gray-100 text-black border-gray-200"
+                    : "bg-gray-100 text-white border-gray-200"
                 }`}
                 placeholder="000000"
                 placeholderTextColor="#9CA4AB"
@@ -292,13 +402,19 @@ export default function ResetPasswordScreen() {
 
             {/* New Password */}
             <View className="mb-4">
-              <Text
-                className={`text-xs mb-2 ${
-                  isDark ? "text-light-400" : "text-gray-500"
+              <View
+                className={`mb-2 px-2 py-1 rounded-xl ${
+                  isDark ? "" : "bg-white"
                 }`}
               >
-                New Password
-              </Text>
+                <Text
+                  className={`text-xs font-medium ${
+                    isDark ? "text-light-400" : "text-blue-900"
+                  }`}
+                >
+                  New Password
+                </Text>
+              </View>
               <View
                 className={`flex-row items-center rounded-xl px-4 border ${
                   isDark
@@ -319,7 +435,7 @@ export default function ResetPasswordScreen() {
                   placeholderTextColor="#9CA4AB"
                   secureTextEntry={!showPassword}
                   className={`flex-1 py-4 ${
-                    isDark ? "text-light-100" : "text-black"
+                    isDark ? "text-light-100" : "text-white"
                   }`}
                 />
                 <TouchableOpacity
@@ -367,13 +483,19 @@ export default function ResetPasswordScreen() {
 
             {/* Confirm Password */}
             <View className="mb-6">
-              <Text
-                className={`text-xs mb-2 ${
-                  isDark ? "text-light-400" : "text-gray-500"
+              <View
+                className={`mb-2 px-2 py-1 rounded-xl ${
+                  isDark ? "" : "bg-white"
                 }`}
               >
-                Confirm Password
-              </Text>
+                <Text
+                  className={`text-xs font-medium ${
+                    isDark ? "text-light-400" : "text-blue-900"
+                  }`}
+                >
+                  Confirm Password
+                </Text>
+              </View>
               <View
                 className={`flex-row items-center rounded-xl px-4 border ${
                   isDark
@@ -394,7 +516,7 @@ export default function ResetPasswordScreen() {
                   placeholderTextColor="#9CA4AB"
                   secureTextEntry={!showConfirmPassword}
                   className={`flex-1 py-4 ${
-                    isDark ? "text-light-100" : "text-black"
+                    isDark ? "text-light-100" : "text-white"
                   }`}
                 />
                 <TouchableOpacity
@@ -423,14 +545,29 @@ export default function ResetPasswordScreen() {
             <TouchableOpacity
               onPress={handleResetPassword}
               disabled={isLoading}
-              className={`bg-accent rounded-xl py-4 items-center mb-3 ${
-                isLoading ? "opacity-60" : ""
+              className={`rounded-xl py-4 items-center mb-3 ${
+                isLoading
+                  ? isDark
+                    ? "bg-accent/60"
+                    : "bg-blue-800/60"
+                  : isDark
+                  ? "bg-accent"
+                  : ""
               }`}
+              style={
+                !isLoading && !isDark
+                  ? { backgroundColor: "#1E3A8A" }
+                  : undefined
+              }
             >
               {isLoading ? (
-                <ActivityIndicator color="#030014" />
+                <ActivityIndicator color={isDark ? "#030014" : "#FFFFFF"} />
               ) : (
-                <Text className="text-primary font-bold text-base">
+                <Text
+                  className={`font-bold text-base ${
+                    isDark ? "text-primary" : "text-white"
+                  }`}
+                >
                   Reset Password
                 </Text>
               )}
@@ -452,7 +589,7 @@ export default function ResetPasswordScreen() {
                   />
                   <Text
                     className={`font-semibold text-sm ${
-                      isDark ? "text-light-300" : "text-gray-600"
+                      isDark ? "text-light-300" : "text-white"
                     }`}
                   >
                     Sending…
@@ -461,14 +598,72 @@ export default function ResetPasswordScreen() {
               ) : (
                 <Text
                   className={`font-semibold text-sm ${
-                    isDark ? "text-light-300" : "text-gray-600"
+                    isDark ? "text-light-300" : "text-white"
                   }`}
                 >
                   Resend Code
                 </Text>
               )}
             </TouchableOpacity>
-          </View>
+          </Animated.View>
+
+          {/* Success Overlay */}
+          {resetSuccess && (
+            <Animated.View
+              className="absolute inset-0 items-center justify-center z-20"
+              style={{
+                opacity: successOpacity,
+                transform: [{ scale: successScale }],
+              }}
+            >
+              <View
+                className={`rounded-3xl p-8 items-center ${
+                  isDark ? "bg-secondary" : "bg-white"
+                }`}
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 16,
+                  elevation: 10,
+                  minWidth: 280,
+                }}
+              >
+                <View
+                  className={`rounded-full p-4 mb-4 ${
+                    isDark ? "bg-accent/20" : "bg-blue-900/20"
+                  }`}
+                >
+                  <Icons.status
+                    name={IconNames.checkmarkCircle as any}
+                    size={48}
+                    color={isDark ? "#30D158" : "#10B981"}
+                  />
+                </View>
+                <Text
+                  className={`text-2xl font-bold mb-2 text-center ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
+                  Password Reset! 🎉
+                </Text>
+                <Text
+                  className={`text-sm text-center mb-4 ${
+                    isDark ? "text-light-400" : "text-gray-600"
+                  }`}
+                >
+                  Your password has been successfully updated
+                </Text>
+                <Text
+                  className={`text-xs text-center ${
+                    isDark ? "text-light-500" : "text-gray-500"
+                  }`}
+                >
+                  {hasToken ? "Signing you in..." : "Redirecting to login..."}
+                </Text>
+              </View>
+            </Animated.View>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

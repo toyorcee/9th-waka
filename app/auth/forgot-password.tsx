@@ -5,9 +5,10 @@ import { apiClient } from "@/services/apiClient";
 import { Routes } from "@/services/navigationHelper";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -23,14 +24,21 @@ type ResetMethod = "email" | "phone";
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
-  const { theme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const insets = useSafeAreaInsets();
   const isDark = theme === "dark";
+
+  const isRouterReady = router && typeof router.replace === "function";
   const [resetMethod, setResetMethod] = useState<ResetMethod>("email");
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [codeSent, setCodeSent] = useState(false);
+
+  // Animation values for success state
+  const successScale = useRef(new Animated.Value(0)).current;
+  const successOpacity = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const validateEmail = (email: string) => {
     const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
@@ -115,21 +123,48 @@ export default function ForgotPasswordScreen() {
             : `We've sent a password reset code to ${phoneNumber}`,
       });
 
-      // Navigate to reset password page after a short delay
+      // Animate success state
+      Animated.parallel([
+        Animated.spring(successScale, {
+          toValue: 1,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+        Animated.timing(successOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 0.3,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Navigate to reset password page after animation
       setTimeout(() => {
-        router.push({
-          pathname: "/auth/reset-password",
-          params: {
-            email:
-              resetMethod === "email" ? email.trim().toLowerCase() : undefined,
-            phoneNumber:
-              resetMethod === "phone"
-                ? formatPhoneNumber(phoneNumber.trim())
-                : undefined,
-            method: resetMethod,
-          },
-        });
-      }, 1500);
+        if (!isRouterReady || typeof router.push !== "function") return;
+        try {
+          router.push({
+            pathname: "/auth/reset-password",
+            params: {
+              email:
+                resetMethod === "email"
+                  ? email.trim().toLowerCase()
+                  : undefined,
+              phoneNumber:
+                resetMethod === "phone"
+                  ? formatPhoneNumber(phoneNumber.trim())
+                  : undefined,
+              method: resetMethod,
+            },
+          });
+        } catch (e) {
+          // Ignore navigation errors
+        }
+      }, 2000);
     } catch (error: any) {
       const errorMessage =
         error?.response?.data?.error ||
@@ -168,6 +203,20 @@ export default function ForgotPasswordScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       className="flex-1"
     >
+      {/* Background Image with Overlay - Fixed */}
+      <View className="absolute inset-0">
+        <Image
+          source={images.homeHero}
+          style={{ width: "100%", height: "100%" }}
+          contentFit="cover"
+        />
+        <View
+          className={`absolute inset-0 ${
+            isDark ? "bg-primary/10" : "bg-white/10"
+          }`}
+        />
+      </View>
+
       <ScrollView
         className="flex-1"
         contentContainerStyle={{
@@ -177,53 +226,79 @@ export default function ForgotPasswordScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Background Image with Overlay */}
-        <View className="absolute inset-0">
-          <Image
-            source={images.homeHero}
-            style={{ width: "100%", height: "100%" }}
-            contentFit="cover"
-          />
-          <View
-            className={`absolute inset-0 ${
-              isDark ? "bg-primary/10" : "bg-gray-100/10"
-            }`}
-          />
-        </View>
-
         <View className="flex-1 justify-center px-6 py-12">
-          {/* Back Button */}
-          <TouchableOpacity
-            onPress={() => {
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.replace(Routes.standalone.auth);
-              }
-            }}
-            className={`absolute top-0 left-6 z-10 rounded-full p-2 ${
-              isDark ? "bg-secondary/80" : "bg-white/80"
-            }`}
+          {/* Back Button and Theme Toggle */}
+          <View
+            className="absolute top-0 left-0 right-0 z-10 flex-row justify-between items-center px-6"
             style={{ marginTop: insets.top + 8 }}
           >
-            <Icons.navigation
-              name={IconNames.arrowBack as any}
-              size={24}
-              color={isDark ? "#AB8BFF" : "#000000"}
-            />
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                if (!isRouterReady) return;
+                try {
+                  if (
+                    router.canGoBack &&
+                    typeof router.canGoBack === "function"
+                  ) {
+                    const canGoBack = router.canGoBack();
+                    if (canGoBack && typeof router.back === "function") {
+                      router.back();
+                      return;
+                    }
+                  }
+                  if (typeof router.replace === "function") {
+                    router.replace(Routes.standalone.auth);
+                  }
+                } catch (error) {
+                  if (typeof router.replace === "function") {
+                    try {
+                      router.replace(Routes.standalone.auth);
+                    } catch (e) {
+                      // Ignore navigation errors
+                    }
+                  }
+                }
+              }}
+              className={`rounded-full p-1.5 ${
+                isDark ? "bg-secondary/80" : "bg-gray-50/90"
+              }`}
+            >
+              <Icons.navigation
+                name={IconNames.arrowBack as any}
+                size={20}
+                color={isDark ? "#AB8BFF" : "#1E3A8A"}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={toggleTheme}
+              className={`rounded-full p-1.5 ${
+                isDark ? "bg-secondary/80" : "bg-gray-50/90"
+              }`}
+              accessibilityRole="button"
+              accessibilityLabel={
+                isDark ? "Switch to light mode" : "Switch to dark mode"
+              }
+            >
+              <Icons.action
+                name={isDark ? "moon-outline" : "sunny-outline"}
+                size={20}
+                color={isDark ? "#AB8BFF" : "#1E3A8A"}
+              />
+            </TouchableOpacity>
+          </View>
 
           {/* Logo/Branding Section */}
           <View className="items-center mb-8">
             <Image
-              source={isDark ? images.logo : images.logoDark}
+              source={images.logo}
               style={{ width: 100, height: 50 }}
               contentFit="contain"
               className="mb-3"
             />
             <Text
               className={`text-base text-center ${
-                isDark ? "text-light-200" : "text-gray-600"
+                isDark ? "text-light-200" : "text-white"
               }`}
             >
               Reset Your Password
@@ -231,23 +306,35 @@ export default function ForgotPasswordScreen() {
           </View>
 
           {/* Auth Card */}
-          <View
+          <Animated.View
             className={`rounded-3xl p-6 border backdrop-blur ${
               isDark
                 ? "bg-secondary/95 border-neutral-100/50"
-                : "bg-white/95 border-gray-200/50"
+                : "bg-gray-50/98 border-gray-300/60 shadow-lg"
             }`}
+            style={[
+              !isDark
+                ? {
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 8 },
+                    shadowOpacity: 0.12,
+                    shadowRadius: 16,
+                    elevation: 8,
+                  }
+                : undefined,
+              { opacity: fadeAnim },
+            ]}
           >
             <Text
               className={`text-2xl font-bold mb-2 text-center ${
-                isDark ? "text-light-100" : "text-black"
+                isDark ? "text-light-100" : "text-white"
               }`}
             >
               Forgot Password?
             </Text>
             <Text
-              className={`text-sm text-center mb-6 ${
-                isDark ? "text-light-400" : "text-gray-500"
+              className={`text-sm text-center mb-16 ${
+                isDark ? "text-light-400" : "text-white"
               }`}
             >
               No worries! Enter your email or phone number and we'll send you a
@@ -264,11 +351,18 @@ export default function ForgotPasswordScreen() {
                 }}
                 className={`flex-1 rounded-xl py-3 px-4 border-2 ${
                   resetMethod === "email"
-                    ? "bg-accent/20 border-accent"
+                    ? isDark
+                      ? "bg-accent/20 border-accent"
+                      : "border-blue-800"
                     : isDark
                     ? "bg-dark-100 border-neutral-100"
                     : "bg-gray-100 border-gray-200"
                 }`}
+                style={
+                  resetMethod === "email" && !isDark
+                    ? { backgroundColor: "#1E3A8A" }
+                    : undefined
+                }
               >
                 <View className="flex-row items-center justify-center">
                   <Icons.communication
@@ -276,7 +370,9 @@ export default function ForgotPasswordScreen() {
                     size={18}
                     color={
                       resetMethod === "email"
-                        ? "#AB8BFF"
+                        ? isDark
+                          ? "#AB8BFF"
+                          : "#FFFFFF"
                         : isDark
                         ? "#9CA4AB"
                         : "#6E6E73"
@@ -286,7 +382,9 @@ export default function ForgotPasswordScreen() {
                   <Text
                     className={`font-semibold text-sm ${
                       resetMethod === "email"
-                        ? "text-accent"
+                        ? isDark
+                          ? "text-accent"
+                          : "text-white"
                         : isDark
                         ? "text-light-400"
                         : "text-gray-500"
@@ -305,11 +403,18 @@ export default function ForgotPasswordScreen() {
                 }}
                 className={`flex-1 rounded-xl py-3 px-4 border-2 ${
                   resetMethod === "phone"
-                    ? "bg-accent/20 border-accent"
+                    ? isDark
+                      ? "bg-accent/20 border-accent"
+                      : "border-blue-800"
                     : isDark
                     ? "bg-dark-100 border-neutral-100"
                     : "bg-gray-100 border-gray-200"
                 }`}
+                style={
+                  resetMethod === "phone" && !isDark
+                    ? { backgroundColor: "#1E3A8A" }
+                    : undefined
+                }
               >
                 <View className="flex-row items-center justify-center">
                   <Icons.communication
@@ -317,7 +422,9 @@ export default function ForgotPasswordScreen() {
                     size={18}
                     color={
                       resetMethod === "phone"
-                        ? "#AB8BFF"
+                        ? isDark
+                          ? "#AB8BFF"
+                          : "#FFFFFF"
                         : isDark
                         ? "#9CA4AB"
                         : "#6E6E73"
@@ -327,7 +434,9 @@ export default function ForgotPasswordScreen() {
                   <Text
                     className={`font-semibold text-sm ${
                       resetMethod === "phone"
-                        ? "text-accent"
+                        ? isDark
+                          ? "text-accent"
+                          : "text-white"
                         : isDark
                         ? "text-light-400"
                         : "text-gray-500"
@@ -342,13 +451,19 @@ export default function ForgotPasswordScreen() {
             {/* Input Field */}
             {resetMethod === "email" ? (
               <View className="mb-6">
-                <Text
-                  className={`text-xs mb-2 ${
-                    isDark ? "text-light-400" : "text-gray-500"
+                <View
+                  className={`mb-2 px-2 py-1 rounded-xl ${
+                    isDark ? "" : "bg-white"
                   }`}
                 >
-                  Email Address
-                </Text>
+                  <Text
+                    className={`text-xs font-medium ${
+                      isDark ? "text-light-400" : "text-blue-900"
+                    }`}
+                  >
+                    Email Address
+                  </Text>
+                </View>
                 <View
                   className={`flex-row items-center rounded-xl px-4 border ${
                     isDark
@@ -370,20 +485,26 @@ export default function ForgotPasswordScreen() {
                     autoCapitalize="none"
                     keyboardType="email-address"
                     className={`flex-1 py-4 ${
-                      isDark ? "text-light-100" : "text-black"
+                      isDark ? "text-light-100" : "text-white"
                     }`}
                   />
                 </View>
               </View>
             ) : (
               <View className="mb-6">
-                <Text
-                  className={`text-xs mb-2 ${
-                    isDark ? "text-light-400" : "text-gray-500"
+                <View
+                  className={`mb-2 px-2 py-1 rounded-xl ${
+                    isDark ? "" : "bg-white"
                   }`}
                 >
-                  Phone Number
-                </Text>
+                  <Text
+                    className={`text-xs font-medium ${
+                      isDark ? "text-light-400" : "text-blue-900"
+                    }`}
+                  >
+                    Phone Number
+                  </Text>
+                </View>
                 <View
                   className={`flex-row items-center rounded-xl px-4 border ${
                     isDark
@@ -404,7 +525,7 @@ export default function ForgotPasswordScreen() {
                     placeholderTextColor="#9CA4AB"
                     keyboardType="phone-pad"
                     className={`flex-1 py-4 ${
-                      isDark ? "text-light-100" : "text-black"
+                      isDark ? "text-light-100" : "text-white"
                     }`}
                   />
                 </View>
@@ -415,14 +536,29 @@ export default function ForgotPasswordScreen() {
             <TouchableOpacity
               onPress={handleRequestReset}
               disabled={isLoading}
-              className={`bg-accent rounded-xl py-4 items-center mb-4 ${
-                isLoading ? "opacity-60" : ""
+              className={`rounded-xl py-4 items-center mb-4 ${
+                isLoading
+                  ? isDark
+                    ? "bg-accent/60"
+                    : "bg-blue-800/60"
+                  : isDark
+                  ? "bg-accent"
+                  : ""
               }`}
+              style={
+                !isLoading && !isDark
+                  ? { backgroundColor: "#1E3A8A" }
+                  : undefined
+              }
             >
               {isLoading ? (
-                <ActivityIndicator color="#030014" />
+                <ActivityIndicator color={isDark ? "#030014" : "#FFFFFF"} />
               ) : (
-                <Text className="text-primary font-bold text-base">
+                <Text
+                  className={`font-bold text-base ${
+                    isDark ? "text-primary" : "text-white"
+                  }`}
+                >
                   Send Reset Code
                 </Text>
               )}
@@ -430,19 +566,87 @@ export default function ForgotPasswordScreen() {
 
             {/* Back to Login */}
             <TouchableOpacity
-              onPress={() => router.replace(Routes.standalone.auth)}
+              onPress={() => {
+                if (isRouterReady && typeof router.replace === "function") {
+                  try {
+                    router.replace(Routes.standalone.auth);
+                  } catch (e) {
+                    // Ignore navigation errors
+                  }
+                }
+              }}
               className="py-3 items-center"
             >
               <Text
                 className={`text-sm ${
-                  isDark ? "text-light-300" : "text-gray-600"
+                  isDark ? "text-light-300" : "text-white"
                 }`}
               >
                 Remember your password?{" "}
                 <Text className="text-accent font-semibold">Sign In</Text>
               </Text>
             </TouchableOpacity>
-          </View>
+          </Animated.View>
+
+          {/* Success Overlay */}
+          {codeSent && (
+            <Animated.View
+              className="absolute inset-0 items-center justify-center z-20"
+              style={{
+                opacity: successOpacity,
+                transform: [{ scale: successScale }],
+              }}
+            >
+              <View
+                className={`rounded-3xl p-8 items-center ${
+                  isDark ? "bg-secondary" : "bg-white"
+                }`}
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 16,
+                  elevation: 10,
+                  minWidth: 280,
+                }}
+              >
+                <View
+                  className={`rounded-full p-4 mb-4 ${
+                    isDark ? "bg-accent/20" : "bg-blue-900/20"
+                  }`}
+                >
+                  <Icons.status
+                    name={IconNames.checkmarkCircle as any}
+                    size={48}
+                    color={isDark ? "#30D158" : "#10B981"}
+                  />
+                </View>
+                <Text
+                  className={`text-2xl font-bold mb-2 text-center ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
+                  Code Sent! ✨
+                </Text>
+                <Text
+                  className={`text-sm text-center mb-4 ${
+                    isDark ? "text-light-400" : "text-gray-600"
+                  }`}
+                >
+                  {resetMethod === "email"
+                    ? `Check your email: ${email}`
+                    : `Check your phone: ${phoneNumber}`}
+                </Text>
+                <Text
+                  className={`text-xs text-center ${
+                    isDark ? "text-light-500" : "text-gray-500"
+                  }`}
+                >
+                  Redirecting to reset page...
+                </Text>
+              </View>
+            </Animated.View>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

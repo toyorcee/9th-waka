@@ -27,8 +27,6 @@ import {
   handleDisconnect,
   joinUserRoom,
 } from "./services/socketService.js";
-// import deliveryRoutes from "./routes/delivery.js";
-// import riderRoutes from "./routes/rider.js";
 
 dotenv.config();
 

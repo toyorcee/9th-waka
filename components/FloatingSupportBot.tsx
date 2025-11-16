@@ -216,15 +216,16 @@ export default function FloatingSupportBot() {
         <TouchableOpacity
           onPress={handlePress}
           activeOpacity={0.8}
-          className="w-12 h-12 rounded-full bg-accent items-center justify-center"
+          className="w-12 h-12 rounded-full items-center justify-center"
           style={{
-            shadowColor: "#AB8BFF",
+            backgroundColor: isDark ? "#AB8BFF" : "#1E3A8A",
+            shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.3,
             shadowRadius: 8,
             elevation: 8,
             borderWidth: 2,
-            borderColor: "#030014",
+            borderColor: isDark ? "#030014" : "#FFFFFF",
           }}
         >
           <Animated.View
@@ -233,7 +234,7 @@ export default function FloatingSupportBot() {
               width: 50,
               height: 50,
               borderRadius: 24,
-              backgroundColor: "#AB8BFF",
+              backgroundColor: isDark ? "#AB8BFF" : "#1E3A8A",
               opacity: 0.3,
               transform: [{ scale: pulseAnim }],
             }}
@@ -241,7 +242,7 @@ export default function FloatingSupportBot() {
           <Icons.communication
             name={IconNames.chatbubbleOutline as any}
             size={20}
-            color="#030014"
+            color={isDark ? "#030014" : "#FFFFFF"}
             style={{ zIndex: 1 }}
           />
         </TouchableOpacity>
@@ -280,11 +281,15 @@ export default function FloatingSupportBot() {
             >
               {/* Header */}
               <View className="items-center mb-6">
-                <View className="bg-accent/20 rounded-full p-4 mb-3">
+                <View
+                  className={`rounded-full p-4 mb-3 ${
+                    isDark ? "bg-accent/20" : "bg-blue-900/20"
+                  }`}
+                >
                   <Icons.communication
                     name={IconNames.chatbubbleOutline as any}
                     size={40}
-                    color="#AB8BFF"
+                    color={isDark ? "#AB8BFF" : "#1E3A8A"}
                   />
                 </View>
                 <Text
@@ -358,9 +363,10 @@ export default function FloatingSupportBot() {
                 {isAuthenticated && (
                   <TouchableOpacity
                     onPress={handleChatWithLiveAgent}
-                    className="bg-accent rounded-2xl p-5 flex-row items-center justify-between active:opacity-90"
+                    className="rounded-2xl p-5 flex-row items-center justify-between active:opacity-90"
                     style={{
-                      shadowColor: "#AB8BFF",
+                      backgroundColor: isDark ? "#AB8BFF" : "#1E3A8A",
+                      shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
                       shadowOffset: { width: 0, height: 4 },
                       shadowOpacity: 0.3,
                       shadowRadius: 8,
@@ -408,9 +414,10 @@ export default function FloatingSupportBot() {
                 {isAuthenticated && (
                   <TouchableOpacity
                     onPress={handleViewMessages}
-                    className="bg-accent rounded-2xl p-5 flex-row items-center justify-between active:opacity-90"
+                    className="rounded-2xl p-5 flex-row items-center justify-between active:opacity-90"
                     style={{
-                      shadowColor: "#AB8BFF",
+                      backgroundColor: isDark ? "#AB8BFF" : "#1E3A8A",
+                      shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
                       shadowOffset: { width: 0, height: 4 },
                       shadowOpacity: 0.3,
                       shadowRadius: 8,
@@ -456,9 +463,10 @@ export default function FloatingSupportBot() {
 
                 <TouchableOpacity
                   onPress={handleWhatsApp}
-                  className="bg-accent rounded-2xl p-5 flex-row items-center justify-between active:opacity-90"
+                  className="rounded-2xl p-5 flex-row items-center justify-between active:opacity-90"
                   style={{
-                    shadowColor: "#AB8BFF",
+                    backgroundColor: isDark ? "#AB8BFF" : "#1E3A8A",
+                    shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
                     shadowOffset: { width: 0, height: 4 },
                     shadowOpacity: 0.3,
                     shadowRadius: 8,
@@ -503,9 +511,10 @@ export default function FloatingSupportBot() {
 
                 <TouchableOpacity
                   onPress={handleViewFAQ}
-                  className="bg-accent rounded-2xl p-5 flex-row items-center justify-between active:opacity-90"
+                  className="rounded-2xl p-5 flex-row items-center justify-between active:opacity-90"
                   style={{
-                    shadowColor: "#AB8BFF",
+                    backgroundColor: isDark ? "#AB8BFF" : "#1E3A8A",
+                    shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
                     shadowOffset: { width: 0, height: 4 },
                     shadowOpacity: 0.3,
                     shadowRadius: 8,

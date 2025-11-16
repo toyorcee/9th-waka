@@ -1,14 +1,14 @@
-import AddressAutocomplete from "@/components/AddressAutocomplete";
+import AddressField from "@/components/AddressField";
 import { IconNames, Icons } from "@/constants/icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { apiClient } from "@/services/apiClient";
 import { AddressSuggestion, geocodeAddress } from "@/services/geocodingApi";
 import { Routes } from "@/services/navigationHelper";
-import { estimatePrice, PriceEstimateRequest } from "@/services/orderApi";
+import { PriceEstimateRequest, estimatePrice } from "@/services/orderApi";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -28,10 +28,12 @@ export default function NewOrderScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { theme } = useTheme();
-  const insets = useSafeAreaInsets();
   const isDark = theme === "dark";
+  const insets = useSafeAreaInsets();
+
   const [pickupAddress, setPickupAddress] = useState("");
   const [dropoffAddress, setDropoffAddress] = useState("");
+  const [items, setItems] = useState("");
   const [pickupCoords, setPickupCoords] = useState<{
     lat: number;
     lng: number;
@@ -40,258 +42,240 @@ export default function NewOrderScreen() {
     lat: number;
     lng: number;
   } | null>(null);
-  const [items, setItems] = useState("");
   const [useDefaultAddress, setUseDefaultAddress] = useState(false);
-  const [geocodingPickup, setGeocodingPickup] = useState(false);
-  const [geocodingDropoff, setGeocodingDropoff] = useState(false);
-  const [pickupGeocodeError, setPickupGeocodeError] = useState<string | null>(
-    null
-  );
-  const [dropoffGeocodeError, setDropoffGeocodeError] = useState<string | null>(
-    null
-  );
-  const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
-  const lastGeocodedPickup = React.useRef<string>("");
-  const lastGeocodedDropoff = React.useRef<string>("");
-  const [bikePrice, setBikePrice] = useState<number | null>(null);
-  const [carPrice, setCarPrice] = useState<number | null>(null);
+  const [vehiclePrices, setVehiclePrices] = useState<{
+    bicycle: number | null;
+    motorbike: number | null;
+    tricycle: number | null;
+    car: number | null;
+    van: number | null;
+  }>({
+    bicycle: null,
+    motorbike: null,
+    tricycle: null,
+    car: null,
+    van: null,
+  });
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
+  const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
   const [preferredVehicleType, setPreferredVehicleType] = useState<
-    "motorcycle" | "car" | null
+    "bicycle" | "motorbike" | "tricycle" | "car" | "van" | null
   >(null);
+
+  // Backward compatibility
+  const bikePrice = vehiclePrices.motorbike;
+  const carPrice = vehiclePrices.car;
   const [estimating, setEstimating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [gettingPickupLocation, setGettingPickupLocation] = useState(false);
-  const [geocodingDefaultAddress, setGeocodingDefaultAddress] = useState(false);
+  const [geocodingPickup, setGeocodingPickup] = useState(false);
+  const [geocodingDropoff, setGeocodingDropoff] = useState(false);
+  const [pickupError, setPickupError] = useState<string | null>(null);
+  const [dropoffError, setDropoffError] = useState<string | null>(null);
 
-  React.useEffect(() => {
+  const lastPickup = useRef("");
+  const lastDropoff = useRef("");
+
+  // --------------------------------------------------
+  // 🔧 Helper: Valid lat/lng
+  const validCoords = (coords: { lat: number; lng: number } | null) =>
+    coords && !isNaN(coords.lat) && !isNaN(coords.lng);
+
+  // --------------------------------------------------
+  // 🔧 Helper: Geocode Handler (shared between pickup/dropoff)
+  const runGeocode = (
+    address: string,
+    setterCoords: (coords: { lat: number; lng: number } | null) => void,
+    setterError: (error: string | null) => void,
+    lastAddressRef: React.MutableRefObject<string>,
+    setLoading: (loading: boolean) => void
+  ) => {
+    const trimmed = address.trim();
+
+    if (!trimmed || trimmed.length < 10) {
+      if (trimmed.length === 0) {
+        setterCoords(null);
+        lastAddressRef.current = "";
+      }
+      return () => {};
+    }
+
+    // If user typed a different address, remove coords
+    if (trimmed.toLowerCase() !== lastAddressRef.current.toLowerCase()) {
+      setterCoords(null);
+    }
+
+    // Don't geocode if coords already exist for this address
+    if (lastAddressRef.current.toLowerCase() === trimmed.toLowerCase()) {
+      return () => {};
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        setLoading(true);
+        setterError(null);
+        const result = await geocodeAddress(trimmed);
+        if (result?.lat && result?.lng) {
+          setterCoords({ lat: result.lat, lng: result.lng });
+          lastAddressRef.current = trimmed;
+        } else {
+          setterCoords(null);
+          setterError(trimmed);
+        }
+      } catch (err: any) {
+        setterCoords(null);
+        if (
+          err?.response?.status === 404 ||
+          err?.response?.data?.success === false
+        ) {
+          setterError(trimmed);
+        } else {
+          setterError(null);
+        }
+      } finally {
+        setLoading(false);
+      }
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  };
+
+  // --------------------------------------------------
+  // 📍 Sync default address
+  useEffect(() => {
     if (useDefaultAddress && user?.defaultAddress) {
       setPickupAddress(user.defaultAddress);
-      setGeocodingDefaultAddress(true);
       geocodeAddress(user.defaultAddress)
-        .then((result) => {
-          setPickupCoords({ lat: result.lat, lng: result.lng });
-        })
-        .catch((error) => {
-          console.error("Failed to geocode default address:", error);
-        })
-        .finally(() => {
-          setGeocodingDefaultAddress(false);
-        });
+        .then((res) =>
+          setPickupCoords(res ? { lat: res.lat, lng: res.lng } : null)
+        )
+        .catch(() => setPickupCoords(null));
     } else if (!useDefaultAddress && pickupAddress === user?.defaultAddress) {
       setPickupAddress("");
       setPickupCoords(null);
     }
   }, [useDefaultAddress, user?.defaultAddress]);
 
-  const canSubmit =
-    pickupAddress.trim().length > 3 &&
-    dropoffAddress.trim().length > 3 &&
-    items.trim().length > 0 &&
-    preferredVehicleType !== null;
+  // --------------------------------------------------
+  // 📍 Auto-geocode pickup
+  useEffect(() => {
+    if (useDefaultAddress) return;
+    return runGeocode(
+      pickupAddress,
+      setPickupCoords,
+      setPickupError,
+      lastPickup,
+      setGeocodingPickup
+    );
+  }, [pickupAddress, useDefaultAddress]);
 
-  React.useEffect(() => {
-    const estimate = async () => {
-      const hasPickupCoords =
-        pickupCoords &&
-        typeof pickupCoords.lat === "number" &&
-        typeof pickupCoords.lng === "number" &&
-        !isNaN(pickupCoords.lat) &&
-        !isNaN(pickupCoords.lng);
-      const hasDropoffCoords =
-        dropoffCoords &&
-        typeof dropoffCoords.lat === "number" &&
-        typeof dropoffCoords.lng === "number" &&
-        !isNaN(dropoffCoords.lat) &&
-        !isNaN(dropoffCoords.lng);
+  // --------------------------------------------------
+  // 📍 Auto-geocode dropoff
+  useEffect(() => {
+    return runGeocode(
+      dropoffAddress,
+      setDropoffCoords,
+      setDropoffError,
+      lastDropoff,
+      setGeocodingDropoff
+    );
+  }, [dropoffAddress]);
 
-      if (hasPickupCoords && hasDropoffCoords) {
-        setEstimating(true);
-        try {
-          const requestPayload: PriceEstimateRequest = {
-            pickup: {
-              address: pickupAddress,
-              lat: pickupCoords.lat,
-              lng: pickupCoords.lng,
-            },
-            dropoff: {
-              address: dropoffAddress,
-              lat: dropoffCoords.lat,
-              lng: dropoffCoords.lng,
-            },
-          };
-          const resp = await estimatePrice(requestPayload);
-          setEstimatedPrice(resp?.estimatedPrice || null);
-          setBikePrice(resp?.bikePrice || null);
-          setCarPrice(resp?.carPrice || null);
-          setDistanceKm(resp?.distanceKm || null);
-        } catch (e: any) {
-          console.error("[FRONTEND] Price estimation error:", e?.message);
-          setEstimatedPrice(null);
-          setBikePrice(null);
-          setCarPrice(null);
-          setDistanceKm(null);
-        } finally {
-          setEstimating(false);
-        }
-      } else {
+  useEffect(() => {
+    const doEstimate = async () => {
+      if (!validCoords(pickupCoords) || !validCoords(dropoffCoords)) {
         setEstimatedPrice(null);
-        setBikePrice(null);
-        setCarPrice(null);
+        setVehiclePrices({
+          bicycle: null,
+          motorbike: null,
+          tricycle: null,
+          car: null,
+          van: null,
+        });
         setDistanceKm(null);
-      }
-    };
-
-    const timeoutId = setTimeout(estimate, 1000);
-    return () => clearTimeout(timeoutId);
-  }, [pickupAddress, dropoffAddress, pickupCoords, dropoffCoords]);
-
-  React.useEffect(() => {
-    const trimmedAddress = pickupAddress.trim();
-
-    if (!trimmedAddress || trimmedAddress.length < 10) {
-      if (pickupCoords && trimmedAddress.length === 0) {
-        setPickupCoords(null);
-        lastGeocodedPickup.current = "";
-      }
-      return;
-    }
-
-    const addressChanged =
-      trimmedAddress.toLowerCase() !== lastGeocodedPickup.current.toLowerCase();
-    if (addressChanged && pickupCoords) {
-      setPickupCoords(null);
-    }
-
-    if (pickupCoords && !addressChanged) {
-      return;
-    }
-
-    const geocodeTimer = setTimeout(async () => {
-      try {
-        setGeocodingPickup(true);
-        setPickupGeocodeError(null);
-        const result = await geocodeAddress(trimmedAddress);
-        if (result && result.lat && result.lng) {
-          setPickupCoords({
-            lat: result.lat,
-            lng: result.lng,
-          });
-          lastGeocodedPickup.current = trimmedAddress;
-          setPickupGeocodeError(null);
-        } else {
-          console.warn(
-            "[FRONTEND] Failed to geocode pickup address - no results"
-          );
-          setPickupCoords(null);
-          setPickupGeocodeError(trimmedAddress);
-        }
-      } catch (error: any) {
-        if (
-          error?.response?.status === 404 ||
-          error?.response?.data?.success === false
-        ) {
-          console.warn(
-            "[FRONTEND] Address not found for pickup:",
-            trimmedAddress.substring(0, 30)
-          );
-          setPickupGeocodeError(trimmedAddress);
-        } else {
-          console.error(
-            "[FRONTEND] Error geocoding pickup:",
-            error?.message || error
-          );
-          setPickupGeocodeError(null);
-        }
-        setPickupCoords(null);
-      } finally {
-        setGeocodingPickup(false);
-      }
-    }, 1500);
-
-    return () => clearTimeout(geocodeTimer);
-  }, [pickupAddress, pickupCoords]);
-
-  React.useEffect(() => {
-    const trimmedAddress = dropoffAddress.trim();
-
-    if (!trimmedAddress || trimmedAddress.length < 10) {
-      if (dropoffCoords && trimmedAddress.length === 0) {
-        setDropoffCoords(null);
-        lastGeocodedDropoff.current = "";
-      }
-      return;
-    }
-
-    const addressChanged =
-      trimmedAddress.toLowerCase() !==
-      lastGeocodedDropoff.current.toLowerCase();
-    if (addressChanged && dropoffCoords) {
-      setDropoffCoords(null);
-    }
-
-    if (dropoffCoords && !addressChanged) {
-      return;
-    }
-
-    const geocodeTimer = setTimeout(async () => {
-      try {
-        setGeocodingDropoff(true);
-        setDropoffGeocodeError(null);
-        const result = await geocodeAddress(trimmedAddress);
-        if (result && result.lat && result.lng) {
-          setDropoffCoords({
-            lat: result.lat,
-            lng: result.lng,
-          });
-          lastGeocodedDropoff.current = trimmedAddress;
-          setDropoffGeocodeError(null);
-        } else {
-          console.warn(
-            "[FRONTEND] Failed to geocode dropoff address - no results"
-          );
-          setDropoffCoords(null);
-          setDropoffGeocodeError(trimmedAddress);
-        }
-      } catch (error: any) {
-        if (
-          error?.response?.status === 404 ||
-          error?.response?.data?.success === false
-        ) {
-          console.warn(
-            "[FRONTEND] Address not found for dropoff:",
-            trimmedAddress.substring(0, 30)
-          );
-          setDropoffGeocodeError(trimmedAddress);
-        } else {
-          console.error(
-            "[FRONTEND] Error geocoding dropoff:",
-            error?.message || error
-          );
-          setDropoffGeocodeError(null);
-        }
-        setDropoffCoords(null);
-      } finally {
-        setGeocodingDropoff(false);
-      }
-    }, 1500);
-
-    return () => clearTimeout(geocodeTimer);
-  }, [dropoffAddress, dropoffCoords]);
-
-  const getCurrentLocation = async (): Promise<void> => {
-    try {
-      const { status: currentStatus } =
-        await Location.getForegroundPermissionsAsync();
-
-      if (currentStatus === Location.PermissionStatus.GRANTED) {
-        setGettingPickupLocation(true);
-        await fetchAndSetLocation();
         return;
       }
 
-      if (currentStatus === Location.PermissionStatus.DENIED) {
-        Alert.alert(
+      setEstimating(true);
+      try {
+        const payload: PriceEstimateRequest = {
+          pickup: {
+            address: pickupAddress,
+            lat: pickupCoords!.lat,
+            lng: pickupCoords!.lng,
+          },
+          dropoff: {
+            address: dropoffAddress,
+            lat: dropoffCoords!.lat,
+            lng: dropoffCoords!.lng,
+          },
+        };
+        const res = await estimatePrice(payload);
+        setDistanceKm(res?.distanceKm || null);
+        setEstimatedPrice(res?.estimatedPrice || null);
+
+        // Update all vehicle prices from response
+        if (res?.prices) {
+          setVehiclePrices({
+            bicycle: res.prices.bicycle || null,
+            motorbike: res.prices.motorbike || null,
+            tricycle: res.prices.tricycle || null,
+            car: res.prices.car || null,
+            van: res.prices.van || null,
+          });
+        } else {
+          // Backward compatibility with old API response
+          setVehiclePrices({
+            bicycle: null,
+            motorbike: res?.bikePrice || null,
+            tricycle: null,
+            car: res?.carPrice || null,
+            van: null,
+          });
+        }
+      } catch (err) {
+        setEstimatedPrice(null);
+        setVehiclePrices({
+          bicycle: null,
+          motorbike: null,
+          tricycle: null,
+          car: null,
+          van: null,
+        });
+        setDistanceKm(null);
+      } finally {
+        setEstimating(false);
+      }
+    };
+
+    const timer = setTimeout(doEstimate, 900);
+    return () => clearTimeout(timer);
+  }, [pickupCoords, dropoffCoords, pickupAddress, dropoffAddress]);
+
+  const getAddressSuggestions = async (query: string) => {
+    try {
+      const response = await apiClient.get(
+        `/geocoding/suggestions?q=${encodeURIComponent(query)}&limit=8`
+      );
+      return response.data?.suggestions || [];
+    } catch (error) {
+      return [];
+    }
+  };
+
+  // --------------------------------------------------
+  // 📍 Get current device location
+  const getCurrentLocation = async () => {
+    try {
+      const { status } = await Location.getForegroundPermissionsAsync();
+
+      if (status === Location.PermissionStatus.GRANTED) {
+        setGettingPickupLocation(true);
+        return fetchLocation();
+      }
+
+      if (status === Location.PermissionStatus.DENIED) {
+        return Alert.alert(
           "Location Permission Required",
           "Location access is currently disabled. To use your current location for pickup, please enable it in your device settings.\n\nYou can choose 'While Using the App' or 'Just Once' - we only use location when you tap the location button.",
           [
@@ -306,7 +290,6 @@ export default function NewOrderScreen() {
             },
           ]
         );
-        return;
       }
 
       Alert.alert(
@@ -326,11 +309,11 @@ export default function NewOrderScreen() {
             onPress: async () => {
               setGettingPickupLocation(true);
               try {
-                const { status } =
+                const { status: reqStatus } =
                   await Location.requestForegroundPermissionsAsync();
 
-                if (status === Location.PermissionStatus.GRANTED) {
-                  await fetchAndSetLocation();
+                if (reqStatus === Location.PermissionStatus.GRANTED) {
+                  await fetchLocation();
                 } else {
                   Alert.alert(
                     "Permission Denied",
@@ -340,7 +323,6 @@ export default function NewOrderScreen() {
                   setGettingPickupLocation(false);
                 }
               } catch (error: any) {
-                console.error("Error requesting location:", error);
                 Toast.show({
                   type: "error",
                   text1: "Error",
@@ -353,7 +335,6 @@ export default function NewOrderScreen() {
         ]
       );
     } catch (error: any) {
-      console.error("Error getting current location:", error);
       Toast.show({
         type: "error",
         text1: "Location Error",
@@ -362,7 +343,7 @@ export default function NewOrderScreen() {
     }
   };
 
-  const fetchAndSetLocation = async (): Promise<void> => {
+  const fetchLocation = async () => {
     try {
       const position = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
@@ -392,6 +373,7 @@ export default function NewOrderScreen() {
 
         setPickupAddress(formattedAddress);
         setPickupCoords({ lat: latitude, lng: longitude });
+        lastPickup.current = formattedAddress;
 
         Toast.show({
           type: "success",
@@ -402,9 +384,9 @@ export default function NewOrderScreen() {
         const coordAddress = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
         setPickupAddress(coordAddress);
         setPickupCoords({ lat: latitude, lng: longitude });
+        lastPickup.current = coordAddress;
       }
     } catch (error: any) {
-      console.error("Error fetching location:", error);
       Toast.show({
         type: "error",
         text1: "Location Error",
@@ -415,29 +397,41 @@ export default function NewOrderScreen() {
     }
   };
 
+  // --------------------------------------------------
+  // 🟣 Submit order
+  const canSubmit =
+    pickupAddress.trim().length > 3 &&
+    dropoffAddress.trim().length > 3 &&
+    items.trim().length > 0 &&
+    preferredVehicleType !== null &&
+    validCoords(pickupCoords) &&
+    validCoords(dropoffCoords);
+
   const createOrder = async () => {
     if (!canSubmit) {
-      Toast.show({ type: "error", text1: "Fill all fields" });
-      return;
+      return Toast.show({ type: "error", text1: "Please fill all fields" });
     }
+
     setSubmitting(true);
     try {
-      const resp = await apiClient.post("/orders", {
+      const res = await apiClient.post("/orders", {
         pickup: {
           address: pickupAddress,
-          lat: pickupCoords?.lat,
-          lng: pickupCoords?.lng,
+          lat: pickupCoords!.lat,
+          lng: pickupCoords!.lng,
         },
         dropoff: {
           address: dropoffAddress,
-          lat: dropoffCoords?.lat,
-          lng: dropoffCoords?.lng,
+          lat: dropoffCoords!.lat,
+          lng: dropoffCoords!.lng,
         },
         items,
         preferredVehicleType,
       });
-      const orderId = resp.data?.order?._id || resp.data?.order?.id;
+
+      const orderId = res.data?.order?._id || res.data?.order?.id;
       Toast.show({ type: "success", text1: "Order created" });
+
       if (orderId) {
         router.replace({
           pathname: "/orders/[id]",
@@ -450,15 +444,18 @@ export default function NewOrderScreen() {
           router.replace("/(tabs)/orders");
         }
       }
-    } catch (e: any) {
+    } catch (err: any) {
       const msg =
-        e?.response?.data?.error || e?.message || "Failed to create order";
+        err?.response?.data?.error || err?.message || "Failed to create order";
       Toast.show({ type: "error", text1: "Error", text2: String(msg) });
     } finally {
       setSubmitting(false);
     }
   };
 
+  // --------------------------------------------------
+  // UI
+  // --------------------------------------------------
   return (
     <ScrollView
       className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
@@ -470,6 +467,7 @@ export default function NewOrderScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View>
+        {/* HEADER */}
         <View className="flex-row items-center justify-between mb-6">
           <TouchableOpacity
             onPress={() => {
@@ -500,11 +498,15 @@ export default function NewOrderScreen() {
           </TouchableOpacity>
           <View className="flex-1 items-center">
             <View className="flex-row items-center">
-              <View className="bg-accent/20 rounded-lg p-1.5 mr-2">
+              <View
+                className={`rounded-lg p-1.5 mr-2 ${
+                  isDark ? "bg-accent/20" : "bg-blue-900/20"
+                }`}
+              >
                 <Icons.action
                   name={IconNames.addCircle as any}
                   size={18}
-                  color="#AB8BFF"
+                  color={isDark ? "#AB8BFF" : "#1E3A8A"}
                 />
               </View>
               <Text
@@ -519,6 +521,7 @@ export default function NewOrderScreen() {
           <View className="w-11" />
         </View>
 
+        {/* DEFAULT ADDRESS SECTION */}
         {user?.defaultAddress ? (
           <View
             className={`rounded-3xl mb-6 border p-5 ${
@@ -527,7 +530,7 @@ export default function NewOrderScreen() {
                   ? "bg-accent/10 border-accent/30"
                   : "bg-secondary border-neutral-100"
                 : useDefaultAddress
-                ? "bg-accent/5 border-accent/20"
+                ? "bg-blue-900/5 border-blue-800/20"
                 : "bg-white border-gray-200"
             }`}
             style={{
@@ -544,16 +547,26 @@ export default function NewOrderScreen() {
                   <View
                     className={`rounded-lg p-1.5 mr-2 ${
                       useDefaultAddress
-                        ? "bg-accent/20"
+                        ? isDark
+                          ? "bg-accent/20"
+                          : "bg-blue-900/20"
                         : isDark
                         ? "bg-accent/10"
-                        : "bg-accent/5"
+                        : "bg-blue-900/5"
                     }`}
                   >
                     <Icons.status
                       name={IconNames.checkmarkCircle as any}
                       size={18}
-                      color="#AB8BFF"
+                      color={
+                        useDefaultAddress
+                          ? isDark
+                            ? "#AB8BFF"
+                            : "#1E3A8A"
+                          : isDark
+                          ? "#AB8BFF"
+                          : "#6E6E73"
+                      }
                     />
                   </View>
                   <Text
@@ -577,7 +590,9 @@ export default function NewOrderScreen() {
                     size={18}
                     color={
                       useDefaultAddress
-                        ? "#AB8BFF"
+                        ? isDark
+                          ? "#AB8BFF"
+                          : "#1E3A8A"
                         : isDark
                         ? "#9CA4AB"
                         : "#6E6E73"
@@ -606,7 +621,7 @@ export default function NewOrderScreen() {
                 onValueChange={setUseDefaultAddress}
                 trackColor={{
                   false: isDark ? "#3A3A3A" : "#E5E5EA",
-                  true: "#AB8BFF",
+                  true: isDark ? "#AB8BFF" : "#1E3A8A",
                 }}
                 thumbColor={
                   useDefaultAddress
@@ -661,16 +676,24 @@ export default function NewOrderScreen() {
                 </Text>
                 <TouchableOpacity
                   onPress={() => router.push("/profile/edit" as any)}
-                  className="bg-accent/20 border border-accent/30 rounded-xl py-2.5 px-4 self-start"
+                  className={`border rounded-xl py-2.5 px-4 self-start ${
+                    isDark
+                      ? "bg-accent/20 border-accent/30"
+                      : "bg-blue-900/20 border-blue-800/30"
+                  }`}
                   style={{
-                    shadowColor: "#AB8BFF",
+                    shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
                     shadowOffset: { width: 0, height: 2 },
                     shadowOpacity: 0.2,
                     shadowRadius: 4,
                     elevation: 3,
                   }}
                 >
-                  <Text className="text-accent font-bold text-xs">
+                  <Text
+                    className={`font-bold text-xs ${
+                      isDark ? "text-accent" : "text-blue-900"
+                    }`}
+                  >
                     Add Address to Profile
                   </Text>
                 </TouchableOpacity>
@@ -679,6 +702,7 @@ export default function NewOrderScreen() {
           </View>
         )}
 
+        {/* PICKUP FIELD */}
         <View
           className={`border rounded-3xl p-5 mb-4 ${
             isDark
@@ -713,30 +737,18 @@ export default function NewOrderScreen() {
           <View className="flex-row items-center gap-2 mb-2">
             {useDefaultAddress ? (
               <View className="flex-1">
-                {geocodingDefaultAddress ? (
-                  <View
-                    className={`rounded-xl px-4 py-3.5 border items-center flex-row ${
-                      isDark
-                        ? "bg-dark-100 border-neutral-100"
-                        : "bg-gray-100 border-gray-200"
-                    }`}
-                  >
-                    <ActivityIndicator size="small" color="#AB8BFF" />
-                  </View>
-                ) : (
-                  <TextInput
-                    value={pickupAddress}
-                    onChangeText={setPickupAddress}
-                    placeholder="Lekki Phase 1, Lagos"
-                    placeholderTextColor="#9CA4AB"
-                    editable={false}
-                    className={`rounded-xl px-4 py-3.5 border opacity-60 ${
-                      isDark
-                        ? "text-light-100 bg-dark-100 border-neutral-100"
-                        : "text-black bg-gray-100 border-gray-200"
-                    }`}
-                  />
-                )}
+                <TextInput
+                  value={pickupAddress}
+                  onChangeText={setPickupAddress}
+                  placeholder="Lekki Phase 1, Lagos"
+                  placeholderTextColor="#9CA4AB"
+                  editable={false}
+                  className={`rounded-xl px-4 py-3.5 border opacity-60 ${
+                    isDark
+                      ? "text-light-100 bg-dark-100 border-neutral-100"
+                      : "text-black bg-gray-100 border-gray-200"
+                  }`}
+                />
               </View>
             ) : (
               <View className="flex-1">
@@ -751,35 +763,28 @@ export default function NewOrderScreen() {
                     <ActivityIndicator size="small" color="#5AC8FA" />
                   </View>
                 ) : (
-                  <AddressAutocomplete
+                  <AddressField
                     value={pickupAddress}
-                    onChangeText={(text) => {
+                    onChange={(text: string) => {
                       setPickupAddress(text);
-                      setPickupGeocodeError(null);
+                      setPickupError(null);
                     }}
                     onSelect={(suggestion: AddressSuggestion) => {
                       const selectedAddress =
                         suggestion.displayAddress || suggestion.address;
+                      setPickupAddress(selectedAddress);
                       setPickupCoords({
                         lat: suggestion.lat,
                         lng: suggestion.lng,
                       });
-                      lastGeocodedPickup.current = selectedAddress;
-                      setPickupGeocodeError(null);
+                      lastPickup.current = selectedAddress;
+                      setPickupError(null);
                     }}
                     placeholder="Lekki Phase 1, Lagos"
                     editable={true}
+                    fetchSuggestions={getAddressSuggestions}
                   />
                 )}
-              </View>
-            )}
-            {pickupGeocodeError && !geocodingPickup && (
-              <View className="mt-2">
-                <Text className="text-red-500 text-xs">
-                  ❌ No results found for "{pickupGeocodeError}". Please be more
-                  specific (e.g., "Lekki Phase 1, Lagos" instead of just
-                  "Lekki").
-                </Text>
               </View>
             )}
             <TouchableOpacity
@@ -807,6 +812,14 @@ export default function NewOrderScreen() {
               )}
             </TouchableOpacity>
           </View>
+          {pickupError && !geocodingPickup && (
+            <View className="mt-2">
+              <Text className="text-red-500 text-xs">
+                ❌ No results found for "{pickupError}". Please be more specific
+                (e.g., "Lekki Phase 1, Lagos" instead of just "Lekki").
+              </Text>
+            </View>
+          )}
           <View className="mt-3">
             <View
               className={`rounded-xl px-3 py-2.5 border ${
@@ -888,6 +901,7 @@ export default function NewOrderScreen() {
           </View>
         </View>
 
+        {/* DROPOFF FIELD */}
         <View
           className={`border rounded-3xl p-5 mb-4 ${
             isDark
@@ -931,30 +945,32 @@ export default function NewOrderScreen() {
               <ActivityIndicator size="small" color="#FF9500" />
             </View>
           ) : (
-            <AddressAutocomplete
+            <AddressField
               value={dropoffAddress}
-              onChangeText={(text) => {
+              onChange={(text: string) => {
                 setDropoffAddress(text);
-                setDropoffGeocodeError(null);
+                setDropoffError(null);
               }}
               onSelect={(suggestion: AddressSuggestion) => {
                 const selectedAddress =
                   suggestion.displayAddress || suggestion.address;
+                setDropoffAddress(selectedAddress);
                 setDropoffCoords({
                   lat: suggestion.lat,
                   lng: suggestion.lng,
                 });
-                lastGeocodedDropoff.current = selectedAddress;
-                setDropoffGeocodeError(null);
+                lastDropoff.current = selectedAddress;
+                setDropoffError(null);
               }}
               placeholder="Yaba, University of Lagos"
               editable={true}
+              fetchSuggestions={getAddressSuggestions}
             />
           )}
-          {dropoffGeocodeError && !geocodingDropoff && (
+          {dropoffError && !geocodingDropoff && (
             <View className="mt-2">
               <Text className="text-red-500 text-xs">
-                ❌ No results found for "{dropoffGeocodeError}". Please be more
+                ❌ No results found for "{dropoffError}". Please be more
                 specific (e.g., "Lekki Phase 1, Lagos" instead of just "Lekki").
               </Text>
             </View>
@@ -1019,6 +1035,7 @@ export default function NewOrderScreen() {
           </View>
         </View>
 
+        {/* ITEMS */}
         <View
           className={`border rounded-3xl p-5 mb-4 ${
             isDark
@@ -1034,11 +1051,15 @@ export default function NewOrderScreen() {
           }}
         >
           <View className="flex-row items-center mb-3">
-            <View className="bg-accent/20 rounded-lg p-1.5 mr-2">
+            <View
+              className={`rounded-lg p-1.5 mr-2 ${
+                isDark ? "bg-accent/20" : "bg-blue-900/20"
+              }`}
+            >
               <Icons.package
                 name={IconNames.packageOutline as any}
                 size={16}
-                color="#AB8BFF"
+                color={isDark ? "#AB8BFF" : "#1E3A8A"}
               />
             </View>
             <Text
@@ -1062,6 +1083,7 @@ export default function NewOrderScreen() {
           />
         </View>
 
+        {/* VEHICLE SELECTION */}
         {estimatedPrice && (
           <View
             className={`border rounded-3xl p-5 mb-4 ${
@@ -1078,11 +1100,15 @@ export default function NewOrderScreen() {
             }}
           >
             <View className="flex-row items-center mb-4">
-              <View className="bg-accent/20 rounded-lg p-1.5 mr-2">
+              <View
+                className={`rounded-lg p-1.5 mr-2 ${
+                  isDark ? "bg-accent/20" : "bg-blue-900/20"
+                }`}
+              >
                 <Icons.delivery
                   name={IconNames.carOutline as any}
                   size={16}
-                  color="#AB8BFF"
+                  color={isDark ? "#AB8BFF" : "#1E3A8A"}
                 />
               </View>
               <Text
@@ -1093,119 +1119,127 @@ export default function NewOrderScreen() {
                 Choose Vehicle Type
               </Text>
             </View>
-            <View className="flex-row gap-3">
-              <TouchableOpacity
-                onPress={() => setPreferredVehicleType("motorcycle")}
-                className={`flex-1 rounded-2xl p-4 border-2 ${
-                  preferredVehicleType === "motorcycle"
-                    ? "border-accent bg-accent/20"
-                    : isDark
-                    ? "border-neutral-100 bg-dark-100"
-                    : "border-gray-200 bg-gray-100"
-                }`}
-                style={{
-                  shadowColor:
-                    preferredVehicleType === "motorcycle" ? "#AB8BFF" : "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity:
-                    preferredVehicleType === "motorcycle" ? 0.2 : 0.05,
-                  shadowRadius: 4,
-                  elevation: preferredVehicleType === "motorcycle" ? 4 : 2,
-                }}
-              >
-                <View className="items-center mb-2">
-                  <Icons.motorcycle
-                    name={IconNames.motorcycle as any}
-                    size={32}
-                    color={
-                      preferredVehicleType === "motorcycle"
-                        ? "#AB8BFF"
-                        : "#9CA4AB"
-                    }
-                  />
-                </View>
-                <Text
-                  className={`text-center font-bold text-base mb-2 ${
-                    preferredVehicleType === "motorcycle"
-                      ? "text-accent"
-                      : isDark
-                      ? "text-light-300"
-                      : "text-gray-600"
-                  }`}
-                >
-                  Motorcycle
-                </Text>
-                <Text
-                  className={`text-center font-bold text-lg ${
-                    preferredVehicleType === "motorcycle"
-                      ? "text-accent"
-                      : isDark
-                      ? "text-light-100"
-                      : "text-black"
-                  }`}
-                >
-                  ₦
-                  {bikePrice?.toLocaleString() ||
-                    estimatedPrice.toLocaleString()}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setPreferredVehicleType("car")}
-                className={`flex-1 rounded-2xl p-4 border-2 ${
-                  preferredVehicleType === "car"
-                    ? "border-accent bg-accent/20"
-                    : isDark
-                    ? "border-neutral-100 bg-dark-100"
-                    : "border-gray-200 bg-gray-100"
-                }`}
-                style={{
-                  shadowColor:
-                    preferredVehicleType === "car" ? "#AB8BFF" : "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: preferredVehicleType === "car" ? 0.2 : 0.05,
-                  shadowRadius: 4,
-                  elevation: preferredVehicleType === "car" ? 4 : 2,
-                }}
-              >
-                <View className="items-center mb-2">
-                  <Icons.delivery
-                    name={IconNames.carOutline as any}
-                    size={32}
-                    color={
-                      preferredVehicleType === "car" ? "#AB8BFF" : "#9CA4AB"
-                    }
-                  />
-                </View>
-                <Text
-                  className={`text-center font-bold text-base mb-2 ${
-                    preferredVehicleType === "car"
-                      ? "text-accent"
-                      : isDark
-                      ? "text-light-300"
-                      : "text-gray-600"
-                  }`}
-                >
-                  Car/Van
-                </Text>
-                <Text
-                  className={`text-center font-bold text-lg ${
-                    preferredVehicleType === "car"
-                      ? "text-accent"
-                      : isDark
-                      ? "text-light-100"
-                      : "text-black"
-                  }`}
-                >
-                  ₦
-                  {carPrice?.toLocaleString() ||
-                    Math.round(estimatedPrice * 1.25).toLocaleString()}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              className="mb-2"
+            >
+              <View className="flex-row gap-3">
+                {[
+                  {
+                    type: "bicycle" as const,
+                    label: "Bicycle",
+                    icon: "bicycle",
+                    price: vehiclePrices.bicycle,
+                  },
+                  {
+                    type: "motorbike" as const,
+                    label: "Motorbike",
+                    icon: "motorbike",
+                    price: vehiclePrices.motorbike,
+                  },
+                  {
+                    type: "tricycle" as const,
+                    label: "Tricycle",
+                    icon: "rickshaw",
+                    price: vehiclePrices.tricycle,
+                  },
+                  {
+                    type: "car" as const,
+                    label: "Car",
+                    icon: "car-outline",
+                    price: vehiclePrices.car,
+                  },
+                  {
+                    type: "van" as const,
+                    label: "Van",
+                    icon: "van-utility",
+                    price: vehiclePrices.van,
+                  },
+                ].map((vehicle) => (
+                  <TouchableOpacity
+                    key={vehicle.type}
+                    onPress={() => setPreferredVehicleType(vehicle.type)}
+                    className={`rounded-2xl p-4 border-2 ${
+                      preferredVehicleType === vehicle.type
+                        ? isDark
+                          ? "border-accent bg-accent/20"
+                          : "border-blue-800"
+                        : isDark
+                        ? "border-neutral-100 bg-dark-100"
+                        : "border-gray-200 bg-gray-100"
+                    }`}
+                    style={[
+                      {
+                        width: 120,
+                        shadowColor:
+                          preferredVehicleType === vehicle.type
+                            ? isDark
+                              ? "#AB8BFF"
+                              : "#1E3A8A"
+                            : "#000",
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity:
+                          preferredVehicleType === vehicle.type ? 0.2 : 0.05,
+                        shadowRadius: 4,
+                        elevation:
+                          preferredVehicleType === vehicle.type ? 4 : 2,
+                      },
+                      preferredVehicleType === vehicle.type && !isDark
+                        ? { backgroundColor: "#1E3A8A" }
+                        : undefined,
+                    ]}
+                  >
+                    <View className="items-center mb-2">
+                      <Icons.motorcycle
+                        name={vehicle.icon as any}
+                        size={32}
+                        color={
+                          preferredVehicleType === vehicle.type
+                            ? isDark
+                              ? "#AB8BFF"
+                              : "#FFFFFF"
+                            : "#9CA4AB"
+                        }
+                      />
+                    </View>
+                    <Text
+                      className={`text-center font-bold text-sm mb-1 ${
+                        preferredVehicleType === vehicle.type
+                          ? isDark
+                            ? "text-accent"
+                            : "text-white"
+                          : isDark
+                          ? "text-light-300"
+                          : "text-gray-600"
+                      }`}
+                    >
+                      {vehicle.label}
+                    </Text>
+                    <Text
+                      className={`text-center font-bold text-base ${
+                        preferredVehicleType === vehicle.type
+                          ? isDark
+                            ? "text-accent"
+                            : "text-white"
+                          : isDark
+                          ? "text-light-100"
+                          : "text-black"
+                      }`}
+                    >
+                      ₦
+                      {vehicle.price?.toLocaleString() ||
+                        estimatedPrice?.toLocaleString() ||
+                        "---"}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
           </View>
         )}
 
-        {/* Estimated Price */}
+        {/* PRICE & ESTIMATE */}
         <View
           className={`border rounded-3xl p-5 mb-6 ${
             isDark
@@ -1244,7 +1278,10 @@ export default function NewOrderScreen() {
                   : "bg-gray-100 border-gray-200"
               }`}
             >
-              <ActivityIndicator size="small" color="#AB8BFF" />
+              <ActivityIndicator
+                size="small"
+                color={isDark ? "#AB8BFF" : "#1E3A8A"}
+              />
               <Text
                 className={`text-xs mt-2 ${
                   isDark ? "text-light-400" : "text-gray-500"
@@ -1262,63 +1299,47 @@ export default function NewOrderScreen() {
                     : "bg-gray-100 border-gray-200"
                 }`}
               >
-                <View className="flex-row items-center justify-between mb-3">
-                  <View className="flex-row items-center">
-                    <Icons.motorcycle
-                      name={IconNames.motorcycle as any}
-                      size={16}
-                      color={isDark ? "#9CA4AB" : "#6E6E73"}
-                      style={{ marginRight: 8 }}
-                    />
-                    <Text
-                      className={`text-sm font-semibold ${
-                        isDark ? "text-light-300" : "text-gray-600"
-                      }`}
-                    >
-                      Motorcycle
-                    </Text>
-                  </View>
-                  <Text
-                    className={`text-lg font-bold ${
-                      isDark ? "text-light-100" : "text-black"
-                    }`}
-                  >
-                    ₦
-                    {bikePrice?.toLocaleString() ||
-                      estimatedPrice.toLocaleString()}
-                  </Text>
-                </View>
-                <View
-                  className={`h-px mb-3 ${
-                    isDark ? "bg-neutral-100" : "bg-gray-200"
-                  }`}
-                />
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center">
-                    <Icons.delivery
-                      name={IconNames.carOutline as any}
-                      size={16}
-                      color={isDark ? "#9CA4AB" : "#6E6E73"}
-                      style={{ marginRight: 8 }}
-                    />
-                    <Text
-                      className={`text-sm font-semibold ${
-                        isDark ? "text-light-300" : "text-gray-600"
-                      }`}
-                    >
-                      Car/Van
-                    </Text>
-                  </View>
-                  <Text
-                    className={`text-lg font-bold ${
-                      isDark ? "text-light-100" : "text-black"
-                    }`}
-                  >
-                    ₦
-                    {carPrice?.toLocaleString() ||
-                      Math.round(estimatedPrice * 1.25).toLocaleString()}
-                  </Text>
-                </View>
+                {preferredVehicleType &&
+                  vehiclePrices[preferredVehicleType] && (
+                    <View className="flex-row items-center justify-between">
+                      <View className="flex-row items-center">
+                        <Icons.motorcycle
+                          name={
+                            preferredVehicleType === "bicycle"
+                              ? "bicycle"
+                              : preferredVehicleType === "motorbike"
+                              ? "motorbike"
+                              : preferredVehicleType === "tricycle"
+                              ? "rickshaw"
+                              : preferredVehicleType === "car"
+                              ? "car-outline"
+                              : "van-utility"
+                          }
+                          size={16}
+                          color={isDark ? "#9CA4AB" : "#6E6E73"}
+                          style={{ marginRight: 8 }}
+                        />
+                        <Text
+                          className={`text-sm font-semibold ${
+                            isDark ? "text-light-300" : "text-gray-600"
+                          }`}
+                        >
+                          {preferredVehicleType.charAt(0).toUpperCase() +
+                            preferredVehicleType.slice(1)}
+                        </Text>
+                      </View>
+                      <Text
+                        className={`text-lg font-bold ${
+                          isDark ? "text-light-100" : "text-black"
+                        }`}
+                      >
+                        ₦
+                        {vehiclePrices[
+                          preferredVehicleType
+                        ]?.toLocaleString() || estimatedPrice?.toLocaleString()}
+                      </Text>
+                    </View>
+                  )}
               </View>
               <View className="flex-row items-center justify-center">
                 <Icons.status
@@ -1363,19 +1384,30 @@ export default function NewOrderScreen() {
           )}
         </View>
 
-        {/* Create Order Button */}
+        {/* SUBMIT */}
         <TouchableOpacity
           disabled={!canSubmit || submitting}
           onPress={createOrder}
           className={`rounded-2xl items-center justify-center h-14 flex-row ${
             canSubmit && !submitting
-              ? "bg-accent"
+              ? ""
               : isDark
               ? "bg-dark-100 border border-neutral-100"
               : "bg-gray-100 border border-gray-200"
           }`}
           style={{
-            shadowColor: canSubmit && !submitting ? "#AB8BFF" : "#000",
+            backgroundColor:
+              canSubmit && !submitting
+                ? isDark
+                  ? "#AB8BFF"
+                  : "#1E3A8A"
+                : undefined,
+            shadowColor:
+              canSubmit && !submitting
+                ? isDark
+                  ? "#AB8BFF"
+                  : "#1E3A8A"
+                : "#000",
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: canSubmit && !submitting ? 0.3 : 0.1,
             shadowRadius: 8,
@@ -1384,21 +1416,38 @@ export default function NewOrderScreen() {
         >
           {submitting ? (
             <>
-              <ActivityIndicator color="#030014" size="small" />
-              <Text className="text-primary font-bold ml-2">Creating...</Text>
+              <ActivityIndicator
+                color={isDark ? "#030014" : "#FFFFFF"}
+                size="small"
+              />
+              <Text
+                className={`font-bold ml-2 ${
+                  isDark ? "text-primary" : "text-white"
+                }`}
+              >
+                Creating...
+              </Text>
             </>
           ) : (
             <>
               <Icons.action
                 name={IconNames.addCircle as any}
                 size={20}
-                color={canSubmit ? "#030014" : "#9CA4AB"}
+                color={
+                  canSubmit
+                    ? isDark
+                      ? "#030014"
+                      : "#FFFFFF"
+                    : "#9CA4AB"
+                }
                 style={{ marginRight: 8 }}
               />
               <Text
                 className={`font-bold text-base ${
                   canSubmit
-                    ? "text-primary"
+                    ? isDark
+                      ? "text-primary"
+                      : "text-white"
                     : isDark
                     ? "text-light-400"
                     : "text-gray-500"

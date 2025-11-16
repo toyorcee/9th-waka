@@ -118,46 +118,51 @@ export default function NotificationsScreen() {
     }
   }, [notifications, refetch]);
 
-  const renderItem = ({ item }: { item: UnifiedNotification }) => (
-    <TouchableOpacity
-      onPress={() => handleOpenNotification(item)}
-      className={`rounded-2xl px-5 py-4 mb-3 border ${
-        isDark
-          ? item.read
-            ? "bg-dark-100 border-neutral-100/40"
-            : "bg-dark-100 border-accent/50"
-          : item.read
-          ? "bg-white border-gray-200"
-          : "bg-white border-accent/50"
-      }`}
-    >
-      <View className="flex-row items-start justify-between">
-        <View className="flex-1 mr-3">
-          <Text
-            className={`text-base font-semibold ${
-              isDark ? "text-light-100" : "text-black"
-            }`}
-          >
-            {item.title}
-          </Text>
-          <Text
-            className={`text-sm mt-1 ${
-              isDark ? "text-light-300" : "text-gray-600"
-            }`}
-          >
-            {item.message}
-          </Text>
-          <Text
-            className={`text-xs mt-2 ${
-              isDark ? "text-light-400" : "text-gray-500"
-            }`}
-          >
-            {new Date(item.timestamp).toLocaleString()}
-          </Text>
+  const renderItem = React.useCallback(
+    ({ item }: { item: UnifiedNotification }) => (
+      <TouchableOpacity
+        onPress={() => handleOpenNotification(item)}
+        className={`rounded-2xl px-5 py-4 mb-3 border ${
+          isDark
+            ? item.read
+              ? "bg-dark-100 border-neutral-100/40"
+              : "bg-dark-100 border-accent/50"
+            : item.read
+            ? "bg-white border-gray-200"
+            : "bg-white border-accent/50"
+        }`}
+      >
+        <View className="flex-row items-start justify-between">
+          <View className="flex-1 mr-3">
+            <Text
+              className={`text-base font-semibold ${
+                isDark ? "text-light-100" : "text-black"
+              }`}
+            >
+              {item.title}
+            </Text>
+            <Text
+              className={`text-sm mt-1 ${
+                isDark ? "text-light-300" : "text-gray-600"
+              }`}
+            >
+              {item.message}
+            </Text>
+            <Text
+              className={`text-xs mt-2 ${
+                isDark ? "text-light-400" : "text-gray-500"
+              }`}
+            >
+              {new Date(item.timestamp).toLocaleString()}
+            </Text>
+          </View>
+          {!item.read && (
+            <View className="w-2 h-2 rounded-full bg-accent mt-2" />
+          )}
         </View>
-        {!item.read && <View className="w-2 h-2 rounded-full bg-accent mt-2" />}
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    ),
+    [isDark, handleOpenNotification]
   );
 
   return (
@@ -240,6 +245,16 @@ export default function NotificationsScreen() {
             paddingTop: 16,
             paddingBottom: tabBarPadding,
           }}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          updateCellsBatchingPeriod={50}
+          initialNumToRender={10}
+          windowSize={10}
+          getItemLayout={(data, index) => ({
+            length: 100, // Approximate item height
+            offset: 100 * index,
+            index,
+          })}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

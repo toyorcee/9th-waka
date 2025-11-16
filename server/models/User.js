@@ -49,7 +49,7 @@ const userSchema = new mongoose.Schema(
     },
     vehicleType: {
       type: String,
-      enum: ["motorcycle", "car", null],
+      enum: ["bicycle", "motorbike", "tricycle", "car", "van", null],
       default: null,
     },
     vehiclePicture: {
@@ -58,9 +58,9 @@ const userSchema = new mongoose.Schema(
     },
     searchRadiusKm: {
       type: Number,
-      default: 7, 
+      default: 7,
       min: 1,
-      max: 20, 
+      max: 20,
     },
     // KYC fields for riders
     nin: {

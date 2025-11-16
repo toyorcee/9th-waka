@@ -233,10 +233,17 @@ export async function requestPriceChange(
 export interface PriceEstimate {
   success: boolean;
   estimatedPrice: number;
-  bikePrice: number;
-  carPrice: number;
+  bikePrice?: number; 
+  carPrice?: number; 
   distanceKm: number | null;
   currency: string;
+  prices?: {
+    bicycle: number;
+    motorbike: number;
+    tricycle: number;
+    car: number;
+    van: number;
+  };
 }
 
 export interface PriceEstimateRequest {

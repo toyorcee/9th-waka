@@ -16,6 +16,7 @@ import {
   Dimensions,
   FlatList,
   Modal,
+  Platform,
   ScrollView,
   Text,
   TextInput,
@@ -134,51 +135,27 @@ export default function HomeLanding() {
   const promoBanners = [
     {
       id: "1",
-      title: "BoltFood",
+      title: "Fast & Reliable Delivery",
       subtitle:
-        "Lightning-fast food delivery at your doorstep. Order from your favorite restaurants and get meals delivered in minutes!",
+        "Experience lightning-fast delivery services across Lagos. Your packages delivered safely and on time!",
       cta: "Order Now",
-      image: images.partners.boltFood,
+      image: images.sliders.waka1,
     },
     {
       id: "2",
-      title: "Chowdeck",
+      title: "Track Your Orders",
       subtitle:
-        "Discover amazing restaurants and cuisines. Your favorite meals, delivered fresh and hot to you!",
-      cta: "Order Now",
-      image: images.partners.chowdeck,
+        "Real-time tracking for all your deliveries. Know exactly where your package is at every moment.",
+      cta: "Track Now",
+      image: images.sliders.waka2,
     },
     {
       id: "3",
-      title: "DHL Express",
+      title: "Premium Service",
       subtitle:
-        "World-class logistics and shipping services. Track your packages in real-time with our advanced tracking system.",
-      cta: "Order Now",
-      image: images.partners.dhl,
-    },
-    {
-      id: "4",
-      title: "Glovo",
-      subtitle:
-        "Everything you need, delivered. From groceries to meals, get anything delivered quickly and reliably.",
-      cta: "Order Now",
-      image: images.partners.glovo,
-    },
-    {
-      id: "5",
-      title: "Item7",
-      subtitle:
-        "Premium delivery experience. Fast, secure, and professional delivery services for all your needs.",
-      cta: "Order Now",
-      image: images.partners.item7,
-    },
-    {
-      id: "6",
-      title: "Xtabel-Buka",
-      subtitle:
-        "Authentic traditional meals delivered fresh. Experience the rich flavors of local cuisine, delivered to you!",
-      cta: "Order Now",
-      image: images.partners.xtabelBuka,
+        "Professional delivery experience with secure handling. Trust us with your valuable packages.",
+      cta: "Get Started",
+      image: images.sliders.waka3,
     },
   ];
 
@@ -304,9 +281,10 @@ export default function HomeLanding() {
             {!isAuthenticated ? (
               <TouchableOpacity
                 onPress={() => router.push(Routes.standalone.auth)}
-                className="bg-accent rounded-xl px-4 py-2.5 flex-row items-center"
+                className="rounded-xl px-4 py-2.5 flex-row items-center"
                 style={{
-                  shadowColor: "#AB8BFF",
+                  backgroundColor: isDark ? "#AB8BFF" : "#1E3A8A",
+                  shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.3,
                   shadowRadius: 4,
@@ -316,10 +294,16 @@ export default function HomeLanding() {
                 <Icons.action
                   name={IconNames.arrowForward as any}
                   size={18}
-                  color="#030014"
+                  color={isDark ? "#030014" : "#FFFFFF"}
                   style={{ marginRight: 6 }}
                 />
-                <Text className="text-primary font-bold text-sm">Sign In</Text>
+                <Text
+                  className={`font-bold text-sm ${
+                    isDark ? "text-primary" : "text-white"
+                  }`}
+                >
+                  Sign In
+                </Text>
               </TouchableOpacity>
             ) : (
               <>
@@ -345,16 +329,22 @@ export default function HomeLanding() {
                         height: 40,
                         borderRadius: 20,
                         borderWidth: 2,
-                        borderColor: "#AB8BFF",
+                        borderColor: isDark ? "#AB8BFF" : "#1E3A8A",
                       }}
                       contentFit="cover"
                     />
                   ) : (
-                    <View className="bg-accent/20 rounded-full p-2 border-2 border-accent/30">
+                    <View
+                      className={`rounded-full p-2 border-2 ${
+                        isDark
+                          ? "bg-accent/20 border-accent/30"
+                          : "bg-blue-900/20 border-blue-900/30"
+                      }`}
+                    >
                       <Icons.user
                         name={IconNames.personCircle as any}
                         size={24}
-                        color="#AB8BFF"
+                        color={isDark ? "#AB8BFF" : "#1E3A8A"}
                       />
                     </View>
                   )}
@@ -381,6 +371,15 @@ export default function HomeLanding() {
               className={`text-2xl font-bold mb-1 ${
                 isDark ? "text-light-100" : "text-black"
               }`}
+              style={{
+                fontStyle: "italic",
+                letterSpacing: 0.5,
+                fontFamily: Platform.select({
+                  ios: "Georgia",
+                  android: "serif",
+                  default: "Georgia",
+                }),
+              }}
             >
               {isAuthenticated && user?.fullName
                 ? `Welcome, ${user.fullName.split(" ")[0]}!`
@@ -401,11 +400,15 @@ export default function HomeLanding() {
               <View className="mb-6">
                 <View className="flex-row items-center justify-between mb-4">
                   <View className="flex-row items-center">
-                    <View className="bg-accent/20 rounded-lg p-1.5 mr-2">
+                    <View
+                      className={`rounded-lg p-1.5 mr-2 ${
+                        isDark ? "bg-accent/20" : "bg-blue-900/20"
+                      }`}
+                    >
                       <Icons.package
                         name={IconNames.packageOutline as any}
                         size={18}
-                        color="#AB8BFF"
+                        color={isDark ? "#AB8BFF" : "#1E3A8A"}
                       />
                     </View>
                     <Text
@@ -417,8 +420,18 @@ export default function HomeLanding() {
                     </Text>
                   </View>
                   {!loadingOrders && activeOrders.length > 0 && (
-                    <View className="bg-accent/20 rounded-full px-3 py-1 border border-accent/30">
-                      <Text className="text-accent text-xs font-bold">
+                    <View
+                      className={`rounded-full px-3 py-1 border ${
+                        isDark
+                          ? "bg-accent/20 border-accent/30"
+                          : "bg-blue-900/20 border-blue-900/30"
+                      }`}
+                    >
+                      <Text
+                        className={`text-xs font-bold ${
+                          isDark ? "text-accent" : "text-blue-900"
+                        }`}
+                      >
                         {activeOrders.length} active
                       </Text>
                     </View>
@@ -447,11 +460,15 @@ export default function HomeLanding() {
                       <View className="flex-row items-start justify-between mb-4">
                         <View className="flex-1">
                           <View className="flex-row items-center mb-3">
-                            <View className="bg-accent/20 rounded-lg p-1.5 mr-2">
+                            <View
+                              className={`rounded-lg p-1.5 mr-2 ${
+                                isDark ? "bg-accent/20" : "bg-blue-900/20"
+                              }`}
+                            >
                               <Icons.package
                                 name={IconNames.packageOutline as any}
                                 size={14}
-                                color="#AB8BFF"
+                                color={isDark ? "#AB8BFF" : "#1E3A8A"}
                               />
                             </View>
                             <Text
@@ -498,7 +515,9 @@ export default function HomeLanding() {
                             <View
                               className={`px-3 py-1.5 rounded-lg border ${
                                 order.status === "delivering"
-                                  ? "bg-accent/20 border-accent/30"
+                                  ? isDark
+                                    ? "bg-accent/20 border-accent/30"
+                                    : "bg-blue-900/20 border-blue-900/30"
                                   : order.status === "picked_up"
                                   ? "bg-info/20 border-info/30"
                                   : "bg-warning/20 border-warning/30"
@@ -507,7 +526,9 @@ export default function HomeLanding() {
                               <Text
                                 className={`text-xs font-bold capitalize ${
                                   order.status === "delivering"
-                                    ? "text-accent"
+                                    ? isDark
+                                      ? "text-accent"
+                                      : "text-blue-900"
                                     : order.status === "picked_up"
                                     ? "text-info"
                                     : "text-warning"
@@ -524,22 +545,36 @@ export default function HomeLanding() {
                           setSelectedOrderId(order._id);
                           setShowMapModal(true);
                         }}
-                        className="bg-accent rounded-xl px-4 py-3.5 flex-row items-center justify-center"
+                        className={`rounded-xl px-4 py-3.5 flex-row items-center justify-center ${
+                          isDark ? "bg-accent" : ""
+                        }`}
                         style={{
-                          shadowColor: "#AB8BFF",
-                          shadowOffset: { width: 0, height: 2 },
-                          shadowOpacity: 0.3,
-                          shadowRadius: 4,
-                          elevation: 4,
+                          backgroundColor: isDark ? "#AB8BFF" : "#1E3A8A",
+                          shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
+                          shadowOffset: { width: 0, height: isDark ? 4 : 2 },
+                          shadowOpacity: isDark ? 0.5 : 0.3,
+                          shadowRadius: isDark ? 8 : 4,
+                          elevation: isDark ? 8 : 4,
+                          borderWidth: isDark ? 1 : 0,
+                          borderColor: isDark ? "#C4A5FF" : "transparent",
                         }}
                       >
-                        <Icons.map
-                          name={IconNames.mapOutline as any}
-                          size={20}
-                          color="#030014"
-                          style={{ marginRight: 8 }}
-                        />
-                        <Text className="text-primary font-bold text-base">
+                        <View
+                          className={`rounded-lg p-1 mr-2 ${
+                            isDark ? "bg-primary/20" : "bg-white/20"
+                          }`}
+                        >
+                          <Icons.map
+                            name={IconNames.mapOutline as any}
+                            size={18}
+                            color={isDark ? "#030014" : "#FFFFFF"}
+                          />
+                        </View>
+                        <Text
+                          className={`font-bold text-base ${
+                            isDark ? "text-primary" : "text-white"
+                          }`}
+                        >
                           View Live Map
                         </Text>
                       </TouchableOpacity>
@@ -674,7 +709,7 @@ export default function HomeLanding() {
                   <Icons.action
                     name={IconNames.arrowForward as any}
                     size={20}
-                    color="#AB8BFF"
+                    color={isDark ? "#AB8BFF" : "#1E3A8A"}
                   />
                 </TouchableOpacity>
               )}
@@ -802,7 +837,9 @@ export default function HomeLanding() {
                   key={index}
                   className={`h-2 rounded-full mx-1 ${
                     index === currentPromoIndex
-                      ? "bg-accent w-6"
+                      ? isDark
+                        ? "bg-accent w-6"
+                        : "bg-blue-900 w-6"
                       : isDark
                       ? "bg-dark-100 w-2"
                       : "bg-gray-300 w-2"
@@ -815,11 +852,15 @@ export default function HomeLanding() {
           {/* Quick Actions - Role Based */}
           <View className="mb-6">
             <View className="flex-row items-center mb-4">
-              <View className="bg-accent/20 rounded-lg p-1.5 mr-2">
+              <View
+                className={`rounded-lg p-1.5 mr-2 ${
+                  isDark ? "bg-accent/20" : "bg-blue-900/20"
+                }`}
+              >
                 <Icons.action
                   name={IconNames.starOutline as any}
                   size={18}
-                  color="#AB8BFF"
+                  color={isDark ? "#AB8BFF" : "#1E3A8A"}
                 />
               </View>
               <Text
@@ -836,10 +877,13 @@ export default function HomeLanding() {
               <View className="flex-row flex-wrap gap-2.5">
                 <TouchableOpacity
                   onPress={() => handleAction("deliveries")}
-                  className="bg-accent px-4 py-3.5 flex-1 min-w-[30%]"
+                  className={`px-4 py-3.5 flex-1 min-w-[30%] ${
+                    isDark ? "bg-accent" : ""
+                  }`}
                   style={{
                     borderRadius: 20,
-                    shadowColor: "#AB8BFF",
+                    backgroundColor: isDark ? undefined : "#1E3A8A",
+                    shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
                     shadowOffset: { width: 0, height: 3 },
                     shadowOpacity: 0.3,
                     shadowRadius: 6,
@@ -862,10 +906,13 @@ export default function HomeLanding() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleAction("track")}
-                  className="bg-accentWarm px-4 py-3.5 flex-1 min-w-[30%]"
+                  className={`px-4 py-3.5 flex-1 min-w-[30%] ${
+                    isDark ? "bg-info/80" : ""
+                  }`}
                   style={{
                     borderRadius: 20,
-                    shadowColor: "#FF9500",
+                    backgroundColor: isDark ? undefined : "#0EA5E9",
+                    shadowColor: isDark ? "#5AC8FA" : "#0EA5E9",
                     shadowOffset: { width: 0, height: 3 },
                     shadowOpacity: 0.3,
                     shadowRadius: 6,
@@ -875,21 +922,19 @@ export default function HomeLanding() {
                   <Icons.map
                     name={IconNames.mapOutline as any}
                     size={20}
-                    color={isDark ? "#030014" : "#FFFFFF"}
+                    color="#FFFFFF"
                     style={{ marginBottom: 6, alignSelf: "center" }}
                   />
-                  <Text
-                    className={`font-bold text-center text-xs ${
-                      isDark ? "text-primary" : "text-white"
-                    }`}
-                  >
+                  <Text className="text-white font-bold text-center text-xs">
                     My Deliveries
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleAction("earnings")}
-                  className={`border-2 border-accent/30 px-4 py-3.5 flex-1 min-w-[30%] ${
-                    isDark ? "bg-secondary" : "bg-white"
+                  className={`border-2 px-4 py-3.5 flex-1 min-w-[30%] ${
+                    isDark
+                      ? "border-accent/30 bg-secondary"
+                      : "border-blue-900/30 bg-white"
                   }`}
                   style={{
                     borderRadius: 20,
@@ -903,94 +948,129 @@ export default function HomeLanding() {
                   <Icons.money
                     name={IconNames.cash as any}
                     size={20}
-                    color={isDark ? "#AB8BFF" : "#AB8BFF"}
+                    color={isDark ? "#AB8BFF" : "#1E3A8A"}
                     style={{ marginBottom: 6, alignSelf: "center" }}
                   />
-                  <Text className="text-accent font-bold text-center text-xs">
+                  <Text
+                    className={`font-bold text-center text-xs ${
+                      isDark ? "text-accent" : "text-blue-900"
+                    }`}
+                  >
                     Earnings
                   </Text>
                 </TouchableOpacity>
               </View>
             ) : (
               /* Customer/Admin Quick Actions */
-              <View className="flex-row flex-wrap gap-2.5">
+              <View className="flex-row flex-wrap gap-3">
                 <TouchableOpacity
                   onPress={() => handleAction("request")}
-                  className="bg-accent px-4 py-3.5 flex-1 min-w-[30%]"
+                  className="px-5 py-4 flex-1 min-w-[30%]"
                   style={{
                     borderRadius: 20,
-                    shadowColor: "#AB8BFF",
-                    shadowOffset: { width: 0, height: 3 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 6,
-                    elevation: 5,
+                    backgroundColor: isDark ? "#AB8BFF" : "#1E3A8A",
+                    shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.4,
+                    shadowRadius: 8,
+                    elevation: 6,
                   }}
                 >
-                  <Icons.action
-                    name={IconNames.addCircle as any}
-                    size={20}
-                    color={isDark ? "#030014" : "#FFFFFF"}
-                    style={{ marginBottom: 6, alignSelf: "center" }}
-                  />
-                  <Text
-                    className={`font-bold text-center text-xs ${
-                      isDark ? "text-primary" : "text-white"
-                    }`}
-                  >
-                    Request Delivery
-                  </Text>
+                  <View className="items-center">
+                    <View
+                      className="rounded-full p-2 mb-2"
+                      style={{
+                        backgroundColor: isDark
+                          ? "rgba(3, 0, 20, 0.2)"
+                          : "rgba(255, 255, 255, 0.2)",
+                      }}
+                    >
+                      <Icons.action
+                        name={IconNames.addCircle as any}
+                        size={24}
+                        color={isDark ? "#FFFFFF" : "#FFFFFF"}
+                      />
+                    </View>
+                    <Text
+                      className="font-bold text-center text-sm"
+                      style={{ color: "#FFFFFF" }}
+                    >
+                      Request Delivery
+                    </Text>
+                  </View>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleAction("track")}
-                  className="bg-accentWarm px-4 py-3.5 flex-1 min-w-[30%]"
+                  className="px-5 py-4 flex-1 min-w-[30%]"
                   style={{
                     borderRadius: 20,
-                    shadowColor: "#FF9500",
-                    shadowOffset: { width: 0, height: 3 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 6,
-                    elevation: 5,
+                    backgroundColor: isDark ? "#5AC8FA" : "#0EA5E9",
+                    shadowColor: isDark ? "#5AC8FA" : "#0EA5E9",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.4,
+                    shadowRadius: 8,
+                    elevation: 6,
                   }}
                 >
-                  <Icons.map
-                    name={IconNames.mapOutline as any}
-                    size={20}
-                    color={isDark ? "#030014" : "#FFFFFF"}
-                    style={{ marginBottom: 6, alignSelf: "center" }}
-                  />
-                  <Text
-                    className={`font-bold text-center text-xs ${
-                      isDark ? "text-primary" : "text-white"
-                    }`}
-                  >
-                    Track Order
-                  </Text>
+                  <View className="items-center">
+                    <View
+                      className="rounded-full p-2 mb-2"
+                      style={{
+                        backgroundColor: "rgba(255, 255, 255, 0.2)",
+                      }}
+                    >
+                      <Icons.map
+                        name={IconNames.mapOutline as any}
+                        size={24}
+                        color="#FFFFFF"
+                      />
+                    </View>
+                    <Text
+                      className="font-bold text-center text-sm"
+                      style={{ color: "#FFFFFF" }}
+                    >
+                      Track Order
+                    </Text>
+                  </View>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleAction("orders")}
-                  className="bg-accent px-4 py-3.5 flex-1 min-w-[30%]"
+                  className="px-5 py-4 flex-1 min-w-[30%]"
                   style={{
                     borderRadius: 20,
-                    shadowColor: "#AB8BFF",
-                    shadowOffset: { width: 0, height: 3 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 6,
-                    elevation: 5,
+                    backgroundColor: isDark ? "#6B7280" : "#E5E7EB",
+                    shadowColor: isDark ? "#6B7280" : "#9CA3AF",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.4,
+                    shadowRadius: 8,
+                    elevation: 6,
                   }}
                 >
-                  <Icons.package
-                    name={IconNames.packageOutline as any}
-                    size={20}
-                    color={isDark ? "#030014" : "#FFFFFF"}
-                    style={{ marginBottom: 6, alignSelf: "center" }}
-                  />
-                  <Text
-                    className={`font-bold text-center text-xs ${
-                      isDark ? "text-primary" : "text-white"
-                    }`}
-                  >
-                    My Orders
-                  </Text>
+                  <View className="items-center flex-1 justify-between">
+                    <View
+                      className="rounded-full p-2"
+                      style={{
+                        backgroundColor: isDark
+                          ? "rgba(255, 255, 255, 0.2)"
+                          : "rgba(30, 58, 138, 0.2)",
+                      }}
+                    >
+                      <Icons.package
+                        name={IconNames.packageOutline as any}
+                        size={24}
+                        color={isDark ? "#FFFFFF" : "#1E3A8A"}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }} />
+                    <Text
+                      className="font-bold text-center text-sm"
+                      style={{
+                        color: isDark ? "#FFFFFF" : "#1E3A8A",
+                      }}
+                    >
+                      My Orders
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               </View>
             )}
@@ -1027,6 +1107,123 @@ export default function HomeLanding() {
             </View>
           )}
 
+          {/* Available Vehicles Section */}
+          <View className="mb-6">
+            <View className="flex-row items-center mb-4">
+              <View
+                className={`rounded-lg p-1.5 mr-2 ${
+                  isDark ? "bg-accent/20" : "bg-blue-900/20"
+                }`}
+              >
+                <Icons.delivery
+                  name={IconNames.carOutline as any}
+                  size={18}
+                  color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                />
+              </View>
+              <Text
+                className={`text-lg font-bold ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
+                Available Vehicles
+              </Text>
+            </View>
+            <Text
+              className={`text-sm mb-4 ${
+                isDark ? "text-light-400" : "text-gray-600"
+              }`}
+            >
+              Choose from our range of delivery vehicles. Riders can register
+              with any vehicle type, and customers can select their preferred
+              option when requesting deliveries.
+            </Text>
+            <View className="flex-row flex-wrap gap-2.5">
+              {[
+                {
+                  type: "bicycle",
+                  label: "Bicycle",
+                  icon: "bicycle",
+                  description: "Eco-friendly, fast for short distances",
+                  color: isDark ? "#6B7280" : "#9CA3AF",
+                },
+                {
+                  type: "motorbike",
+                  label: "Motorbike",
+                  icon: "motorbike",
+                  description: "Most popular, quick & affordable",
+                  color: isDark ? "#AB8BFF" : "#1E3A8A",
+                },
+                {
+                  type: "tricycle",
+                  label: "Tricycle",
+                  icon: "rickshaw",
+                  description: "More capacity, stable delivery",
+                  color: isDark ? "#5AC8FA" : "#0EA5E9",
+                },
+                {
+                  type: "car",
+                  label: "Car",
+                  icon: "car-outline",
+                  description: "Comfortable, weather-protected",
+                  color: isDark ? "#9333EA" : "#7C3AED",
+                },
+                {
+                  type: "van",
+                  label: "Van",
+                  icon: "van-utility",
+                  description: "Large items, bulk deliveries",
+                  color: isDark ? "#F59E0B" : "#D97706",
+                },
+              ].map((vehicle) => (
+                <View
+                  key={vehicle.type}
+                  className={`rounded-xl p-3 border flex-1 min-w-[45%] ${
+                    isDark
+                      ? "bg-secondary border-neutral-100"
+                      : "bg-white border-gray-200"
+                  }`}
+                  style={{
+                    shadowColor: vehicle.color,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 4,
+                    elevation: 2,
+                  }}
+                >
+                  <View className="flex-row items-center mb-2">
+                    <View
+                      className="rounded-lg p-1.5 mr-2"
+                      style={{
+                        backgroundColor: `${vehicle.color}20`,
+                      }}
+                    >
+                      <Icons.motorcycle
+                        name={vehicle.icon as any}
+                        size={18}
+                        color={vehicle.color}
+                      />
+                    </View>
+                    <Text
+                      className={`font-bold text-sm ${
+                        isDark ? "text-light-100" : "text-black"
+                      }`}
+                    >
+                      {vehicle.label}
+                    </Text>
+                  </View>
+                  <Text
+                    className={`text-xs ${
+                      isDark ? "text-light-400" : "text-gray-600"
+                    }`}
+                  >
+                    {vehicle.description}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
           {/* Features Section */}
           <View className="mb-6">
             <View className="flex-row items-center mb-4">
@@ -1047,102 +1244,129 @@ export default function HomeLanding() {
             </View>
             <View className="gap-3">
               <View
-                className={`rounded-2xl p-4 border ${
+                className={`rounded-2xl p-4 border overflow-hidden ${
                   isDark
                     ? "bg-secondary border-neutral-100"
-                    : "bg-white border-gray-200"
+                    : "border-blue-900/20"
                 }`}
                 style={{
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 4,
-                  elevation: 2,
+                  backgroundColor: isDark ? undefined : "#1E3A8A",
+                  shadowColor: isDark ? "#000" : "#1E3A8A",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: isDark ? 0.05 : 0.2,
+                  shadowRadius: 8,
+                  elevation: 4,
                 }}
               >
                 <View className="flex-row items-center mb-2">
-                  <View className="bg-accent/20 rounded-lg p-1.5 mr-2">
+                  <View
+                    className={`rounded-lg p-1.5 mr-2 ${
+                      isDark ? "bg-accent/20" : "bg-white/20"
+                    }`}
+                  >
                     <Icons.action
                       name={IconNames.shieldOutline as any}
                       size={16}
-                      color="#AB8BFF"
+                      color={isDark ? "#AB8BFF" : "#FFFFFF"}
                     />
                   </View>
-                  <Text className="text-accent font-bold text-base">
+                  <Text
+                    className={`font-bold text-base ${
+                      isDark ? "text-accent" : "text-white"
+                    }`}
+                  >
                     AI Safe Routes
                   </Text>
                 </View>
                 <Text
                   className={`text-sm ${
-                    isDark ? "text-light-300" : "text-gray-600"
+                    isDark ? "text-light-300" : "text-white/90"
                   }`}
                 >
                   Intelligent routing for maximum safety
                 </Text>
               </View>
               <View
-                className={`rounded-2xl p-4 border ${
+                className={`rounded-2xl p-4 border overflow-hidden ${
                   isDark
                     ? "bg-secondary border-neutral-100"
-                    : "bg-white border-gray-200"
+                    : "border-cyan-500/20"
                 }`}
                 style={{
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 4,
-                  elevation: 2,
+                  backgroundColor: isDark ? undefined : "#0EA5E9",
+                  shadowColor: isDark ? "#000" : "#0EA5E9",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: isDark ? 0.05 : 0.2,
+                  shadowRadius: 8,
+                  elevation: 4,
                 }}
               >
                 <View className="flex-row items-center mb-2">
-                  <View className="bg-info/20 rounded-lg p-1.5 mr-2">
+                  <View
+                    className={`rounded-lg p-1.5 mr-2 ${
+                      isDark ? "bg-info/20" : "bg-white/20"
+                    }`}
+                  >
                     <Icons.map
                       name={IconNames.locationOutline as any}
                       size={16}
-                      color="#5AC8FA"
+                      color={isDark ? "#5AC8FA" : "#FFFFFF"}
                     />
                   </View>
-                  <Text className="text-info font-bold text-base">
+                  <Text
+                    className={`font-bold text-base ${
+                      isDark ? "text-info" : "text-white"
+                    }`}
+                  >
                     Real-Time Tracking
                   </Text>
                 </View>
                 <Text
                   className={`text-sm ${
-                    isDark ? "text-light-300" : "text-gray-600"
+                    isDark ? "text-light-300" : "text-white/90"
                   }`}
                 >
                   Follow your delivery live on the map
                 </Text>
               </View>
               <View
-                className={`rounded-2xl p-4 border ${
+                className={`rounded-2xl p-4 border overflow-hidden ${
                   isDark
                     ? "bg-secondary border-neutral-100"
-                    : "bg-white border-gray-200"
+                    : "border-green-500/20"
                 }`}
                 style={{
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 4,
-                  elevation: 2,
+                  backgroundColor: isDark ? undefined : "#10B981",
+                  shadowColor: isDark ? "#000" : "#10B981",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: isDark ? 0.05 : 0.2,
+                  shadowRadius: 8,
+                  elevation: 4,
                 }}
               >
                 <View className="flex-row items-center mb-2">
-                  <View className="bg-success/20 rounded-lg p-1.5 mr-2">
+                  <View
+                    className={`rounded-lg p-1.5 mr-2 ${
+                      isDark ? "bg-success/20" : "bg-white/20"
+                    }`}
+                  >
                     <Icons.status
                       name={IconNames.checkmarkCircle as any}
                       size={16}
-                      color="#30D158"
+                      color={isDark ? "#30D158" : "#FFFFFF"}
                     />
                   </View>
-                  <Text className="text-success font-bold text-base">
+                  <Text
+                    className={`font-bold text-base ${
+                      isDark ? "text-success" : "text-white"
+                    }`}
+                  >
                     Night Assurance
                   </Text>
                 </View>
                 <Text
                   className={`text-sm ${
-                    isDark ? "text-light-300" : "text-gray-600"
+                    isDark ? "text-light-300" : "text-white/90"
                   }`}
                 >
                   Verified riders, secure deliveries
@@ -1159,9 +1383,10 @@ export default function HomeLanding() {
                   await navigationHelper.setPendingAction("request");
                   router.push(Routes.standalone.auth);
                 }}
-                className="bg-accent rounded-2xl py-4 px-6 flex-row items-center justify-center"
+                className="rounded-2xl py-4 px-6 flex-row items-center justify-center"
                 style={{
-                  shadowColor: "#AB8BFF",
+                  backgroundColor: isDark ? "#AB8BFF" : "#1E3A8A",
+                  shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
                   shadowOffset: { width: 0, height: 4 },
                   shadowOpacity: 0.3,
                   shadowRadius: 8,
@@ -1171,10 +1396,15 @@ export default function HomeLanding() {
                 <Icons.action
                   name={IconNames.addCircle as any}
                   size={20}
-                  color="#030014"
+                  color={isDark ? "#030014" : "#FFFFFF"}
                   style={{ marginRight: 8 }}
                 />
-                <Text className="text-primary font-bold text-base">
+                <Text
+                  className="font-bold text-base"
+                  style={{
+                    color: isDark ? "#030014" : "#FFFFFF",
+                  }}
+                >
                   Get Started - Request Your First Delivery
                 </Text>
               </TouchableOpacity>

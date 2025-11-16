@@ -26,7 +26,7 @@ const TabIcon = ({
         style={{
           width: 48,
           height: 48,
-          backgroundColor: isDark ? "#AB8BFF" : "#AB8BFF",
+          backgroundColor: isDark ? "#AB8BFF" : "#1E3A8A",
         }}
       >
         <IconComp
@@ -46,10 +46,14 @@ const TabIcon = ({
 );
 
 export default function TabsLayout() {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const authContext = useAuth();
   const { theme } = useTheme();
   const router = useRouter();
   const segments = useSegments();
+
+  const user = authContext?.user || null;
+  const isAuthenticated = authContext?.isAuthenticated || false;
+  const isLoading = authContext?.isLoading ?? true;
   const userRole = user?.role || "customer";
   const insets = useSafeAreaInsets();
   const isDark = theme === "dark";
@@ -113,7 +117,7 @@ export default function TabsLayout() {
               zIndex: 1000,
             }
           : { display: "none", height: 0 },
-        tabBarActiveTintColor: isDark ? "#AB8BFF" : "#AB8BFF",
+        tabBarActiveTintColor: isDark ? "#AB8BFF" : "#1E3A8A",
         tabBarInactiveTintColor: isDark ? "#9CA4AB" : "#6E6E73",
       }}
     >

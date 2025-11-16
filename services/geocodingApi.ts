@@ -28,6 +28,7 @@ export interface GeocodeResult {
 
 /**
  * Get address suggestions/autocomplete
+ * Calls backend API which uses Mapbox (secure - token on server)
  */
 export async function getAddressSuggestions(
   query: string,
@@ -45,16 +46,16 @@ export async function getAddressSuggestions(
 
 /**
  * Geocode a single address
+ * Calls backend API which uses Mapbox (secure - token on server)
  */
-export async function geocodeAddress(
-  address: string
-): Promise<GeocodeResult> {
+export async function geocodeAddress(address: string): Promise<GeocodeResult> {
   const response = await apiClient.post("/geocoding/geocode", { address });
   return response.data?.location;
 }
 
 /**
  * Calculate distance between two addresses or coordinates
+ * Returns distance and duration (if available from Mapbox)
  */
 export async function calculateAddressDistance(data: {
   address1?: string;
@@ -63,8 +64,13 @@ export async function calculateAddressDistance(data: {
   lng1?: number;
   lat2?: number;
   lng2?: number;
-}): Promise<{ distance: number; distanceKm: number; coordinates: any }> {
+}): Promise<{
+  distance: number;
+  distanceKm: number;
+  duration?: number | null; // in seconds
+  durationMinutes?: number | null;
+  coordinates: any;
+}> {
   const response = await apiClient.post("/geocoding/distance", data);
   return response.data;
 }
-

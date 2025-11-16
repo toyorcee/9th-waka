@@ -208,7 +208,10 @@ export default function OrdersScreen() {
           isDark ? "bg-primary" : "bg-white"
         }`}
       >
-        <ActivityIndicator size="large" color="#AB8BFF" />
+        <ActivityIndicator
+          size="large"
+          color={isDark ? "#AB8BFF" : "#1E3A8A"}
+        />
       </View>
     );
   }
@@ -226,7 +229,7 @@ export default function OrdersScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => loadOrders(true, currentPage, searchQuery)}
-            tintColor="#AB8BFF"
+            tintColor={isDark ? "#AB8BFF" : "#1E3A8A"}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -235,11 +238,15 @@ export default function OrdersScreen() {
           {/* Modern Header with Icon */}
           <View className="flex-row items-center justify-between mb-6">
             <View className="flex-row items-center flex-1">
-              <View className="bg-accent/20 rounded-xl p-2.5 mr-3">
+              <View
+                className={`rounded-xl p-2.5 mr-3 ${
+                  isDark ? "bg-accent/20" : "bg-blue-900/20"
+                }`}
+              >
                 <Icons.package
                   name={MCIconNames.packageVariant as any}
                   size={22}
-                  color="#AB8BFF"
+                  color={isDark ? "#AB8BFF" : "#1E3A8A"}
                 />
               </View>
               <View className="flex-1">
@@ -272,9 +279,10 @@ export default function OrdersScreen() {
                 Create new order
               </Text>
               <View
-                className="bg-accent rounded-xl p-2 items-center justify-center"
+                className="rounded-xl p-2 items-center justify-center"
                 style={{
-                  shadowColor: "#AB8BFF",
+                  backgroundColor: isDark ? "#AB8BFF" : "#1E3A8A",
+                  shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.3,
                   shadowRadius: 4,
@@ -284,7 +292,7 @@ export default function OrdersScreen() {
                 <Icons.action
                   name={IconNames.addCircle as any}
                   size={18}
-                  color="#030014"
+                  color={isDark ? "#030014" : "#FFFFFF"}
                 />
               </View>
             </TouchableOpacity>
@@ -366,11 +374,15 @@ export default function OrdersScreen() {
                 }}
               >
                 <View className="items-center justify-center flex-1">
-                  <View className="bg-accent/10 rounded-2xl p-2.5 mb-2">
+                  <View
+                    className={`rounded-2xl p-2.5 mb-2 ${
+                      isDark ? "bg-accent/10" : "bg-blue-900/10"
+                    }`}
+                  >
                     <Icons.money
                       name={MCIconNames.cash as any}
                       size={22}
-                      color="#AB8BFF"
+                      color={isDark ? "#AB8BFF" : "#1E3A8A"}
                     />
                   </View>
                   <Text
@@ -485,23 +497,38 @@ export default function OrdersScreen() {
                   }
                   className={`rounded-xl py-2.5 px-4 items-center border ${
                     filter === filterOption.key
-                      ? "bg-accent border-accent/30"
+                      ? isDark
+                        ? "bg-accent border-accent/30"
+                        : "border-blue-800"
                       : isDark
                       ? "bg-dark-100 border-neutral-100"
                       : "bg-gray-100 border-gray-200"
                   }`}
-                  style={{ minWidth: 90 }}
+                  style={[
+                    filter === filterOption.key && !isDark
+                      ? { backgroundColor: "#1E3A8A" }
+                      : undefined,
+                    { minWidth: 90 },
+                  ]}
                 >
                   <Icons.status
                     name={filterOption.icon as any}
                     size={16}
-                    color={filter === filterOption.key ? "#030014" : "#9CA4AB"}
+                    color={
+                      filter === filterOption.key
+                        ? isDark
+                          ? "#030014"
+                          : "#FFFFFF"
+                        : "#9CA4AB"
+                    }
                     style={{ marginBottom: 4 }}
                   />
                   <Text
                     className={`text-xs font-semibold ${
                       filter === filterOption.key
-                        ? "text-primary"
+                        ? isDark
+                          ? "text-primary"
+                          : "text-white"
                         : isDark
                         ? "text-light-400"
                         : "text-gray-500"
@@ -511,8 +538,28 @@ export default function OrdersScreen() {
                   </Text>
                   {/* Show count badge for each filter */}
                   {filterOption.key === "all" && (
-                    <View className="bg-accent/20 rounded-full px-1.5 py-0.5 mt-1">
-                      <Text className="text-accent text-[10px] font-bold">
+                    <View
+                      className={`rounded-full px-1.5 py-0.5 mt-1 ${
+                        filter === filterOption.key
+                          ? isDark
+                            ? "bg-primary/30"
+                            : "bg-white/30"
+                          : isDark
+                          ? "bg-accent/20"
+                          : "bg-blue-900/20"
+                      }`}
+                    >
+                      <Text
+                        className={`text-[10px] font-bold ${
+                          filter === filterOption.key
+                            ? isDark
+                              ? "text-primary"
+                              : "text-white"
+                            : isDark
+                            ? "text-accent"
+                            : "text-blue-900"
+                        }`}
+                      >
                         {statistics.total || 0}
                       </Text>
                     </View>
@@ -568,7 +615,10 @@ export default function OrdersScreen() {
                 elevation: 4,
               }}
             >
-              <ActivityIndicator size="large" color="#AB8BFF" />
+              <ActivityIndicator
+                size="large"
+                color={isDark ? "#AB8BFF" : "#1E3A8A"}
+              />
               <Text
                 className={`mt-4 text-sm ${
                   isDark ? "text-light-300" : "text-gray-600"
@@ -620,9 +670,10 @@ export default function OrdersScreen() {
               </Text>
               <TouchableOpacity
                 onPress={() => router.push(Routes.standalone.newOrder)}
-                className="bg-accent rounded-2xl px-8 py-4 flex-row items-center"
+                className="rounded-2xl px-8 py-4 flex-row items-center"
                 style={{
-                  shadowColor: "#AB8BFF",
+                  backgroundColor: isDark ? "#AB8BFF" : "#1E3A8A",
+                  shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
                   shadowOffset: { width: 0, height: 4 },
                   shadowOpacity: 0.3,
                   shadowRadius: 8,
@@ -632,10 +683,14 @@ export default function OrdersScreen() {
                 <Icons.action
                   name={IconNames.addCircle as any}
                   size={20}
-                  color="#030014"
+                  color={isDark ? "#030014" : "#FFFFFF"}
                   style={{ marginRight: 8 }}
                 />
-                <Text className="text-primary font-bold text-base">
+                <Text
+                  className={`font-bold text-base ${
+                    isDark ? "text-primary" : "text-white"
+                  }`}
+                >
                   Create New Order
                 </Text>
               </TouchableOpacity>
@@ -728,11 +783,15 @@ export default function OrdersScreen() {
                         <View className="flex-row items-start justify-between mb-4">
                           <View className="flex-1 mr-3">
                             <View className="flex-row items-center mb-2">
-                              <View className="bg-accent/20 rounded-lg p-1.5 mr-2">
+                              <View
+                                className={`rounded-lg p-1.5 mr-2 ${
+                                  isDark ? "bg-accent/20" : "bg-blue-900/20"
+                                }`}
+                              >
                                 <Icons.package
                                   name={MCIconNames.packageVariant as any}
                                   size={16}
-                                  color="#AB8BFF"
+                                  color={isDark ? "#AB8BFF" : "#1E3A8A"}
                                 />
                               </View>
                               <Text
@@ -877,7 +936,7 @@ export default function OrdersScreen() {
                                   <Icons.user
                                     name={IconNames.personOutline as any}
                                     size={12}
-                                    color="#AB8BFF"
+                                    color={isDark ? "#AB8BFF" : "#1E3A8A"}
                                     style={{ marginRight: 4 }}
                                   />
                                   <Text
@@ -930,7 +989,11 @@ export default function OrdersScreen() {
                                 Price
                               </Text>
                             </View>
-                            <Text className="text-accent font-bold text-xl">
+                            <Text
+                              className={`font-bold text-xl ${
+                                isDark ? "text-accent" : "text-blue-900"
+                              }`}
+                            >
                               ₦{order.price?.toLocaleString() || "0"}
                             </Text>
                           </View>
@@ -972,9 +1035,10 @@ export default function OrdersScreen() {
                                 setChatOrderId(orderId);
                                 setShowChat(true);
                               }}
-                              className="flex-1 bg-accent rounded-xl py-2.5 px-4 flex-row items-center justify-center active:opacity-80"
+                              className="flex-1 rounded-xl py-2.5 px-4 flex-row items-center justify-center active:opacity-80"
                               style={{
-                                shadowColor: "#AB8BFF",
+                                backgroundColor: isDark ? "#AB8BFF" : "#1E3A8A",
+                                shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
                                 shadowOffset: { width: 0, height: 2 },
                                 shadowOpacity: 0.3,
                                 shadowRadius: 4,
@@ -984,10 +1048,14 @@ export default function OrdersScreen() {
                               <Icons.communication
                                 name={IconNames.chatbubbleOutline as any}
                                 size={16}
-                                color="#030014"
+                                color={isDark ? "#030014" : "#FFFFFF"}
                                 style={{ marginRight: 6 }}
                               />
-                              <Text className="text-primary text-xs font-bold">
+                              <Text
+                                className={`text-xs font-bold ${
+                                  isDark ? "text-primary" : "text-white"
+                                }`}
+                              >
                                 Chat
                               </Text>
                             </TouchableOpacity>
@@ -1025,8 +1093,16 @@ export default function OrdersScreen() {
                         Page {pagination.page} of {pagination.totalPages}
                       </Text>
                     </View>
-                    <View className="bg-accent/20 rounded-xl px-3 py-1.5">
-                      <Text className="text-accent text-xs font-bold">
+                    <View
+                      className={`rounded-xl px-3 py-1.5 ${
+                        isDark ? "bg-accent/20" : "bg-blue-900/20"
+                      }`}
+                    >
+                      <Text
+                        className={`text-xs font-bold ${
+                          isDark ? "text-accent" : "text-blue-900"
+                        }`}
+                      >
                         {pagination.total} Total
                       </Text>
                     </View>
@@ -1050,14 +1126,20 @@ export default function OrdersScreen() {
                             name={IconNames.arrowBack as any}
                             size={18}
                             color={
-                              pagination.hasPrevPage ? "#AB8BFF" : "#9CA4AB"
+                              pagination.hasPrevPage
+                                ? isDark
+                                  ? "#AB8BFF"
+                                  : "#1E3A8A"
+                                : "#9CA4AB"
                             }
                             style={{ marginRight: 6 }}
                           />
                           <Text
                             className={`text-sm font-semibold ${
                               pagination.hasPrevPage
-                                ? "text-accent"
+                                ? isDark
+                                  ? "text-accent"
+                                  : "text-blue-900"
                                 : "text-light-400"
                             }`}
                           >
@@ -1079,7 +1161,9 @@ export default function OrdersScreen() {
                           <Text
                             className={`text-sm font-semibold ${
                               pagination.hasNextPage
-                                ? "text-accent"
+                                ? isDark
+                                  ? "text-accent"
+                                  : "text-blue-900"
                                 : "text-light-400"
                             }`}
                           >
@@ -1089,7 +1173,11 @@ export default function OrdersScreen() {
                             name={IconNames.arrowForward as any}
                             size={18}
                             color={
-                              pagination.hasNextPage ? "#AB8BFF" : "#9CA4AB"
+                              pagination.hasNextPage
+                                ? isDark
+                                  ? "#AB8BFF"
+                                  : "#1E3A8A"
+                                : "#9CA4AB"
                             }
                             style={{ marginLeft: 6 }}
                           />
@@ -1122,14 +1210,23 @@ export default function OrdersScreen() {
                               onPress={() => handlePageChange(pageNum)}
                               className={`w-10 h-10 rounded-xl items-center justify-center border ${
                                 pagination.page === pageNum
-                                  ? "bg-accent border-accent/30"
+                                  ? isDark
+                                    ? "bg-accent border-accent/30"
+                                    : "border-blue-800"
                                   : "bg-dark-100 border-neutral-100"
                               }`}
+                              style={
+                                pagination.page === pageNum && !isDark
+                                  ? { backgroundColor: "#1E3A8A" }
+                                  : undefined
+                              }
                             >
                               <Text
                                 className={`text-sm font-bold ${
                                   pagination.page === pageNum
-                                    ? "text-primary"
+                                    ? isDark
+                                      ? "text-primary"
+                                      : "text-white"
                                     : "text-light-200"
                                 }`}
                               >

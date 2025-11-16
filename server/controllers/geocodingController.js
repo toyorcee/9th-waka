@@ -1,8 +1,8 @@
 import {
-  calculateDistance,
   geocodeAddress,
   getAddressSuggestions,
 } from "../services/geocodingService.js";
+import { calculateRoadDistance } from "../services/routingService.js";
 
 /**
  * Get address suggestions/autocomplete
@@ -84,6 +84,13 @@ export const calculateAddressDistance = async (req, res) => {
   try {
     const { address1, address2, lat1, lng1, lat2, lng2 } = req.body || {};
 
+    console.log("[GEOCODING] 📍 Distance calculation request:", {
+      hasAddresses: !!(address1 || address2),
+      hasCoords: !!(lat1 && lng1 && lat2 && lng2),
+      coords1: lat1 && lng1 ? `(${lat1}, ${lng1})` : null,
+      coords2: lat2 && lng2 ? `(${lat2}, ${lng2})` : null,
+    });
+
     let coord1 = { lat: lat1, lng: lng1 };
     let coord2 = { lat: lat2, lng: lng2 };
 
@@ -119,22 +126,54 @@ export const calculateAddressDistance = async (req, res) => {
       });
     }
 
-    const distance = calculateDistance(
+    // Use routing service for accurate road distance (uses Mapbox if available)
+    const distanceKm = await calculateRoadDistance(
       coord1.lat,
       coord1.lng,
       coord2.lat,
       coord2.lng
     );
 
-    res.json({
+    // Get duration from Mapbox if available
+    let durationMinutes = null;
+    try {
+      const { calculateMapboxDistance } = await import(
+        "../services/mapboxService.js"
+      );
+      const mapboxToken = process.env.MAPBOX_ACCESS_TOKEN;
+      if (mapboxToken) {
+        const result = await calculateMapboxDistance(
+          [coord1.lng, coord1.lat],
+          [coord2.lng, coord2.lat]
+        );
+        if (result) {
+          durationMinutes = result.durationMinutes;
+        }
+      }
+    } catch (error) {
+      // Ignore - duration is optional
+    }
+
+    const response = {
       success: true,
-      distance: distance,
-      distanceKm: distance,
+      distance: distanceKm * 1000, // in meters
+      distanceKm: distanceKm,
+      duration: durationMinutes ? durationMinutes * 60 : null, // in seconds
+      durationMinutes: durationMinutes,
       coordinates: {
         from: coord1,
         to: coord2,
       },
+    };
+
+    console.log("[GEOCODING] ✅ Distance calculation result:", {
+      distanceKm: distanceKm.toFixed(2),
+      durationMinutes: durationMinutes ? durationMinutes.toFixed(1) : "N/A",
+      from: `(${coord1.lat.toFixed(6)}, ${coord1.lng.toFixed(6)})`,
+      to: `(${coord2.lat.toFixed(6)}, ${coord2.lng.toFixed(6)})`,
     });
+
+    res.json(response);
   } catch (error) {
     console.error("[GEOCODING] Error calculating distance:", error);
     res.status(500).json({

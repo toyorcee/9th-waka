@@ -1,8 +1,10 @@
 /**
  * Routing service to calculate actual road distance between two points
- * Uses OpenRouteService (free tier) for accurate road distance calculation
- * Falls back to Haversine distance if routing API fails
+ * Uses Mapbox Directions API (primary) with OpenRouteService fallback
+ * Falls back to Haversine distance if routing APIs fail
  */
+
+import { calculateMapboxDistance } from "./mapboxService.js";
 
 /**
  * Calculate road distance between two coordinates using routing API
@@ -13,11 +15,45 @@
  * @returns {Promise<number>} - Road distance in kilometers
  */
 const calculateRoadDistance = async (lat1, lng1, lat2, lng2) => {
+  // Try Mapbox first (better accuracy)
+  console.log("[ROUTING] 🚀 Starting distance calculation:", {
+    from: `(${lat1.toFixed(6)}, ${lng1.toFixed(6)})`,
+    to: `(${lat2.toFixed(6)}, ${lng2.toFixed(6)})`,
+  });
+
+  try {
+    const mapboxToken = process.env.MAPBOX_ACCESS_TOKEN;
+    if (mapboxToken) {
+      console.log("[ROUTING] ✅ Mapbox token found, using Mapbox API");
+      const result = await calculateMapboxDistance([lng1, lat1], [lng2, lat2]);
+      if (result) {
+        console.log(
+          "[ROUTING] ✅ Mapbox distance result:",
+          result.distanceKm.toFixed(2),
+          "km",
+          `(${result.durationMinutes.toFixed(1)} min)`
+        );
+        return result.distanceKm;
+      } else {
+        console.warn("[ROUTING] ⚠️ Mapbox returned null, trying fallback");
+      }
+    } else {
+      console.warn("[ROUTING] ⚠️ No Mapbox token found, using fallback");
+    }
+  } catch (error) {
+    console.error(
+      "[ROUTING] ❌ Mapbox error:",
+      error.message,
+      "- trying OpenRouteService"
+    );
+  }
+
+  // Fallback to OpenRouteService
   const apiKey = process.env.OPENROUTESERVICE_API_KEY?.trim();
 
   if (!apiKey) {
     console.warn(
-      "[ROUTING] ⚠️ No OpenRouteService API key found in env, using Haversine fallback"
+      "[ROUTING] ⚠️ No routing API keys found, using Haversine fallback"
     );
     const haversineDistance = calculateHaversineDistance(
       lat1,

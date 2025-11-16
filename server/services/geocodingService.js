@@ -1,16 +1,35 @@
 /**
- * Geocoding service using OpenCage Data API
- * Docs: https://opencagedata.com/api
- * Enhanced for Nigeria with better precision
+ * Geocoding service using Mapbox API (primary) with OpenCage fallback
+ * Mapbox is faster and more accurate for Lagos addresses
  */
+
+import { geocodeMapboxAddress, getMapboxSuggestions } from "./mapboxService.js";
 
 /**
  * Geocode a single address (for final address confirmation)
+ * Tries Mapbox first, falls back to OpenCage
  */
 const geocodeAddress = async (address) => {
+  // Try Mapbox first (better for Lagos)
+  try {
+    const mapboxToken = process.env.MAPBOX_ACCESS_TOKEN;
+    if (mapboxToken) {
+      const result = await geocodeMapboxAddress(address);
+      if (result) {
+        console.log("[GEOCODING] ✅ Used Mapbox for geocoding");
+        return result;
+      }
+    }
+  } catch (error) {
+    console.warn("[GEOCODING] Mapbox failed, trying OpenCage:", error.message);
+  }
+
+  // Fallback to OpenCage
   const apiKey = process.env.OPENCAGE_API_KEY;
   if (!apiKey) {
-    throw new Error("OPENCAGE_API_KEY not configured");
+    throw new Error(
+      "Neither MAPBOX_ACCESS_TOKEN nor OPENCAGE_API_KEY configured"
+    );
   }
 
   // Enhanced parameters for Nigeria
@@ -91,14 +110,46 @@ const geocodeAddress = async (address) => {
 /**
  * Get address suggestions/autocomplete
  * Returns multiple suggestions for user to choose from
+ * Tries Mapbox first, falls back to OpenCage
  */
 const getAddressSuggestions = async (query, limit = 5) => {
-  const apiKey = process.env.OPENCAGE_API_KEY;
-  if (!apiKey) {
-    throw new Error("OPENCAGE_API_KEY not configured");
+  if (!query || query.trim().length < 3) {
+    return [];
   }
 
-  if (!query || query.trim().length < 3) {
+  // Try Mapbox first (better for Lagos)
+  console.log("[GEOCODING] 🔍 Fetching address suggestions:", {
+    query: query.substring(0, 30),
+    limit,
+  });
+
+  try {
+    const mapboxToken = process.env.MAPBOX_ACCESS_TOKEN;
+    if (mapboxToken) {
+      const suggestions = await getMapboxSuggestions(query, limit);
+      if (suggestions.length > 0) {
+        console.log(
+          "[GEOCODING] ✅ Used Mapbox for suggestions:",
+          suggestions.length,
+          "results"
+        );
+        return suggestions;
+      } else {
+        console.log(
+          "[GEOCODING] ⚠️ Mapbox returned 0 results, trying OpenCage"
+        );
+      }
+    } else {
+      console.log("[GEOCODING] ⚠️ No Mapbox token, using OpenCage");
+    }
+  } catch (error) {
+    console.warn("[GEOCODING] Mapbox failed, trying OpenCage:", error.message);
+  }
+
+  // Fallback to OpenCage
+  const apiKey = process.env.OPENCAGE_API_KEY;
+  if (!apiKey) {
+    console.warn("[GEOCODING] No API keys configured, returning empty");
     return [];
   }
 
