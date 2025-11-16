@@ -30,6 +30,15 @@ export const protect = async (req, res, next) => {
       });
     }
 
+    // Check if account is deactivated
+    if (user.accountDeactivated) {
+      return res.status(403).json({
+        success: false,
+        error:
+          "Your account has been deactivated after receiving 3 strikes for late payment. Please contact support to resolve this issue.",
+      });
+    }
+
     req.user = user;
     req.user.userId = user._id.toString();
 

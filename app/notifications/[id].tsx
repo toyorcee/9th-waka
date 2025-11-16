@@ -94,7 +94,10 @@ export default function NotificationDetailScreen() {
           isDark ? "bg-primary" : "bg-white"
         }`}
       >
-        <ActivityIndicator size="large" color="#AB8BFF" />
+        <ActivityIndicator
+          size="large"
+          color={isDark ? "#AB8BFF" : "#1E3A8A"}
+        />
       </View>
     );
   }
@@ -116,9 +119,17 @@ export default function NotificationDetailScreen() {
         </Text>
         <TouchableOpacity
           onPress={() => router.back()}
-          className="bg-accent rounded-xl px-6 py-3"
+          className={`rounded-xl px-6 py-3 ${
+            isDark ? "bg-accent" : "bg-blue-900"
+          }`}
         >
-          <Text className="text-primary font-bold">Go Back</Text>
+          <Text
+            className={`font-bold ${
+              isDark ? "text-primary" : "text-white"
+            }`}
+          >
+            Go Back
+          </Text>
         </TouchableOpacity>
       </View>
     );
@@ -139,26 +150,52 @@ export default function NotificationDetailScreen() {
       contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
     >
       <View className="px-6 pb-10" style={{ paddingTop: insets.top + 20 }}>
-        {/* Header */}
-        <View className="flex-row items-center justify-between mb-6">
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className="w-10 h-10 items-center justify-center"
-          >
-            <Icons.navigation
-              name={IconNames.arrowBack as any}
-              size={24}
-              color={isDark ? "#E6E6F0" : "#000000"}
-            />
-          </TouchableOpacity>
-          <Text
-            className={`text-2xl font-bold ${
-              isDark ? "text-light-100" : "text-black"
-            }`}
-          >
-            Notification
-          </Text>
-          <View className="w-10" />
+        {/* Enhanced Header */}
+        <View className="mb-6">
+          <View className="flex-row items-center mb-4">
+            <TouchableOpacity
+              onPress={() => router.back()}
+              className={`w-11 h-11 rounded-full border items-center justify-center mr-4 ${
+                isDark
+                  ? "bg-secondary border-neutral-100"
+                  : "bg-white border-gray-200"
+              }`}
+            >
+              <Icons.navigation
+                name={IconNames.arrowBack as any}
+                size={20}
+                color={isDark ? "#9CA4AB" : "#6E6E73"}
+              />
+            </TouchableOpacity>
+          </View>
+          <View className="items-center mb-4">
+            <View
+              className={`rounded-2xl p-4 mb-3 ${
+                isDark ? "bg-accent/20" : "bg-blue-900/20"
+              }`}
+            >
+              <Icons.notification
+                name={IconNames.notificationsOutline as any}
+                size={32}
+                color={isDark ? "#AB8BFF" : "#1E3A8A"}
+              />
+            </View>
+            <Text
+              className={`text-2xl font-bold text-center mb-2 ${
+                isDark ? "text-light-100" : "text-black"
+              }`}
+            >
+              Notification Details
+            </Text>
+            <Text
+              className={`text-sm text-center leading-5 px-4 ${
+                isDark ? "text-light-400" : "text-gray-600"
+              }`}
+            >
+              View the full details of your notification and take action if
+              needed
+            </Text>
+          </View>
         </View>
 
         {/* Notification Details */}
@@ -185,7 +222,9 @@ export default function NotificationDetailScreen() {
                       ? isDark
                         ? "bg-dark-100"
                         : "bg-gray-100"
-                      : "bg-accent/20 border border-accent"
+                      : isDark
+                      ? "bg-accent/20 border border-accent"
+                      : "bg-blue-900/20 border border-blue-900"
                   }`}
                 >
                   <Text
@@ -194,7 +233,9 @@ export default function NotificationDetailScreen() {
                         ? isDark
                           ? "text-light-400"
                           : "text-gray-500"
-                        : "text-accent"
+                        : isDark
+                        ? "text-accent"
+                        : "text-blue-900"
                     }`}
                   >
                     {notification.read ? "Read" : "Unread"}
@@ -247,29 +288,42 @@ export default function NotificationDetailScreen() {
         {hasRelatedContent && (
           <TouchableOpacity
             onPress={handleViewRelatedContent}
-            className="bg-accent rounded-xl px-6 py-4 mb-4"
+            className={`rounded-xl px-6 py-4 mb-4 ${
+              isDark ? "bg-accent" : "bg-blue-900"
+            }`}
+            style={{
+              shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 6,
+            }}
           >
             <View className="flex-row items-center justify-center gap-2">
               {orderId ? (
                 <Icons.package
                   name={IconNames.package as any}
                   size={20}
-                  color="#030014"
+                  color={isDark ? "#030014" : "#FFFFFF"}
                 />
               ) : notification.type.includes("payout") ? (
                 <Icons.money
                   name={IconNames.wallet as any}
                   size={20}
-                  color="#030014"
+                  color={isDark ? "#030014" : "#FFFFFF"}
                 />
               ) : (
                 <Icons.user
                   name={IconNames.personOutline as any}
                   size={20}
-                  color="#030014"
+                  color={isDark ? "#030014" : "#FFFFFF"}
                 />
               )}
-              <Text className="text-primary font-bold text-base">
+              <Text
+                className={`font-bold text-base ${
+                  isDark ? "text-primary" : "text-white"
+                }`}
+              >
                 {orderId
                   ? "View Order Details"
                   : notification.type.includes("payout")

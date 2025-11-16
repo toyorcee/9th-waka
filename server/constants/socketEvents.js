@@ -3,6 +3,7 @@ export const SocketEvents = {
   ORDER_CREATED: "order.created",
   ORDER_ASSIGNED: "order.assigned",
   ORDER_STATUS_UPDATED: "order.status_updated",
+  NEW_ORDER_AVAILABLE: "order.new_available",
 
   // Delivery specifics
   DELIVERY_OTP: "delivery.otp",

@@ -14,12 +14,12 @@ import { sendExpoPushNotifications } from "./pushNotificationService.js";
 
 function getWeekRange(date = new Date()) {
   const d = new Date(date);
-  const day = d.getDay(); 
-  const diff = d.getDate() - day; 
+  const day = d.getDay();
+  const diff = d.getDate() - day;
   const start = new Date(d.setDate(diff));
   start.setHours(0, 0, 0, 0);
   const end = new Date(start);
-  end.setDate(start.getDate() + 7); 
+  end.setDate(start.getDate() + 7);
   return { start, end };
 }
 
@@ -94,8 +94,147 @@ async function getRiderWeekEarnings(riderId, weekStart, weekEnd) {
 }
 
 /**
+ * Send Friday payment reminder notifications
+ * Runs every Friday at 9:00 AM (1 day before payment is due)
+ */
+export const scheduleFridayReminder = () => {
+  // Cron: Every Friday at 9:00 AM (0 9 * * 5)
+  cron.schedule("0 9 * * 5", async () => {
+    console.log("📅 [CRON] Friday payment reminder job started");
+
+    try {
+      const { start, end } = getWeekRange();
+      const riders = await User.find({
+        role: "rider",
+        isVerified: true,
+      }).select("_id email fullName expoPushToken");
+
+      const notifications = [];
+      const pushTokens = [];
+      const emails = [];
+
+      for (const rider of riders) {
+        const earnings = await getRiderWeekEarnings(rider._id, start, end);
+
+        if (earnings.commission > 0) {
+          const commissionAmount = earnings.commission.toLocaleString();
+          const title = "💰 Payment Reminder - Tomorrow";
+          const message = `Your commission payment of ₦${commissionAmount} is due tomorrow (Saturday) by 11:59 PM. You have until Sunday 11:59 PM to make payment.`;
+
+          // Check preferences
+          const inAppEnabled = isNotificationEnabled(
+            rider,
+            "payment_reminder",
+            "inApp"
+          );
+          const pushEnabled = isNotificationEnabled(
+            rider,
+            "payment_reminder",
+            "push"
+          );
+          const emailEnabled = isNotificationEnabled(
+            rider,
+            "payment_reminder",
+            "email"
+          );
+
+          // In-app notification (via socket)
+          if (inAppEnabled) {
+            try {
+              await createAndSendNotification(
+                rider._id,
+                {
+                  type: "payment_reminder",
+                  title,
+                  message,
+                },
+                { skipInApp: false, skipPush: true, skipEmail: true }
+              );
+              notifications.push(rider._id);
+            } catch (e) {
+              console.error(
+                `[CRON] Failed to create notification for ${rider._id}:`,
+                e.message
+              );
+            }
+          }
+
+          if (pushEnabled && rider.expoPushToken) {
+            pushTokens.push({
+              token: rider.expoPushToken,
+              riderId: rider._id,
+            });
+          }
+
+          // Email - only if enabled
+          if (emailEnabled && rider.email) {
+            emails.push({
+              rider,
+              commissionAmount,
+              earnings,
+            });
+          }
+        }
+      }
+
+      // Send batch push notifications
+      if (pushTokens.length > 0) {
+        const tokens = pushTokens.map((item) =>
+          typeof item === "string" ? item : item.token
+        );
+        await sendExpoPushNotifications(
+          tokens,
+          "💰 Payment Reminder",
+          `Your commission payment is due tomorrow (Saturday) by 11:59 PM`,
+          { type: "payment_reminder" }
+        );
+      }
+
+      // Send emails using dark theme template
+      const transporter = getEmailTransporter();
+      if (transporter) {
+        for (const { rider, commissionAmount, earnings } of emails) {
+          try {
+            const emailMessage = `Hello ${
+              rider.fullName || "Rider"
+            },<br><br>This is a reminder that your commission payment is due <strong>tomorrow (Saturday) by 11:59 PM</strong>. You have until Sunday 11:59 PM to make payment.<br><br><strong>Payment Summary:</strong><br>• Total Deliveries: ${
+              earnings.count
+            }<br>• Gross Earnings: ₦${earnings.gross.toLocaleString()}<br>• <strong style="color:#FF3B30;">Commission Due (10%): ₦${commissionAmount}</strong><br>• Your Net Earnings: ₦${earnings.riderNet.toLocaleString()}<br><br>Please ensure payment is made by Sunday 11:59 PM to avoid account suspension.<br><br>Thank you for your hard work this week!<br><br>Best regards,<br>9thWaka Team`;
+
+            await sendEmail({
+              to: rider.email,
+              subject: "💰 Payment Reminder - Tomorrow - 9thWaka",
+              html: buildDarkEmailTemplate(
+                "Payment Reminder - Tomorrow",
+                emailMessage,
+                null
+              ),
+            });
+          } catch (e) {
+            console.error(
+              `[CRON] Failed to send email to ${rider.email}:`,
+              e.message
+            );
+          }
+        }
+      }
+
+      console.log(
+        `✅ [CRON] Friday reminder: ${notifications.length} notifications, ${pushTokens.length} push, ${emails.length} emails`
+      );
+    } catch (error) {
+      console.error("❌ [CRON] Friday reminder error:", error.message);
+    }
+  });
+
+  console.log(
+    "📅 [CRON] Friday payment reminder scheduled (Every Friday 9:00 AM - Payment due tomorrow)"
+  );
+};
+
+/**
  * Send Saturday payment reminder notifications
- * Runs every Saturday at 9:00 AM (reminder for Sunday payment)
+ * Runs every Saturday at 9:00 AM (reminder that payment is due TODAY)
  */
 export const scheduleSaturdayReminder = () => {
   // Cron: Every Saturday at 9:00 AM (0 9 * * 6)
@@ -116,10 +255,10 @@ export const scheduleSaturdayReminder = () => {
       for (const rider of riders) {
         const earnings = await getRiderWeekEarnings(rider._id, start, end);
 
-        if (earnings.riderNet > 0) {
-          const amount = earnings.riderNet.toLocaleString();
-          const title = "💰 Payment Reminder - Tomorrow!";
-          const message = `Your weekly earnings of ₦${amount} will be remitted tomorrow (Sunday) after 10% commission deduction.`;
+        if (earnings.commission > 0) {
+          const commissionAmount = earnings.commission.toLocaleString();
+          const title = "💰 Payment Due Today!";
+          const message = `Your commission payment of ₦${commissionAmount} is due TODAY (Saturday) by 11:59 PM. You have until Sunday 11:59 PM to make payment.`;
 
           // Check preferences
           const inAppEnabled = isNotificationEnabled(
@@ -184,8 +323,8 @@ export const scheduleSaturdayReminder = () => {
         );
         await sendExpoPushNotifications(
           tokens,
-          "💰 Payment Reminder",
-          `Your weekly earnings will be remitted tomorrow (Sunday)`,
+          "💰 Payment Due Today",
+          `Your commission payment is due TODAY by 11:59 PM`,
           { type: "payment_reminder" }
         );
       }
@@ -197,15 +336,15 @@ export const scheduleSaturdayReminder = () => {
           try {
             const emailMessage = `Hello ${
               rider.fullName || "Rider"
-            },<br><br>This is a reminder that your weekly earnings will be remitted tomorrow (Sunday).<br><br><strong>Summary:</strong><br>• Total Deliveries: ${
+            },<br><br>This is a reminder that your commission payment is due <strong>TODAY (Saturday) by 11:59 PM</strong>. You have until Sunday 11:59 PM to make payment.<br><br><strong>Payment Summary:</strong><br>• Total Deliveries: ${
               earnings.count
-            }<br>• Gross Earnings: ₦${earnings.gross.toLocaleString()}<br>• Commission (10%): ₦${earnings.commission.toLocaleString()}<br>• <strong style="color:#AB8BFF;">Your Net: ₦${amount}</strong><br><br>Thank you for your hard work this week!<br><br>Best regards,<br>9thWaka Team`;
+            }<br>• Gross Earnings: ₦${earnings.gross.toLocaleString()}<br>• <strong style="color:#FF3B30;">Commission Due (10%): ₦${commissionAmount}</strong><br>• Your Net Earnings: ₦${earnings.riderNet.toLocaleString()}<br><br>Please ensure payment is made by Sunday 11:59 PM to avoid account suspension.<br><br>Thank you for your hard work this week!<br><br>Best regards,<br>9thWaka Team`;
 
             await sendEmail({
               to: rider.email,
-              subject: "💰 Payment Reminder - 9thWaka",
+              subject: "💰 Payment Due Today - 9thWaka",
               html: buildDarkEmailTemplate(
-                "Payment Reminder",
+                "Payment Due Today",
                 emailMessage,
                 null
               ),
@@ -228,20 +367,163 @@ export const scheduleSaturdayReminder = () => {
   });
 
   console.log(
-    "📅 [CRON] Saturday payment reminder scheduled (Every Saturday 9:00 AM)"
+    "📅 [CRON] Saturday payment reminder scheduled (Every Saturday 9:00 AM - Payment due TODAY)"
   );
 };
 
 /**
- * Send Sunday payment day notifications
- * Runs every Sunday at 9:00 AM (payment day)
+ * Block riders with overdue commission payments
+ * Runs every Monday at 12:00 AM (after Sunday grace period deadline)
+ */
+export const schedulePaymentBlocking = () => {
+  // Cron: Every Monday at 12:00 AM (0 0 * * 1)
+  cron.schedule("0 0 * * 1", async () => {
+    console.log("🔒 [CRON] Payment blocking job started");
+
+    try {
+      const RiderPayout = (await import("../models/RiderPayout.js")).default;
+      const User = (await import("../models/User.js")).default;
+      const { createAndSendNotification } = await import(
+        "./notificationService.js"
+      );
+
+      // Get last week's range (Sunday to Saturday)
+      const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const { start, end } = getWeekRange(lastWeek);
+
+      // Get grace period deadline (Sunday 11:59 PM - 1 day allowance)
+      const graceDeadline = new Date(end);
+      graceDeadline.setHours(23, 59, 59, 999); // End of Sunday
+
+      // Find all unpaid payouts from last week
+      // Only payouts with status "pending" will be considered for blocking
+      // Riders who paid within grace period will have status "paid" and won't be blocked
+      const unpaidPayouts = await RiderPayout.find({
+        weekStart: start,
+        status: "pending",
+      }).populate("riderId", "fullName email expoPushToken");
+
+      let blockedCount = 0;
+      const now = new Date();
+
+      for (const payout of unpaidPayouts) {
+        if (!payout.riderId) continue;
+
+        // Double-check: Skip if payout is already paid (extra safety)
+        if (payout.status === "paid") {
+          console.log(
+            `[CRON] Skipping payout ${payout._id} - already marked as paid`
+          );
+          continue;
+        }
+
+        // Check if grace period deadline has passed (Sunday 11:59 PM)
+        if (now > graceDeadline) {
+          // Get current rider data to check strikes
+          const rider = await User.findById(payout.riderId._id);
+          if (!rider) continue;
+
+          const currentStrikes = rider.strikes || 0;
+          const newStrikeNumber = currentStrikes + 1;
+          const willBeDeactivated = newStrikeNumber >= 3;
+
+          // Add strike to history
+          const strikeEntry = {
+            strikeNumber: newStrikeNumber,
+            reason: "Late payment - Commission payment overdue",
+            weekStart: start,
+            weekEnd: end,
+            commissionAmount: payout.totals.commission,
+            issuedAt: new Date(),
+          };
+
+          // Update rider with strike and blocking
+          const updateData = {
+            paymentBlocked: true,
+            paymentBlockedAt: new Date(),
+            paymentBlockedReason: `Overdue commission payment for week ${start.toLocaleDateString()} - ${new Date(
+              end.getTime() - 1
+            ).toLocaleDateString()}. Payment was due Saturday 11:59 PM (grace period until Sunday 11:59 PM). Amount: ₦${payout.totals.commission.toLocaleString()}`,
+            strikes: newStrikeNumber,
+            $push: { strikeHistory: strikeEntry },
+          };
+
+          // Deactivate account if 3rd strike
+          if (willBeDeactivated) {
+            updateData.accountDeactivated = true;
+            updateData.accountDeactivatedAt = new Date();
+            updateData.accountDeactivatedReason = `Account deactivated after 3 strikes for late payment. Final strike issued for week ${start.toLocaleDateString()} - ${new Date(
+              end.getTime() - 1
+            ).toLocaleDateString()}.`;
+          }
+
+          await User.findByIdAndUpdate(payout.riderId._id, updateData);
+
+          // Set rider offline if they're online
+          const RiderLocation = (await import("../models/RiderLocation.js"))
+            .default;
+          await RiderLocation.findOneAndUpdate(
+            { riderId: payout.riderId._id },
+            { online: false }
+          );
+
+          // Notify rider
+          try {
+            const notificationTitle = willBeDeactivated
+              ? "🚫 Account Deactivated - 3 Strikes"
+              : `⚠️ Strike ${newStrikeNumber}/3 - Payment Overdue`;
+            const notificationMessage = willBeDeactivated
+              ? `Your account has been deactivated after receiving 3 strikes for late payment. This is your final strike. Please contact support immediately to resolve this issue.`
+              : `You have received strike ${newStrikeNumber} of 3 for overdue commission payment of ₦${payout.totals.commission.toLocaleString()}. Payment was due Saturday 11:59 PM (grace period until Sunday 11:59 PM). ${
+                  newStrikeNumber === 2
+                    ? "One more strike will result in account deactivation."
+                    : "Please contact support immediately."
+                }`;
+
+            await createAndSendNotification(payout.riderId._id, {
+              type: willBeDeactivated
+                ? "account_deactivated"
+                : "payment_strike",
+              title: notificationTitle,
+              message: notificationMessage,
+            });
+          } catch (e) {
+            console.error(
+              `[CRON] Failed to notify blocked rider ${payout.riderId._id}:`,
+              e.message
+            );
+          }
+
+          if (willBeDeactivated) {
+            console.log(
+              `🚫 [CRON] Account deactivated: ${payout.riderId._id} (3 strikes)`
+            );
+          }
+
+          blockedCount++;
+        }
+      }
+
+      console.log(
+        `🔒 [CRON] Payment blocking completed. Blocked ${blockedCount} rider(s)`
+      );
+    } catch (error) {
+      console.error("[CRON] Payment blocking error:", error);
+    }
+  });
+};
+
+/**
+ * Send Sunday payment status notifications
+ * Runs every Sunday at 9:00 AM (final reminder - grace period ends today)
  */
 export const scheduleSundayPayment = () => {
   // Cron: Every Sunday at 9:00 AM (0 9 * * 0)
   cron.schedule("0 9 * * 0", async () => {
-    console.log("📅 [CRON] Sunday payment day job started");
+    console.log("📅 [CRON] Sunday payment status job started");
 
     try {
+      const RiderPayout = (await import("../models/RiderPayout.js")).default;
       // Get last week's earnings (Sunday to Saturday)
       const { start, end } = getWeekRange(
         new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
@@ -258,25 +540,39 @@ export const scheduleSundayPayment = () => {
       for (const rider of riders) {
         const earnings = await getRiderWeekEarnings(rider._id, start, end);
 
-        if (earnings.riderNet > 0) {
-          const amount = earnings.riderNet.toLocaleString();
-          const title = "💰 Payment Day - Your Earnings";
-          const message = `Your weekly earnings of ₦${amount} are being processed for remittance today (Sunday).`;
+        if (earnings.commission > 0) {
+          // Check if payment was made
+          const payout = await RiderPayout.findOne({
+            riderId: rider._id,
+            weekStart: start,
+          });
+
+          const commissionAmount = earnings.commission.toLocaleString();
+          const netAmount = earnings.riderNet.toLocaleString();
+
+          let title, message;
+          if (payout && payout.status === "paid") {
+            title = "✅ Payment Received";
+            message = `Your commission payment of ₦${commissionAmount} was received. Your net earnings of ₦${netAmount} are being processed.`;
+          } else {
+            title = "⚠️ Final Reminder - Payment Overdue";
+            message = `Your commission payment of ₦${commissionAmount} was due yesterday (Saturday 11:59 PM). This is your final reminder - payment must be made by TODAY (Sunday) 11:59 PM to avoid account suspension.`;
+          }
 
           // Check preferences
           const inAppEnabled = isNotificationEnabled(
             rider,
-            "payment_day",
+            "payment_status",
             "inApp"
           );
           const pushEnabled = isNotificationEnabled(
             rider,
-            "payment_day",
+            "payment_status",
             "push"
           );
           const emailEnabled = isNotificationEnabled(
             rider,
-            "payment_day",
+            "payment_status",
             "email"
           );
 
@@ -286,7 +582,7 @@ export const scheduleSundayPayment = () => {
               await createAndSendNotification(
                 rider._id,
                 {
-                  type: "payment_day",
+                  type: "payment_status",
                   title,
                   message,
                 },
@@ -305,6 +601,8 @@ export const scheduleSundayPayment = () => {
             pushTokens.push({
               token: rider.expoPushToken,
               riderId: rider._id,
+              title,
+              message,
             });
           }
 
@@ -312,8 +610,12 @@ export const scheduleSundayPayment = () => {
           if (emailEnabled && rider.email) {
             emails.push({
               rider,
-              amount,
+              title,
+              message,
+              commissionAmount,
+              netAmount,
               earnings,
+              isPaid: payout && payout.status === "paid",
             });
           }
         }
@@ -326,27 +628,42 @@ export const scheduleSundayPayment = () => {
         );
         await sendExpoPushNotifications(
           tokens,
-          "💰 Payment Day",
-          "Your weekly earnings are being processed for remittance today",
-          { type: "payment_day" }
+          "💰 Payment Status Update",
+          `Payment status update for last week's earnings`,
+          { type: "payment_status" }
         );
       }
 
       // Send emails using dark theme template
       const transporter = getEmailTransporter();
       if (transporter) {
-        for (const { rider, amount, earnings } of emails) {
+        for (const {
+          rider,
+          title,
+          message,
+          commissionAmount,
+          netAmount,
+          earnings,
+          isPaid,
+        } of emails) {
           try {
+            const statusText = isPaid
+              ? "Your commission payment was received."
+              : "Your commission payment was due yesterday (Saturday 11:59 PM). This is your final reminder - payment must be made by TODAY (Sunday) 11:59 PM to avoid account suspension.";
             const emailMessage = `Hello ${
               rider.fullName || "Rider"
-            },<br><br>Today is payment day! Your weekly earnings are being processed for remittance.<br><br><strong>Summary:</strong><br>• Total Deliveries: ${
+            },<br><br>${statusText}<br><br><strong>Payment Summary:</strong><br>• Total Deliveries: ${
               earnings.count
-            }<br>• Gross Earnings: ₦${earnings.gross.toLocaleString()}<br>• Commission (10%): ₦${earnings.commission.toLocaleString()}<br>• <strong style="color:#AB8BFF;">Your Net: ₦${amount}</strong><br><br>Payment will be processed and you'll receive a confirmation once completed.<br><br>Thank you for your hard work!<br><br>Best regards,<br>9thWaka Team`;
+            }<br>• Gross Earnings: ₦${earnings.gross.toLocaleString()}<br>• Commission (10%): ₦${commissionAmount}<br>• <strong style="color:#AB8BFF;">Your Net: ₦${netAmount}</strong><br><br>${
+              isPaid
+                ? "Thank you for your timely payment!"
+                : "Please make payment immediately or contact support if payment was already made."
+            }<br><br>Best regards,<br>9thWaka Team`;
 
             await sendEmail({
               to: rider.email,
-              subject: "💰 Payment Day - 9thWaka",
-              html: buildDarkEmailTemplate("Payment Day", emailMessage, null),
+              subject: title + " - 9thWaka",
+              html: buildDarkEmailTemplate(title, emailMessage, null),
             });
           } catch (e) {
             console.error(
@@ -358,12 +675,64 @@ export const scheduleSundayPayment = () => {
       }
 
       console.log(
-        `✅ [CRON] Sunday payment: ${notifications.length} notifications, ${pushTokens.length} push, ${emails.length} emails`
+        `✅ [CRON] Sunday payment status: ${notifications.length} notifications, ${pushTokens.length} push, ${emails.length} emails`
       );
     } catch (error) {
-      console.error("❌ [CRON] Sunday payment error:", error.message);
+      console.error("❌ [CRON] Sunday payment status error:", error.message);
     }
   });
 
-  console.log("📅 [CRON] Sunday payment day scheduled (Every Sunday 9:00 AM)");
+  console.log(
+    "📅 [CRON] Sunday payment status scheduled (Every Sunday 9:00 AM - After Saturday deadline)"
+  );
+};
+
+/**
+ * Generate payouts for all riders at the start of each week
+ * Runs every Sunday at 12:00 AM (start of new week)
+ * This ensures all riders see a pending payout entry even if they have no deliveries
+ */
+export const schedulePayoutGeneration = () => {
+  // Cron: Every Sunday at 12:00 AM (0 0 * * 0)
+  cron.schedule("0 0 * * 0", async () => {
+    console.log("💰 [CRON] Weekly payout generation job started");
+
+    try {
+      const { generatePayoutsForWeek } = await import(
+        "../controllers/payoutController.js"
+      );
+
+      // Create a mock request object for generatePayoutsForWeek
+      const mockReq = {
+        query: {},
+        user: { role: "admin" }, // Admin role to bypass auth
+      };
+      const mockRes = {
+        json: (data) => {
+          console.log(
+            `✅ [CRON] Generated ${
+              data.payouts?.length || 0
+            } payout(s) for week ${data.weekStart}`
+          );
+        },
+        status: (code) => ({
+          json: (data) => {
+            console.error(
+              `❌ [CRON] Failed to generate payouts: ${
+                data.error || "Unknown error"
+              }`
+            );
+          },
+        }),
+      };
+
+      await generatePayoutsForWeek(mockReq, mockRes);
+    } catch (error) {
+      console.error("❌ [CRON] Payout generation error:", error.message);
+    }
+  });
+
+  console.log(
+    "📅 [CRON] Weekly payout generation scheduled (Every Sunday 12:00 AM - Start of new week)"
+  );
 };

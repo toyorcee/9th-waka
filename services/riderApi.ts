@@ -28,6 +28,13 @@ export interface EarningsData {
       status: "pending" | "paid";
       paidAt: string | Date | null;
     } | null;
+    paymentDueDate: string | Date;
+    graceDeadline: string | Date;
+    isPaymentDue: boolean;
+    isOverdue: boolean;
+    isInGracePeriod: boolean;
+    daysUntilDue: number;
+    daysUntilGraceDeadline: number;
   };
   allTime: {
     totals: {
@@ -36,6 +43,23 @@ export interface EarningsData {
       riderNet: number;
       count: number;
     };
+  };
+  paymentStatus: {
+    isBlocked: boolean;
+    blockedAt: string | Date | null;
+    blockedReason: string | null;
+    strikes: number;
+    strikeHistory: Array<{
+      strikeNumber: number;
+      reason: string;
+      weekStart: string | Date;
+      weekEnd: string | Date;
+      commissionAmount: number;
+      issuedAt: string | Date;
+    }>;
+    accountDeactivated: boolean;
+    accountDeactivatedAt: string | Date | null;
+    accountDeactivatedReason: string | null;
   };
 }
 
@@ -122,5 +146,67 @@ export async function getOrderLocationHistory(
   orderId: string
 ): Promise<LocationHistory> {
   const response = await apiClient.get(`/riders/location/history/${orderId}`);
+  return response.data;
+}
+
+/**
+ * Mark payout as paid (with optional payment proof screenshot)
+ */
+export async function markPayoutPaid(
+  payoutId: string,
+  paymentProofUri?: string
+): Promise<{ success: boolean; payout: any }> {
+  const formData = new FormData();
+
+  // Add payment proof screenshot if provided
+  if (paymentProofUri) {
+    const filename = paymentProofUri.split("/").pop() || "payment-proof.jpg";
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : "image/jpeg";
+
+    formData.append("paymentProof", {
+      uri: paymentProofUri,
+      name: filename,
+      type,
+    } as any);
+  }
+
+  const response = await apiClient.patch(
+    `/payouts/${payoutId}/mark-paid`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+  return response.data;
+}
+
+/**
+ * Get payment history (all payouts for the rider)
+ */
+export interface PayoutHistoryItem {
+  _id: string;
+  weekStart: string | Date;
+  weekEnd: string | Date;
+  totals: {
+    gross: number;
+    commission: number;
+    riderNet: number;
+    count: number;
+  };
+  status: "pending" | "paid";
+  paidAt: string | Date | null;
+  markedPaidBy: "rider" | "admin" | null;
+  paymentProofScreenshot: string | null;
+  createdAt: string | Date;
+}
+
+export async function getPaymentHistory(): Promise<{
+  success: boolean;
+  payouts: PayoutHistoryItem[];
+}> {
+  const response = await apiClient.get("/payouts");
   return response.data;
 }

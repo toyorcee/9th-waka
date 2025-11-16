@@ -95,6 +95,49 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Payment blocking (for overdue commission payments)
+    paymentBlocked: {
+      type: Boolean,
+      default: false,
+    },
+    paymentBlockedAt: {
+      type: Date,
+      default: null,
+    },
+    paymentBlockedReason: {
+      type: String,
+      default: null,
+    },
+    // Strike system for late payment offenders
+    strikes: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 3,
+    },
+    strikeHistory: [
+      {
+        strikeNumber: { type: Number, required: true },
+        reason: { type: String, required: true },
+        weekStart: { type: Date, required: true },
+        weekEnd: { type: Date, required: true },
+        commissionAmount: { type: Number, required: true },
+        issuedAt: { type: Date, default: Date.now },
+        _id: false,
+      },
+    ],
+    accountDeactivated: {
+      type: Boolean,
+      default: false,
+    },
+    accountDeactivatedAt: {
+      type: Date,
+      default: null,
+    },
+    accountDeactivatedReason: {
+      type: String,
+      default: null,
+    },
     // Email verification fields
     verificationCode: {
       type: String,

@@ -23,38 +23,59 @@ export default function PrivacyPolicyScreen() {
       }}
       showsVerticalScrollIndicator={false}
     >
-      {/* Header */}
-      <View className="flex-row items-center mb-6">
-        <TouchableOpacity
-          onPress={() => {
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.replace("/(tabs)/profile");
-            }
-          }}
-          className={`w-11 h-11 rounded-full border items-center justify-center mr-4 ${
-            isDark
-              ? "bg-secondary border-neutral-100"
-              : "bg-white border-gray-200"
-          }`}
-        >
-          <Icons.navigation
-            name={IconNames.arrowBack as any}
-            size={20}
-            color={isDark ? "#9CA4AB" : "#6E6E73"}
-          />
-        </TouchableOpacity>
-        <View className="flex-1">
+      {/* Enhanced Header */}
+      <View className="mb-6">
+        <View className="flex-row items-center mb-4">
+          <TouchableOpacity
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace("/(tabs)/profile");
+              }
+            }}
+            className={`w-11 h-11 rounded-full border items-center justify-center mr-4 ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            }`}
+          >
+            <Icons.navigation
+              name={IconNames.arrowBack as any}
+              size={20}
+              color={isDark ? "#9CA4AB" : "#6E6E73"}
+            />
+          </TouchableOpacity>
+        </View>
+        <View className="items-center mb-4">
+          <View
+            className={`rounded-2xl p-4 mb-3 ${
+              isDark ? "bg-accent/20" : "bg-blue-900/20"
+            }`}
+          >
+            <Icons.safety
+              name={IconNames.shieldOutline as any}
+              size={32}
+              color={isDark ? "#AB8BFF" : "#1E3A8A"}
+            />
+          </View>
           <Text
-            className={`text-2xl font-bold ${
+            className={`text-2xl font-bold text-center mb-2 ${
               isDark ? "text-light-100" : "text-black"
             }`}
           >
             Privacy Policy
           </Text>
           <Text
-            className={`text-sm mt-1 ${
+            className={`text-sm text-center leading-5 px-4 ${
+              isDark ? "text-light-400" : "text-gray-600"
+            }`}
+          >
+            Learn how we collect, use, and protect your personal information
+            when you use our delivery service
+          </Text>
+          <Text
+            className={`text-xs mt-2 ${
               isDark ? "text-light-400" : "text-gray-500"
             }`}
           >
@@ -150,10 +171,18 @@ export default function PrivacyPolicyScreen() {
         </View>
 
         <View className="mb-6">
-          <Text className="text-light-100 text-lg font-bold mb-3">
+          <Text
+            className={`text-lg font-bold mb-3 ${
+              isDark ? "text-light-100" : "text-black"
+            }`}
+          >
             2. How We Use Your Information
           </Text>
-          <Text className="text-light-400 text-sm leading-6 mb-2">
+          <Text
+            className={`text-sm leading-6 mb-2 ${
+              isDark ? "text-light-400" : "text-gray-500"
+            }`}
+          >
             We use the information we collect to:
           </Text>
           <View className="ml-4 mb-2">
@@ -210,10 +239,18 @@ export default function PrivacyPolicyScreen() {
         </View>
 
         <View className="mb-6">
-          <Text className="text-light-100 text-lg font-bold mb-3">
+          <Text
+            className={`text-lg font-bold mb-3 ${
+              isDark ? "text-light-100" : "text-black"
+            }`}
+          >
             3. Information Sharing
           </Text>
-          <Text className="text-light-400 text-sm leading-6 mb-2">
+          <Text
+            className={`text-sm leading-6 mb-2 ${
+              isDark ? "text-light-400" : "text-gray-500"
+            }`}
+          >
             We share your information only in the following circumstances:
           </Text>
           <View className="ml-4 mb-2">
@@ -250,10 +287,18 @@ export default function PrivacyPolicyScreen() {
         </View>
 
         <View className="mb-6">
-          <Text className="text-light-100 text-lg font-bold mb-3">
+          <Text
+            className={`text-lg font-bold mb-3 ${
+              isDark ? "text-light-100" : "text-black"
+            }`}
+          >
             4. Data Security
           </Text>
-          <Text className="text-light-400 text-sm leading-6">
+          <Text
+            className={`text-sm leading-6 ${
+              isDark ? "text-light-400" : "text-gray-500"
+            }`}
+          >
             We implement industry-standard security measures to protect your
             personal information, including encryption, secure servers, and
             regular security audits. However, no method of transmission over the
@@ -262,10 +307,18 @@ export default function PrivacyPolicyScreen() {
         </View>
 
         <View className="mb-6">
-          <Text className="text-light-100 text-lg font-bold mb-3">
+          <Text
+            className={`text-lg font-bold mb-3 ${
+              isDark ? "text-light-100" : "text-black"
+            }`}
+          >
             5. Your Rights
           </Text>
-          <Text className="text-light-400 text-sm leading-6 mb-2">
+          <Text
+            className={`text-sm leading-6 mb-2 ${
+              isDark ? "text-light-400" : "text-gray-500"
+            }`}
+          >
             You have the right to:
           </Text>
           <View className="ml-4 mb-2">
@@ -301,10 +354,18 @@ export default function PrivacyPolicyScreen() {
         </View>
 
         <View className="mb-6">
-          <Text className="text-light-100 text-lg font-bold mb-3">
+          <Text
+            className={`text-lg font-bold mb-3 ${
+              isDark ? "text-light-100" : "text-black"
+            }`}
+          >
             6. Location Data
           </Text>
-          <Text className="text-light-400 text-sm leading-6">
+          <Text
+            className={`text-sm leading-6 ${
+              isDark ? "text-light-400" : "text-gray-500"
+            }`}
+          >
             We collect location data to provide delivery services, track orders,
             and improve our services. Location data is only shared with assigned
             riders and is used solely for delivery purposes. You can control
@@ -313,10 +374,18 @@ export default function PrivacyPolicyScreen() {
         </View>
 
         <View className="mb-6">
-          <Text className="text-light-100 text-lg font-bold mb-3">
+          <Text
+            className={`text-lg font-bold mb-3 ${
+              isDark ? "text-light-100" : "text-black"
+            }`}
+          >
             7. Children's Privacy
           </Text>
-          <Text className="text-light-400 text-sm leading-6">
+          <Text
+            className={`text-sm leading-6 ${
+              isDark ? "text-light-400" : "text-gray-500"
+            }`}
+          >
             Our services are not intended for individuals under the age of 18.
             We do not knowingly collect personal information from children. If
             you believe we have collected information from a child, please
@@ -325,10 +394,18 @@ export default function PrivacyPolicyScreen() {
         </View>
 
         <View className="mb-6">
-          <Text className="text-light-100 text-lg font-bold mb-3">
+          <Text
+            className={`text-lg font-bold mb-3 ${
+              isDark ? "text-light-100" : "text-black"
+            }`}
+          >
             8. Changes to This Policy
           </Text>
-          <Text className="text-light-400 text-sm leading-6">
+          <Text
+            className={`text-sm leading-6 ${
+              isDark ? "text-light-400" : "text-gray-500"
+            }`}
+          >
             We may update this Privacy Policy from time to time. We will notify
             you of any changes by posting the new policy on this page and
             updating the "Last updated" date. You are advised to review this
@@ -337,10 +414,18 @@ export default function PrivacyPolicyScreen() {
         </View>
 
         <View className="mb-6">
-          <Text className="text-light-100 text-lg font-bold mb-3">
+          <Text
+            className={`text-lg font-bold mb-3 ${
+              isDark ? "text-light-100" : "text-black"
+            }`}
+          >
             9. Contact Us
           </Text>
-          <Text className="text-light-400 text-sm leading-6">
+          <Text
+            className={`text-sm leading-6 ${
+              isDark ? "text-light-400" : "text-gray-500"
+            }`}
+          >
             If you have any questions about this Privacy Policy or our data
             practices, please contact us through the app's support section or
             via WhatsApp.

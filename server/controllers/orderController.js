@@ -137,11 +137,10 @@ export const estimatePrice = async (req, res) => {
     let distanceKm = null;
     let estimatedPrice = 0;
 
-    // Try to geocode if coordinates not provided
     const pickupData = { ...pickup };
     const dropoffData = { ...dropoff };
 
-    if ((!pickupData.lat || !pickupData.lng) && process.env.OPENCAGE_API_KEY) {
+    if (!pickupData.lat || !pickupData.lng) {
       try {
         const geo = await geocodeAddress(pickupData.address);
         if (geo) {
@@ -153,10 +152,7 @@ export const estimatePrice = async (req, res) => {
       }
     }
 
-    if (
-      (!dropoffData.lat || !dropoffData.lng) &&
-      process.env.OPENCAGE_API_KEY
-    ) {
+    if (!dropoffData.lat || !dropoffData.lng) {
       try {
         const geo = await geocodeAddress(dropoffData.address);
         if (geo) {
@@ -327,7 +323,7 @@ export const createOrder = async (req, res) => {
     const pickupData = { ...pickup };
     const dropoffData = { ...dropoff };
 
-    if ((!pickupData.lat || !pickupData.lng) && process.env.OPENCAGE_API_KEY) {
+    if (!pickupData.lat || !pickupData.lng) {
       try {
         const geo = await geocodeAddress(pickupData.address);
         if (geo) {
@@ -342,10 +338,7 @@ export const createOrder = async (req, res) => {
       }
     }
 
-    if (
-      (!dropoffData.lat || !dropoffData.lng) &&
-      process.env.OPENCAGE_API_KEY
-    ) {
+    if (!dropoffData.lat || !dropoffData.lng) {
       try {
         const geo = await geocodeAddress(dropoffData.address);
         if (geo) {
@@ -413,6 +406,129 @@ export const createOrder = async (req, res) => {
     io.to(`user:${user._id}`).emit(SocketEvents.ORDER_CREATED, {
       id: order._id.toString(),
     });
+
+    // Notify nearby online riders about the new order
+    if (pickupData.lat && pickupData.lng) {
+      try {
+        const defaultRadius = Number(process.env.RIDER_ORDER_RADIUS_KM || 7);
+        const MAX_NOTIFICATION_RADIUS = 20;
+
+        const onlineRiders = await RiderLocation.find({
+          online: true,
+          location: {
+            $near: {
+              $geometry: {
+                type: "Point",
+                coordinates: [pickupData.lng, pickupData.lat],
+              },
+              $maxDistance: MAX_NOTIFICATION_RADIUS * 1000,
+            },
+          },
+        })
+          .populate({
+            path: "riderId",
+            select: "searchRadiusKm _id",
+          })
+          .lean();
+
+        const nearbyRiders = [];
+        for (const riderLoc of onlineRiders) {
+          if (!riderLoc.riderId || !riderLoc.location?.coordinates) continue;
+
+          const rider = riderLoc.riderId;
+          const riderIdValue =
+            rider?._id || rider?.toString() || riderLoc.riderId;
+          const riderRadius =
+            (typeof rider === "object" && rider?.searchRadiusKm) ||
+            defaultRadius;
+          const effectiveRadius = Math.min(
+            riderRadius,
+            MAX_NOTIFICATION_RADIUS
+          );
+
+          const [riderLng, riderLat] = riderLoc.location.coordinates;
+          if (
+            typeof riderLat !== "number" ||
+            typeof riderLng !== "number" ||
+            isNaN(riderLat) ||
+            isNaN(riderLng)
+          ) {
+            continue;
+          }
+
+          const distance = calculateDistance(
+            pickupData.lat,
+            pickupData.lng,
+            riderLat,
+            riderLng
+          );
+
+          if (distance <= effectiveRadius) {
+            nearbyRiders.push({
+              riderId: riderIdValue,
+              distanceKm: Math.round(distance * 10) / 10,
+            });
+          }
+        }
+
+        // Notify nearby riders via socket and push notification
+        for (const { riderId, distanceKm } of nearbyRiders) {
+          const riderIdStr = String(riderId);
+          try {
+            // Socket notification
+            io.to(`user:${riderIdStr}`).emit(SocketEvents.NEW_ORDER_AVAILABLE, {
+              orderId: order._id.toString(),
+              distanceKm,
+              price: finalPrice,
+              pickup: {
+                address: pickupData.address,
+                lat: pickupData.lat,
+                lng: pickupData.lng,
+              },
+            });
+
+            const pickupAddressShort =
+              pickupData.address.length > 40
+                ? pickupData.address.substring(0, 40) + "..."
+                : pickupData.address;
+            await createAndSendNotification(riderIdStr, {
+              type: "new_order_available",
+              title: "New delivery available",
+              message: `${distanceKm}km away - ₦${finalPrice.toLocaleString()}\nPickup: ${pickupAddressShort}`,
+              metadata: {
+                orderId: order._id.toString(),
+                distanceKm,
+                price: finalPrice,
+                pickup: {
+                  address: pickupData.address,
+                  lat: pickupData.lat,
+                  lng: pickupData.lng,
+                },
+              },
+            });
+          } catch (notifError) {
+            console.warn(
+              `[ORDER] Failed to notify rider ${riderIdStr}:`,
+              notifError.message
+            );
+            // Continue with other riders even if one fails
+          }
+        }
+
+        if (nearbyRiders.length > 0) {
+          console.log(
+            `[ORDER] Notified ${nearbyRiders.length} nearby rider(s) about order ${order._id}`
+          );
+        }
+      } catch (notifyError) {
+        console.error(
+          "[ORDER] Error notifying nearby riders:",
+          notifyError.message
+        );
+        // Don't fail order creation if notification fails
+      }
+    }
+
     res.status(201).json({ success: true, order });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });

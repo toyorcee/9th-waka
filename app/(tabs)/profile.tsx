@@ -38,7 +38,10 @@ export default function ProfileScreen() {
           isDark ? "bg-primary" : "bg-white"
         }`}
       >
-        <ActivityIndicator size="large" color="#AB8BFF" />
+        <ActivityIndicator
+          size="large"
+          color={isDark ? "#AB8BFF" : "#1E3A8A"}
+        />
       </View>
     );
   }
@@ -74,10 +77,10 @@ export default function ProfileScreen() {
               className={`w-28 h-28 rounded-full items-center justify-center mb-4 overflow-hidden border-4 ${
                 isDark
                   ? "bg-accent/20 border-accent/30"
-                  : "bg-accent/10 border-accent/40"
+                  : "bg-blue-900/10 border-blue-900/40"
               }`}
               style={{
-                shadowColor: "#AB8BFF",
+                shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: isDark ? 0.3 : 0.2,
                 shadowRadius: 8,
@@ -93,11 +96,15 @@ export default function ProfileScreen() {
                   contentFit="cover"
                 />
               ) : (
-                <View className="bg-accent/30 rounded-full p-4">
+                <View
+                  className={`rounded-full p-4 ${
+                    isDark ? "bg-accent/30" : "bg-blue-900/30"
+                  }`}
+                >
                   <Icons.user
                     name={IconNames.personCircle as any}
                     size={56}
-                    color="#AB8BFF"
+                    color={isDark ? "#AB8BFF" : "#1E3A8A"}
                   />
                 </View>
               )}
@@ -137,17 +144,21 @@ export default function ProfileScreen() {
                 className={`border px-4 py-2 rounded-full ${
                   isDark
                     ? "bg-accent/20 border-accent/30"
-                    : "bg-accent/10 border-accent/40"
+                    : "bg-blue-900/10 border-blue-900/40"
                 }`}
               >
                 <View className="flex-row items-center">
                   <Icons.user
                     name={IconNames.personOutline as any}
                     size={14}
-                    color="#AB8BFF"
+                    color={isDark ? "#AB8BFF" : "#1E3A8A"}
                     style={{ marginRight: 6 }}
                   />
-                  <Text className="text-accent text-xs font-bold uppercase">
+                  <Text
+                    className={`text-xs font-bold uppercase ${
+                      isDark ? "text-accent" : "text-blue-900"
+                    }`}
+                  >
                     {user.role}
                   </Text>
                 </View>
@@ -157,9 +168,11 @@ export default function ProfileScreen() {
 
           <TouchableOpacity
             onPress={() => router.push(Routes.standalone.profileEdit)}
-            className="bg-accent rounded-2xl py-4 px-5 items-center flex-row justify-center"
+            className={`rounded-2xl py-4 px-5 items-center flex-row justify-center ${
+              isDark ? "bg-accent" : "bg-blue-900"
+            }`}
             style={{
-              shadowColor: "#AB8BFF",
+              shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.3,
               shadowRadius: 8,
@@ -169,10 +182,14 @@ export default function ProfileScreen() {
             <Icons.user
               name={IconNames.editOutline as any}
               size={18}
-              color="#030014"
+              color={isDark ? "#030014" : "#FFFFFF"}
               style={{ marginRight: 8 }}
             />
-            <Text className="text-primary font-bold text-base">
+            <Text
+              className={`font-bold text-base ${
+                isDark ? "text-primary" : "text-white"
+              }`}
+            >
               Edit Profile
             </Text>
           </TouchableOpacity>
@@ -196,11 +213,15 @@ export default function ProfileScreen() {
             }}
           >
             <View className="flex-row items-center flex-1">
-              <View className="bg-accent/20 rounded-xl p-2.5 mr-4">
+              <View
+                className={`rounded-xl p-2.5 mr-4 ${
+                  isDark ? "bg-accent/20" : "bg-blue-900/20"
+                }`}
+              >
                 <Icons.user
                   name={IconNames.personOutline as any}
                   size={22}
-                  color="#AB8BFF"
+                  color={isDark ? "#AB8BFF" : "#1E3A8A"}
                 />
               </View>
               <View className="flex-1">

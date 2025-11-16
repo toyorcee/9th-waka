@@ -226,7 +226,10 @@ export default function SettingsScreen() {
           isDark ? "bg-primary" : "bg-white"
         }`}
       >
-        <ActivityIndicator size="large" color="#AB8BFF" />
+        <ActivityIndicator
+          size="large"
+          color={isDark ? "#AB8BFF" : "#1E3A8A"}
+        />
       </View>
     );
   }
@@ -319,7 +322,9 @@ export default function SettingsScreen() {
                   onPress={() => setThemeMode("light")}
                   className={`px-4 py-2 rounded-xl ${
                     themeMode === "light"
-                      ? "bg-accent"
+                      ? isDark
+                        ? "bg-accent"
+                        : "bg-blue-900"
                       : isDark
                       ? "bg-dark-100 border border-neutral-100"
                       : "bg-white border border-gray-200"
@@ -328,7 +333,9 @@ export default function SettingsScreen() {
                   <Text
                     className={`font-semibold text-sm ${
                       themeMode === "light"
-                        ? "text-primary"
+                        ? isDark
+                          ? "text-primary"
+                          : "text-white"
                         : isDark
                         ? "text-light-400"
                         : "text-gray-500"
@@ -341,7 +348,9 @@ export default function SettingsScreen() {
                   onPress={() => setThemeMode("dark")}
                   className={`px-4 py-2 rounded-xl ${
                     themeMode === "dark"
-                      ? "bg-accent"
+                      ? isDark
+                        ? "bg-accent"
+                        : "bg-blue-900"
                       : isDark
                       ? "bg-dark-100 border border-neutral-100"
                       : "bg-white border border-gray-200"
@@ -350,7 +359,9 @@ export default function SettingsScreen() {
                   <Text
                     className={`font-semibold text-sm ${
                       themeMode === "dark"
-                        ? "text-primary"
+                        ? isDark
+                          ? "text-primary"
+                          : "text-white"
                         : isDark
                         ? "text-light-400"
                         : "text-gray-500"
@@ -363,7 +374,9 @@ export default function SettingsScreen() {
                   onPress={() => setThemeMode("system")}
                   className={`px-4 py-2 rounded-xl ${
                     themeMode === "system"
-                      ? "bg-accent"
+                      ? isDark
+                        ? "bg-accent"
+                        : "bg-blue-900"
                       : isDark
                       ? "bg-dark-100 border border-neutral-100"
                       : "bg-white border border-gray-200"
@@ -372,7 +385,9 @@ export default function SettingsScreen() {
                   <Text
                     className={`font-semibold text-sm ${
                       themeMode === "system"
-                        ? "text-primary"
+                        ? isDark
+                          ? "text-primary"
+                          : "text-white"
                         : isDark
                         ? "text-light-400"
                         : "text-gray-500"
@@ -439,7 +454,10 @@ export default function SettingsScreen() {
                 <View className="relative">
                   {savingChannel === "inApp" && (
                     <View className="absolute inset-0 items-center justify-center z-10">
-                      <ActivityIndicator size="small" color="#AB8BFF" />
+                      <ActivityIndicator
+                        size="small"
+                        color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                      />
                     </View>
                   )}
                   <Switch
@@ -449,7 +467,7 @@ export default function SettingsScreen() {
                     }
                     trackColor={{
                       false: isDark ? "#2A2D3A" : "#E5E5EA",
-                      true: "#AB8BFF",
+                      true: isDark ? "#AB8BFF" : "#1E3A8A",
                     }}
                     thumbColor={isDark ? "#E6E6F0" : "#FFFFFF"}
                     disabled={savingChannel !== null}
@@ -483,7 +501,10 @@ export default function SettingsScreen() {
                 <View className="relative">
                   {savingChannel === "push" && (
                     <View className="absolute inset-0 items-center justify-center z-10">
-                      <ActivityIndicator size="small" color="#AB8BFF" />
+                      <ActivityIndicator
+                        size="small"
+                        color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                      />
                     </View>
                   )}
                   <Switch
@@ -493,7 +514,7 @@ export default function SettingsScreen() {
                     }
                     trackColor={{
                       false: isDark ? "#2A2D3A" : "#E5E5EA",
-                      true: "#AB8BFF",
+                      true: isDark ? "#AB8BFF" : "#1E3A8A",
                     }}
                     thumbColor={isDark ? "#E6E6F0" : "#FFFFFF"}
                     disabled={savingChannel !== null}
@@ -527,7 +548,10 @@ export default function SettingsScreen() {
                 <View className="relative">
                   {savingChannel === "email" && (
                     <View className="absolute inset-0 items-center justify-center z-10">
-                      <ActivityIndicator size="small" color="#AB8BFF" />
+                      <ActivityIndicator
+                        size="small"
+                        color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                      />
                     </View>
                   )}
                   <Switch
@@ -537,7 +561,7 @@ export default function SettingsScreen() {
                     }
                     trackColor={{
                       false: isDark ? "#2A2D3A" : "#E5E5EA",
-                      true: "#AB8BFF",
+                      true: isDark ? "#AB8BFF" : "#1E3A8A",
                     }}
                     thumbColor={isDark ? "#E6E6F0" : "#FFFFFF"}
                     disabled={savingChannel !== null}
@@ -603,8 +627,18 @@ export default function SettingsScreen() {
             {user?.role === "rider" &&
               !checkingActiveOrders &&
               hasActiveOrders && (
-                <View className="bg-accent/20 border border-accent rounded-xl p-3 mb-4">
-                  <Text className="text-accent font-semibold text-sm mb-1">
+                <View
+                  className={`border rounded-xl p-3 mb-4 ${
+                    isDark
+                      ? "bg-accent/20 border-accent"
+                      : "bg-blue-900/20 border-blue-900"
+                  }`}
+                >
+                  <Text
+                    className={`font-semibold text-sm mb-1 ${
+                      isDark ? "text-accent" : "text-blue-900"
+                    }`}
+                  >
                     Location Locked
                   </Text>
                   <Text
@@ -705,11 +739,16 @@ export default function SettingsScreen() {
                     ? isDark
                       ? "bg-dark-100 border border-neutral-100 opacity-50"
                       : "bg-white border border-gray-200 opacity-50"
-                    : "bg-accent"
+                    : isDark
+                    ? "bg-accent"
+                    : "bg-blue-900"
                 }`}
               >
                 {checkingLocation ? (
-                  <ActivityIndicator size="small" color="#030014" />
+                  <ActivityIndicator
+                    size="small"
+                    color={isDark ? "#030014" : "#FFFFFF"}
+                  />
                 ) : (
                   <Text
                     className={`font-bold ${
@@ -717,7 +756,9 @@ export default function SettingsScreen() {
                         ? isDark
                           ? "text-light-400"
                           : "text-gray-500"
-                        : "text-primary"
+                        : isDark
+                        ? "text-primary"
+                        : "text-white"
                     }`}
                   >
                     Enable Location
@@ -795,7 +836,11 @@ export default function SettingsScreen() {
                     receiving orders
                   </Text>
                   {hasActiveOrders && (
-                    <Text className="text-accent text-xs mt-2 font-semibold">
+                    <Text
+                      className={`text-xs mt-2 font-semibold ${
+                        isDark ? "text-accent" : "text-blue-900"
+                      }`}
+                    >
                       ⚠️ Location cannot be disabled while you have active
                       orders
                     </Text>
@@ -843,8 +888,18 @@ export default function SettingsScreen() {
         {/* Profile Completion Reminder (for riders) */}
         {user?.role === "rider" && (!user?.fullName || !user?.phoneNumber) && (
           <View className="mb-6">
-            <View className="bg-accent/20 border border-accent rounded-2xl p-5">
-              <Text className="text-accent font-semibold mb-2">
+            <View
+              className={`border rounded-2xl p-5 ${
+                isDark
+                  ? "bg-accent/20 border-accent"
+                  : "bg-blue-900/20 border-blue-900"
+              }`}
+            >
+              <Text
+                className={`font-semibold mb-2 ${
+                  isDark ? "text-accent" : "text-blue-900"
+                }`}
+              >
                 Complete Your Profile
               </Text>
               <Text
@@ -857,9 +912,17 @@ export default function SettingsScreen() {
               </Text>
               <TouchableOpacity
                 onPress={() => router.push("/profile/edit")}
-                className="bg-accent rounded-xl py-3 px-4 items-center"
+                className={`rounded-xl py-3 px-4 items-center ${
+                  isDark ? "bg-accent" : "bg-blue-900"
+                }`}
               >
-                <Text className="text-primary font-bold">Edit Profile</Text>
+                <Text
+                  className={`font-bold ${
+                    isDark ? "text-primary" : "text-white"
+                  }`}
+                >
+                  Edit Profile
+                </Text>
               </TouchableOpacity>
             </View>
           </View>

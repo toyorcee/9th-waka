@@ -2,6 +2,7 @@ export const SocketEvents = {
   ORDER_CREATED: "order.created",
   ORDER_ASSIGNED: "order.assigned",
   ORDER_STATUS_UPDATED: "order.status_updated",
+  NEW_ORDER_AVAILABLE: "order.new_available", 
   DELIVERY_OTP: "delivery.otp",
   DELIVERY_VERIFIED: "delivery.verified",
   DELIVERY_PROOF_UPDATED: "delivery.proof_updated",

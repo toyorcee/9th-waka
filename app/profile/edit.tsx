@@ -613,7 +613,11 @@ export default function EditProfileScreen() {
           }}
         >
           <View className="relative mb-4">
-            <View className="w-32 h-32 rounded-full bg-accent items-center justify-center overflow-hidden">
+            <View
+              className={`w-32 h-32 rounded-full items-center justify-center overflow-hidden ${
+                isDark ? "bg-accent" : "bg-blue-900"
+              }`}
+            >
               {profilePicture ? (
                 <Image
                   source={{
@@ -628,36 +632,52 @@ export default function EditProfileScreen() {
                 <Icons.user
                   name={IconNames.personCircle as any}
                   size={64}
-                  color="#030014"
+                  color={isDark ? "#030014" : "#FFFFFF"}
                 />
               )}
             </View>
             {uploading && (
               <View className="absolute inset-0 bg-black/50 rounded-full items-center justify-center">
-                <ActivityIndicator size="large" color="#AB8BFF" />
+                <ActivityIndicator
+                  size="large"
+                  color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                />
               </View>
             )}
             <TouchableOpacity
               onPress={pickImage}
               disabled={uploading}
-              className="absolute bottom-0 right-0 w-10 h-10 bg-accent rounded-full items-center justify-center border-2 border-primary"
+              className={`absolute bottom-0 right-0 w-10 h-10 rounded-full items-center justify-center border-2 ${
+                isDark ? "bg-accent border-primary" : "bg-blue-900 border-white"
+              }`}
             >
               <Icons.media
                 name={IconNames.camera as any}
                 size={20}
-                color="#030014"
+                color={isDark ? "#030014" : "#FFFFFF"}
               />
             </TouchableOpacity>
           </View>
           <TouchableOpacity
             onPress={pickImage}
             disabled={uploading}
-            className="bg-accent/20 px-4 py-2 rounded-xl"
+            className={`px-4 py-2 rounded-xl ${
+              isDark ? "bg-accent/20" : "bg-blue-900/20"
+            }`}
           >
             {uploading ? (
-              <ActivityIndicator size="small" color="#AB8BFF" />
+              <ActivityIndicator
+                size="small"
+                color={isDark ? "#AB8BFF" : "#1E3A8A"}
+              />
             ) : (
-              <Text className="text-accent font-semibold">Change Photo</Text>
+              <Text
+                className={`font-semibold ${
+                  isDark ? "text-accent" : "text-blue-900"
+                }`}
+              >
+                Change Photo
+              </Text>
             )}
           </TouchableOpacity>
         </View>
@@ -708,7 +728,9 @@ export default function EditProfileScreen() {
                   className={`w-6 h-6 rounded-full items-center justify-center mr-3 ${
                     kycSteps.identity
                       ? "bg-green-500"
-                      : "bg-accent/30 border-2 border-accent"
+                      : isDark
+                      ? "bg-accent/30 border-2 border-accent"
+                      : "bg-blue-900/30 border-2 border-blue-900"
                   }`}
                   style={{
                     transform: [
@@ -724,7 +746,13 @@ export default function EditProfileScreen() {
                   {kycSteps.identity ? (
                     <Text className="text-white text-xs font-bold">✓</Text>
                   ) : (
-                    <Text className="text-accent text-xs font-bold">1</Text>
+                    <Text
+                      className={`text-xs font-bold ${
+                        isDark ? "text-accent" : "text-blue-900"
+                      }`}
+                    >
+                      1
+                    </Text>
                   )}
                 </Animated.View>
                 <View className="flex-1">
@@ -773,7 +801,9 @@ export default function EditProfileScreen() {
                   className={`w-6 h-6 rounded-full items-center justify-center mr-3 ${
                     kycSteps.address
                       ? "bg-green-500"
-                      : "bg-accent/30 border-2 border-accent"
+                      : isDark
+                      ? "bg-accent/30 border-2 border-accent"
+                      : "bg-blue-900/30 border-2 border-blue-900"
                   }`}
                   style={{
                     transform: [
@@ -789,7 +819,13 @@ export default function EditProfileScreen() {
                   {kycSteps.address ? (
                     <Text className="text-white text-xs font-bold">✓</Text>
                   ) : (
-                    <Text className="text-accent text-xs font-bold">2</Text>
+                    <Text
+                      className={`text-xs font-bold ${
+                        isDark ? "text-accent" : "text-blue-900"
+                      }`}
+                    >
+                      2
+                    </Text>
                   )}
                 </Animated.View>
                 <View className="flex-1">
@@ -838,7 +874,9 @@ export default function EditProfileScreen() {
                   className={`w-6 h-6 rounded-full items-center justify-center mr-3 ${
                     kycSteps.driverLicense
                       ? "bg-green-500"
-                      : "bg-accent/30 border-2 border-accent"
+                      : isDark
+                      ? "bg-accent/30 border-2 border-accent"
+                      : "bg-blue-900/30 border-2 border-blue-900"
                   }`}
                   style={{
                     transform: [
@@ -854,7 +892,13 @@ export default function EditProfileScreen() {
                   {kycSteps.driverLicense ? (
                     <Text className="text-white text-xs font-bold">✓</Text>
                   ) : (
-                    <Text className="text-accent text-xs font-bold">3</Text>
+                    <Text
+                      className={`text-xs font-bold ${
+                        isDark ? "text-accent" : "text-blue-900"
+                      }`}
+                    >
+                      3
+                    </Text>
                   )}
                 </Animated.View>
                 <View className="flex-1">
@@ -903,7 +947,9 @@ export default function EditProfileScreen() {
                   className={`w-6 h-6 rounded-full items-center justify-center mr-3 ${
                     kycSteps.vehicle
                       ? "bg-green-500"
-                      : "bg-accent/30 border-2 border-accent"
+                      : isDark
+                      ? "bg-accent/30 border-2 border-accent"
+                      : "bg-blue-900/30 border-2 border-blue-900"
                   }`}
                   style={{
                     transform: [
@@ -919,7 +965,13 @@ export default function EditProfileScreen() {
                   {kycSteps.vehicle ? (
                     <Text className="text-white text-xs font-bold">✓</Text>
                   ) : (
-                    <Text className="text-accent text-xs font-bold">4</Text>
+                    <Text
+                      className={`text-xs font-bold ${
+                        isDark ? "text-accent" : "text-blue-900"
+                      }`}
+                    >
+                      4
+                    </Text>
                   )}
                 </Animated.View>
                 <View className="flex-1">
@@ -1020,7 +1072,10 @@ export default function EditProfileScreen() {
               />
               {checkingEmail && (
                 <View className="absolute right-4 top-3">
-                  <ActivityIndicator size="small" color="#AB8BFF" />
+                  <ActivityIndicator
+                    size="small"
+                    color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                  />
                 </View>
               )}
               {!checkingEmail && emailAvailable === true && (
@@ -1168,13 +1223,19 @@ export default function EditProfileScreen() {
                 <TouchableOpacity
                   onPress={() => setVehicleType("motorcycle")}
                   className={`flex-1 py-3 rounded-xl ${
-                    vehicleType === "motorcycle" ? "bg-accent" : ""
+                    vehicleType === "motorcycle"
+                      ? isDark
+                        ? "bg-accent"
+                        : "bg-blue-900"
+                      : ""
                   }`}
                 >
                   <Text
                     className={`text-center font-semibold text-sm ${
                       vehicleType === "motorcycle"
-                        ? "text-primary"
+                        ? isDark
+                          ? "text-primary"
+                          : "text-white"
                         : isDark
                         ? "text-light-300"
                         : "text-gray-600"
@@ -1186,13 +1247,19 @@ export default function EditProfileScreen() {
                 <TouchableOpacity
                   onPress={() => setVehicleType("car")}
                   className={`flex-1 py-3 rounded-xl ${
-                    vehicleType === "car" ? "bg-accent" : ""
+                    vehicleType === "car"
+                      ? isDark
+                        ? "bg-accent"
+                        : "bg-blue-900"
+                      : ""
                   }`}
                 >
                   <Text
                     className={`text-center font-semibold text-sm ${
                       vehicleType === "car"
-                        ? "text-primary"
+                        ? isDark
+                          ? "text-primary"
+                          : "text-white"
                         : isDark
                         ? "text-light-300"
                         : "text-gray-600"
@@ -1253,7 +1320,10 @@ export default function EditProfileScreen() {
                     />
                     {uploadingVehicle && (
                       <View className="absolute inset-0 bg-black/50 rounded-xl items-center justify-center">
-                        <ActivityIndicator size="large" color="#AB8BFF" />
+                        <ActivityIndicator
+                          size="large"
+                          color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                        />
                       </View>
                     )}
                   </View>
@@ -1283,12 +1353,23 @@ export default function EditProfileScreen() {
               <TouchableOpacity
                 onPress={pickVehicleImage}
                 disabled={uploadingVehicle}
-                className="bg-accent/20 border border-accent rounded-xl py-3 px-4 items-center"
+                className={`border rounded-xl py-3 px-4 items-center ${
+                  isDark
+                    ? "bg-accent/20 border-accent"
+                    : "bg-blue-900/20 border-blue-900"
+                }`}
               >
                 {uploadingVehicle ? (
-                  <ActivityIndicator size="small" color="#AB8BFF" />
+                  <ActivityIndicator
+                    size="small"
+                    color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                  />
                 ) : (
-                  <Text className="text-accent font-semibold">
+                  <Text
+                    className={`font-semibold ${
+                      isDark ? "text-accent" : "text-blue-900"
+                    }`}
+                  >
                     {vehiclePicture
                       ? "Change Vehicle Picture"
                       : "Upload Vehicle Picture"}
@@ -1349,7 +1430,10 @@ export default function EditProfileScreen() {
                   />
                   {verifyingNin && (
                     <View className="absolute right-4 top-3">
-                      <ActivityIndicator size="small" color="#AB8BFF" />
+                      <ActivityIndicator
+                        size="small"
+                        color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                      />
                     </View>
                   )}
                   {ninVerified && !verifyingNin && (
@@ -1421,7 +1505,10 @@ export default function EditProfileScreen() {
                   />
                   {verifyingBvn && (
                     <View className="absolute right-4 top-3">
-                      <ActivityIndicator size="small" color="#AB8BFF" />
+                      <ActivityIndicator
+                        size="small"
+                        color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                      />
                     </View>
                   )}
                   {bvnVerified && !verifyingBvn && (
@@ -1827,7 +1914,10 @@ export default function EditProfileScreen() {
                   />
                   {verifyingNin && (
                     <View className="absolute right-4 top-3">
-                      <ActivityIndicator size="small" color="#AB8BFF" />
+                      <ActivityIndicator
+                        size="small"
+                        color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                      />
                     </View>
                   )}
                   {ninVerified && !verifyingNin && (
@@ -1883,7 +1973,10 @@ export default function EditProfileScreen() {
                   />
                   {verifyingBvn && (
                     <View className="absolute right-4 top-3">
-                      <ActivityIndicator size="small" color="#AB8BFF" />
+                      <ActivityIndicator
+                        size="small"
+                        color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                      />
                     </View>
                   )}
                   {bvnVerified && !verifyingBvn && (
@@ -1922,12 +2015,18 @@ export default function EditProfileScreen() {
         <TouchableOpacity
           onPress={handleSave}
           disabled={saving}
-          className="bg-accent rounded-2xl py-4 items-center"
+          className={`rounded-2xl py-4 items-center ${
+            isDark ? "bg-accent" : "bg-blue-900"
+          }`}
         >
           {saving ? (
-            <ActivityIndicator color="#030014" />
+            <ActivityIndicator color={isDark ? "#030014" : "#FFFFFF"} />
           ) : (
-            <Text className="text-primary font-bold text-base">
+            <Text
+              className={`font-bold text-base ${
+                isDark ? "text-primary" : "text-white"
+              }`}
+            >
               Save Changes
             </Text>
           )}

@@ -1,4 +1,5 @@
 import { SocketEvents } from "@/constants/socketEvents";
+import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { calculateAddressDistance } from "@/services/geocodingApi";
 import { getOrder } from "@/services/orderApi";
@@ -30,6 +31,7 @@ export default function OrderTrackingMap({
   onClose,
 }: OrderTrackingMapProps) {
   const { theme } = useTheme();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const isDark = theme === "dark";
   const [order, setOrder] = useState<any>(null);
@@ -42,18 +44,31 @@ export default function OrderTrackingMap({
     distance: number;
     duration: number;
   } | null>(null);
+  const [mapKey, setMapKey] = useState(0);
+  const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
-    loadOrder();
-  }, [orderId]);
+    if (user) {
+      loadOrder();
+    }
+  }, [orderId, user]);
 
   useEffect(() => {
-    if (!order || !order.riderId) return;
+    if (!order || !order.riderId || !isAuthorized) return;
+
+    const userId = user?.id;
+    const customerId = order.customerId;
+    const isCustomer =
+      userId && customerId && String(userId) === String(customerId);
+
+    if (!isCustomer) {
+      console.warn("Unauthorized: User is not the customer for this order");
+      return;
+    }
 
     const handleLocationUpdate = (data: any) => {
-      if (data.orderId === orderId) {
+      if (data.orderId === orderId && isCustomer) {
         setRiderLocation({ lat: data.lat, lng: data.lng });
-        // Recalculate route when rider moves
         if (order?.pickup?.lat && order?.dropoff?.lat) {
           fetchRoute();
         }
@@ -66,7 +81,7 @@ export default function OrderTrackingMap({
     socket.on(SocketEvents.RIDER_LOCATION_UPDATED, handleLocationUpdate);
 
     const handleCustomEvent = (event: any) => {
-      if (event.detail?.orderId === orderId) {
+      if (event.detail?.orderId === orderId && isCustomer) {
         handleLocationUpdate(event.detail);
       }
     };
@@ -93,7 +108,7 @@ export default function OrderTrackingMap({
         window.removeEventListener("rider-location-updated", handleCustomEvent);
       }
     };
-  }, [order, orderId]);
+  }, [order, orderId, isAuthorized, user]);
 
   useEffect(() => {
     if (order?.pickup?.lat && order?.dropoff?.lat) {
@@ -101,9 +116,29 @@ export default function OrderTrackingMap({
     }
   }, [order, riderLocation]);
 
+  useEffect(() => {
+    if (riderLocation && order?.pickup?.lat && order?.dropoff?.lat) {
+      setMapKey((prev) => prev + 1);
+    }
+  }, [riderLocation?.lat, riderLocation?.lng]);
+
   const loadOrder = async () => {
     try {
       const orderData = await getOrder(orderId);
+
+      const userId = user?.id;
+      const customerId = orderData.customerId;
+      const isCustomer =
+        userId && customerId && String(userId) === String(customerId);
+
+      if (!isCustomer) {
+        console.warn("Unauthorized: User is not the customer for this order");
+        setIsAuthorized(false);
+        setOrder(null);
+        return;
+      }
+
+      setIsAuthorized(true);
       setOrder(orderData);
       if (orderData.riderLocation) {
         setRiderLocation({
@@ -111,8 +146,15 @@ export default function OrderTrackingMap({
           lng: orderData.riderLocation.lng,
         });
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("Error loading order:", e);
+      // If it's a 403 Forbidden error, user is not authorized
+      if (
+        e?.response?.status === 403 ||
+        e?.response?.data?.error === "Forbidden"
+      ) {
+        setIsAuthorized(false);
+      }
     } finally {
       setLoading(false);
     }
@@ -160,15 +202,32 @@ export default function OrderTrackingMap({
   if (loading) {
     return (
       <View
-        className={`flex-1 items-center justify-center ${
-          isDark ? "bg-primary" : "bg-white"
-        }`}
+        className="flex-1 items-center justify-center bg-primary"
         style={{ paddingTop: insets.top }}
       >
         <ActivityIndicator size="large" color="#AB8BFF" />
-        <Text className={`mt-4 ${isDark ? "text-light-300" : "text-gray-600"}`}>
-          Loading map...
+        <Text className="mt-4 text-light-300">Loading map...</Text>
+      </View>
+    );
+  }
+
+  if (!isAuthorized) {
+    return (
+      <View
+        className="flex-1 items-center justify-center px-6 bg-primary"
+        style={{ paddingTop: insets.top }}
+      >
+        <Text className="text-center mb-4 text-light-300">
+          You are not authorized to view this order's tracking information.
         </Text>
+        {onClose && (
+          <TouchableOpacity
+            onPress={onClose}
+            className="bg-accent rounded-xl px-6 py-3"
+          >
+            <Text className="text-primary font-bold">Close</Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   }
@@ -176,16 +235,10 @@ export default function OrderTrackingMap({
   if (!order || !order.pickup?.lat || !order.dropoff?.lat) {
     return (
       <View
-        className={`flex-1 items-center justify-center px-6 ${
-          isDark ? "bg-primary" : "bg-white"
-        }`}
+        className="flex-1 items-center justify-center px-6 bg-primary"
         style={{ paddingTop: insets.top }}
       >
-        <Text
-          className={`text-center mb-4 ${
-            isDark ? "text-light-300" : "text-gray-600"
-          }`}
-        >
+        <Text className="text-center mb-4 text-light-300">
           Map data not available
         </Text>
         {onClose && (
@@ -200,41 +253,29 @@ export default function OrderTrackingMap({
     );
   }
 
-  // Generate Google Maps URL for WebView
+  // Generate Google Maps URL for WebView with real-time rider location
   const generateMapUrl = () => {
     if (!order?.pickup?.lat || !order?.dropoff?.lat) return "";
 
-    const waypoints = riderLocation
-      ? `${order.pickup.lat},${order.pickup.lng}/${riderLocation.lat},${riderLocation.lng}/${order.dropoff.lat},${order.dropoff.lng}`
-      : `${order.pickup.lat},${order.pickup.lng}/${order.dropoff.lat},${order.dropoff.lng}`;
+    // If rider location is available, include it as a waypoint
+    // This will show the route from pickup -> rider current location -> dropoff
+    if (riderLocation) {
+      return `https://www.google.com/maps/dir/${order.pickup.lat},${order.pickup.lng}/${riderLocation.lat},${riderLocation.lng}/${order.dropoff.lat},${order.dropoff.lng}`;
+    }
 
-    return `https://www.google.com/maps/dir/${waypoints}`;
+    // Otherwise just show pickup to dropoff
+    return `https://www.google.com/maps/dir/${order.pickup.lat},${order.pickup.lng}/${order.dropoff.lat},${order.dropoff.lng}`;
   };
 
   return (
-    <View
-      className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
-      style={{ paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-primary" style={{ paddingTop: insets.top }}>
       {/* Header */}
-      <View
-        className={`border-b px-4 py-3 flex-row items-center justify-between ${
-          isDark
-            ? "bg-secondary border-neutral-100"
-            : "bg-white border-gray-200"
-        }`}
-      >
+      <View className="border-b px-4 py-3 flex-row items-center justify-between bg-secondary border-neutral-100">
         <View className="flex-1">
-          <Text
-            className={`font-semibold text-base ${
-              isDark ? "text-light-100" : "text-black"
-            }`}
-          >
+          <Text className="font-semibold text-base text-light-100">
             Live Order Tracking
           </Text>
-          <Text
-            className={`text-xs ${isDark ? "text-light-400" : "text-gray-500"}`}
-          >
+          <Text className="text-xs text-light-400">
             {order.items} • {order.status}
           </Text>
         </View>
@@ -250,15 +291,9 @@ export default function OrderTrackingMap({
           {onClose && (
             <TouchableOpacity
               onPress={onClose}
-              className={`rounded-lg px-3 py-2 ${
-                isDark ? "bg-dark-100" : "bg-gray-100"
-              }`}
+              className="rounded-lg px-3 py-2 bg-dark-100"
             >
-              <Text
-                className={`font-semibold text-xs ${
-                  isDark ? "text-light-200" : "text-black"
-                }`}
-              >
+              <Text className="font-semibold text-xs text-light-200">
                 Close
               </Text>
             </TouchableOpacity>
@@ -268,43 +303,17 @@ export default function OrderTrackingMap({
 
       {/* Route Info Card */}
       {routeInfo && (
-        <View
-          className={`mx-4 mt-4 rounded-xl p-4 border ${
-            isDark
-              ? "bg-secondary border-neutral-100"
-              : "bg-white border-gray-200"
-          }`}
-        >
+        <View className="mx-4 mt-4 rounded-xl p-4 border bg-secondary border-neutral-100">
           <View className="flex-row items-center justify-between">
             <View>
-              <Text
-                className={`text-sm ${
-                  isDark ? "text-light-400" : "text-gray-500"
-                }`}
-              >
-                Distance
-              </Text>
-              <Text
-                className={`text-lg font-bold ${
-                  isDark ? "text-light-100" : "text-black"
-                }`}
-              >
+              <Text className="text-sm text-light-400">Distance</Text>
+              <Text className="text-lg font-bold text-light-100">
                 {routeInfo.distance.toFixed(1)} km
               </Text>
             </View>
             <View>
-              <Text
-                className={`text-sm ${
-                  isDark ? "text-light-400" : "text-gray-500"
-                }`}
-              >
-                Est. Time
-              </Text>
-              <Text
-                className={`text-lg font-bold ${
-                  isDark ? "text-light-100" : "text-black"
-                }`}
-              >
+              <Text className="text-sm text-light-400">Est. Time</Text>
+              <Text className="text-lg font-bold text-light-100">
                 {Math.round(routeInfo.duration)} min
               </Text>
             </View>
@@ -312,9 +321,10 @@ export default function OrderTrackingMap({
         </View>
       )}
 
-      {/* Google Maps WebView */}
+      {/* Google Maps WebView - Updates when rider moves */}
       {WebView && order?.pickup?.lat && order?.dropoff?.lat ? (
         <WebView
+          key={mapKey}
           source={{ uri: generateMapUrl() }}
           style={{ flex: 1 }}
           javaScriptEnabled={true}
@@ -325,11 +335,7 @@ export default function OrderTrackingMap({
           className="flex-1 items-center justify-center"
           style={{ paddingBottom: insets.bottom }}
         >
-          <Text
-            className={`text-center px-6 ${
-              isDark ? "text-light-300" : "text-gray-600"
-            }`}
-          >
+          <Text className="text-center px-6 text-light-300">
             {!order?.pickup?.lat || !order?.dropoff?.lat
               ? "Map data not available"
               : "Tap 'Open in Maps App' to view route"}
@@ -340,27 +346,15 @@ export default function OrderTrackingMap({
       {/* Rider Location Status */}
       {riderLocation && (
         <View
-          className={`absolute left-4 right-4 rounded-xl p-3 border ${
-            isDark
-              ? "bg-secondary/95 border-neutral-100"
-              : "bg-white/95 border-gray-200"
-          }`}
+          className="absolute left-4 right-4 rounded-xl p-3 border bg-secondary/95 border-neutral-100"
           style={{ bottom: insets.bottom + 16 }}
         >
           <View className="flex-row items-center gap-2">
             <View className="w-3 h-3 rounded-full bg-green-500" />
-            <Text
-              className={`text-sm flex-1 ${
-                isDark ? "text-light-200" : "text-black"
-              }`}
-            >
+            <Text className="text-sm flex-1 text-light-200">
               Rider location updated
             </Text>
-            <Text
-              className={`text-xs ${
-                isDark ? "text-light-400" : "text-gray-500"
-              }`}
-            >
+            <Text className="text-xs text-light-400">
               {new Date().toLocaleTimeString()}
             </Text>
           </View>

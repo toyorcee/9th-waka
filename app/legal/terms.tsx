@@ -23,38 +23,59 @@ export default function TermsConditionsScreen() {
       }}
       showsVerticalScrollIndicator={false}
     >
-      {/* Header */}
-      <View className="flex-row items-center mb-6">
-        <TouchableOpacity
-          onPress={() => {
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.replace("/(tabs)/profile");
-            }
-          }}
-          className={`w-11 h-11 rounded-full border items-center justify-center mr-4 ${
-            isDark
-              ? "bg-secondary border-neutral-100"
-              : "bg-white border-gray-200"
-          }`}
-        >
-          <Icons.navigation
-            name={IconNames.arrowBack as any}
-            size={20}
-            color={isDark ? "#9CA4AB" : "#6E6E73"}
-          />
-        </TouchableOpacity>
-        <View className="flex-1">
+      {/* Enhanced Header */}
+      <View className="mb-6">
+        <View className="flex-row items-center mb-4">
+          <TouchableOpacity
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace("/(tabs)/profile");
+              }
+            }}
+            className={`w-11 h-11 rounded-full border items-center justify-center mr-4 ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
+            }`}
+          >
+            <Icons.navigation
+              name={IconNames.arrowBack as any}
+              size={20}
+              color={isDark ? "#9CA4AB" : "#6E6E73"}
+            />
+          </TouchableOpacity>
+        </View>
+        <View className="items-center mb-4">
+          <View
+            className={`rounded-2xl p-4 mb-3 ${
+              isDark ? "bg-accent/20" : "bg-blue-900/20"
+            }`}
+          >
+            <Icons.info
+              name={IconNames.informationOutline as any}
+              size={32}
+              color={isDark ? "#AB8BFF" : "#1E3A8A"}
+            />
+          </View>
           <Text
-            className={`text-2xl font-bold ${
+            className={`text-2xl font-bold text-center mb-2 ${
               isDark ? "text-light-100" : "text-black"
             }`}
           >
             Terms & Conditions
           </Text>
           <Text
-            className={`text-sm mt-1 ${
+            className={`text-sm text-center leading-5 px-4 ${
+              isDark ? "text-light-400" : "text-gray-600"
+            }`}
+          >
+            Understand the rules and guidelines that govern your use of our
+            delivery service platform
+          </Text>
+          <Text
+            className={`text-xs mt-2 ${
               isDark ? "text-light-400" : "text-gray-500"
             }`}
           >

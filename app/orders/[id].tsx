@@ -859,7 +859,11 @@ export default function OrderDetailScreen() {
               }}
             >
               <View className="flex-row items-center mb-4">
-                <View className="bg-active/20 rounded-lg p-1.5 mr-2">
+                <View
+                  className={`rounded-lg p-1.5 mr-2 ${
+                    isDark ? "bg-active/20" : "bg-green-100"
+                  }`}
+                >
                   <Icons.money
                     name={MCIconNames.cash as any}
                     size={16}
@@ -900,8 +904,12 @@ export default function OrderDetailScreen() {
                   >
                     Commission ({order.financial.commissionRatePct || 0}%)
                   </Text>
-                  <Text className={isDark ? "text-light-300" : "text-gray-600"}>
-                    ₦
+                  <Text
+                    className={`font-semibold ${
+                      isDark ? "text-danger" : "text-red-600"
+                    }`}
+                  >
+                    -₦
                     {Number(
                       order.financial.commissionAmount || 0
                     ).toLocaleString()}
@@ -917,9 +925,13 @@ export default function OrderDetailScreen() {
                       isDark ? "text-light-200" : "text-black"
                     }`}
                   >
-                    Rider Earnings
+                    Your Earnings
                   </Text>
-                  <Text className="text-active text-lg font-bold">
+                  <Text
+                    className={`text-lg font-bold ${
+                      isDark ? "text-active" : "text-green-600"
+                    }`}
+                  >
                     ₦
                     {Number(
                       order.financial.riderNetAmount || 0
@@ -927,6 +939,69 @@ export default function OrderDetailScreen() {
                   </Text>
                 </View>
               </View>
+
+              {/* Remittance Section for Riders */}
+              {user?.role === "rider" && (
+                <View
+                  className={`mt-4 pt-4 border-t rounded-2xl p-4 ${
+                    isDark
+                      ? "border-neutral-100/50 bg-warning/10"
+                      : "border-gray-200 bg-orange-50"
+                  }`}
+                >
+                  <View className="flex-row items-center mb-2">
+                    <View
+                      className={`rounded-lg p-1.5 mr-2 ${
+                        isDark ? "bg-warning/20" : "bg-orange-100"
+                      }`}
+                    >
+                      <Icons.money
+                        name={MCIconNames.cash as any}
+                        size={14}
+                        color="#FF9500"
+                      />
+                    </View>
+                    <Text
+                      className={`text-sm font-bold ${
+                        isDark ? "text-light-100" : "text-black"
+                      }`}
+                    >
+                      Remittance to Admin
+                    </Text>
+                  </View>
+                  <View className="flex-row items-center justify-between">
+                    <Text
+                      className={`text-xs ${
+                        isDark ? "text-light-400" : "text-gray-600"
+                      }`}
+                    >
+                      Commission to be paid
+                    </Text>
+                    <Text
+                      className={`font-bold text-base ${
+                        isDark ? "text-warning" : "text-orange-600"
+                      }`}
+                    >
+                      ₦
+                      {Number(
+                        order.financial.commissionAmount || 0
+                      ).toLocaleString()}
+                    </Text>
+                  </View>
+                  <Text
+                    className={`text-xs mt-2 leading-4 ${
+                      isDark ? "text-light-500" : "text-gray-500"
+                    }`}
+                  >
+                    This commission amount will be deducted from your weekly
+                    payout. You will receive ₦
+                    {Number(
+                      order.financial.riderNetAmount || 0
+                    ).toLocaleString()}{" "}
+                    for this delivery.
+                  </Text>
+                </View>
+              )}
             </View>
           )}
 

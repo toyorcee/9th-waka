@@ -161,11 +161,15 @@ export default function SupportScreen() {
           </TouchableOpacity>
           <View className="flex-1 items-center">
             <View className="flex-row items-center">
-              <View className="bg-accent/20 rounded-lg p-1.5 mr-2">
+              <View
+                className={`rounded-lg p-1.5 mr-2 ${
+                  isDark ? "bg-accent/20" : "bg-blue-900/20"
+                }`}
+              >
                 <Icons.communication
                   name={IconNames.chatbubbleOutline as any}
                   size={18}
-                  color="#AB8BFF"
+                  color={isDark ? "#AB8BFF" : "#1E3A8A"}
                 />
               </View>
               <Text
@@ -196,11 +200,15 @@ export default function SupportScreen() {
           }}
         >
           <View className="items-center mb-5">
-            <View className="bg-accent/20 rounded-full p-6 mb-4">
+            <View
+              className={`rounded-full p-6 mb-4 ${
+                isDark ? "bg-accent/20" : "bg-blue-900/20"
+              }`}
+            >
               <Icons.communication
                 name={IconNames.chatbubbleOutline as any}
                 size={48}
-                color="#AB8BFF"
+                color={isDark ? "#AB8BFF" : "#1E3A8A"}
               />
             </View>
             <Text
@@ -221,9 +229,11 @@ export default function SupportScreen() {
           </View>
           <TouchableOpacity
             onPress={handleWhatsApp}
-            className="bg-accent rounded-2xl py-4 px-6 flex-row items-center justify-center"
+            className={`rounded-2xl py-4 px-6 flex-row items-center justify-center ${
+              isDark ? "bg-accent" : "bg-blue-900"
+            }`}
             style={{
-              shadowColor: "#AB8BFF",
+              shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.3,
               shadowRadius: 8,
@@ -233,10 +243,14 @@ export default function SupportScreen() {
             <Icons.communication
               name={IconNames.chatbubbleOutline as any}
               size={20}
-              color="#030014"
+              color={isDark ? "#030014" : "#FFFFFF"}
               style={{ marginRight: 8 }}
             />
-            <Text className="text-primary font-bold text-base">
+            <Text
+              className={`font-bold text-base ${
+                isDark ? "text-primary" : "text-white"
+              }`}
+            >
               Chat on WhatsApp
             </Text>
           </TouchableOpacity>
@@ -291,7 +305,11 @@ export default function SupportScreen() {
                       {faq.question}
                     </Text>
                   </View>
-                  <View className="bg-accent/20 rounded-lg p-1.5">
+                  <View
+                    className={`rounded-lg p-1.5 ${
+                      isDark ? "bg-accent/20" : "bg-blue-900/20"
+                    }`}
+                  >
                     <Icons.navigation
                       name={
                         expandedFAQ === faq.id
@@ -299,7 +317,7 @@ export default function SupportScreen() {
                           : (IconNames.chevronDown as any)
                       }
                       size={18}
-                      color="#AB8BFF"
+                      color={isDark ? "#AB8BFF" : "#1E3A8A"}
                     />
                   </View>
                 </TouchableOpacity>
@@ -474,11 +492,15 @@ export default function SupportScreen() {
             }}
           >
             <View className="flex-row items-start mb-4">
-              <View className="bg-accent/10 rounded-2xl p-3 mr-4">
+              <View
+                className={`rounded-2xl p-3 mr-4 ${
+                  isDark ? "bg-accent/10" : "bg-blue-900/10"
+                }`}
+              >
                 <Icons.status
                   name={IconNames.starOutline as any}
                   size={24}
-                  color="#AB8BFF"
+                  color={isDark ? "#AB8BFF" : "#1E3A8A"}
                 />
               </View>
               <View className="flex-1 pt-0.5">
@@ -525,9 +547,11 @@ export default function SupportScreen() {
                       );
                     }
                   }}
-                  className="bg-accent rounded-2xl py-3.5 px-5 flex-row items-center justify-center"
+                  className={`rounded-2xl py-3.5 px-5 flex-row items-center justify-center ${
+                    isDark ? "bg-accent" : "bg-blue-900"
+                  }`}
                   style={{
-                    shadowColor: "#AB8BFF",
+                    shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
                     shadowOffset: { width: 0, height: 4 },
                     shadowOpacity: 0.3,
                     shadowRadius: 8,
@@ -537,10 +561,14 @@ export default function SupportScreen() {
                   <Icons.status
                     name={IconNames.starOutline as any}
                     size={18}
-                    color="#030014"
+                    color={isDark ? "#030014" : "#FFFFFF"}
                     style={{ marginRight: 8 }}
                   />
-                  <Text className="text-primary font-bold text-sm">
+                  <Text
+                    className={`font-bold text-sm ${
+                      isDark ? "text-primary" : "text-white"
+                    }`}
+                  >
                     Rate & Review
                   </Text>
                 </TouchableOpacity>

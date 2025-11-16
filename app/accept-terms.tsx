@@ -105,11 +105,15 @@ export default function AcceptTermsScreen() {
       >
         <View className="px-6">
           <View className="items-center mb-4">
-            <View className="bg-accent/20 rounded-full p-4 mb-3">
+            <View
+              className={`rounded-2xl p-4 mb-3 ${
+                isDark ? "bg-accent/20" : "bg-blue-900/20"
+              }`}
+            >
               <Icons.info
                 name={IconNames.informationOutline as any}
                 size={32}
-                color="#AB8BFF"
+                color={isDark ? "#AB8BFF" : "#1E3A8A"}
               />
             </View>
             <Text
@@ -120,11 +124,12 @@ export default function AcceptTermsScreen() {
               Terms & Conditions
             </Text>
             <Text
-              className={`text-sm text-center ${
-                isDark ? "text-light-400" : "text-gray-500"
+              className={`text-sm text-center leading-5 px-4 ${
+                isDark ? "text-light-400" : "text-gray-600"
               }`}
             >
-              Please read and accept our terms to continue
+              Please read and accept our terms and conditions to continue using
+              our delivery service platform
             </Text>
           </View>
         </View>
@@ -655,14 +660,22 @@ export default function AcceptTermsScreen() {
         {/* Scroll indicator */}
         {!hasScrolledToBottom && (
           <View className="items-center py-4">
-            <View className="bg-accent/20 rounded-full px-4 py-2 flex-row items-center">
+            <View
+              className={`rounded-full px-4 py-2 flex-row items-center ${
+                isDark ? "bg-accent/20" : "bg-blue-900/20"
+              }`}
+            >
               <Icons.navigation
                 name={IconNames.arrowDown as any}
                 size={16}
-                color="#AB8BFF"
+                color={isDark ? "#AB8BFF" : "#1E3A8A"}
                 style={{ marginRight: 6 }}
               />
-              <Text className="text-accent text-xs font-semibold">
+              <Text
+                className={`text-xs font-semibold ${
+                  isDark ? "text-accent" : "text-blue-900"
+                }`}
+              >
                 Scroll to continue
               </Text>
             </View>
@@ -700,7 +713,9 @@ export default function AcceptTermsScreen() {
           <View
             className={`w-6 h-6 rounded-lg border-2 items-center justify-center mr-3 ${
               isAccepted
-                ? "bg-accent border-accent"
+                ? isDark
+                  ? "bg-accent border-accent"
+                  : "bg-blue-900 border-blue-900"
                 : isDark
                 ? "border-neutral-300 bg-transparent"
                 : "border-gray-300 bg-transparent"
@@ -710,7 +725,7 @@ export default function AcceptTermsScreen() {
               <Icons.action
                 name={IconNames.checkmark as any}
                 size={16}
-                color="#030014"
+                color={isDark ? "#030014" : "#FFFFFF"}
               />
             )}
           </View>
@@ -727,7 +742,13 @@ export default function AcceptTermsScreen() {
               }`}
             >
               I have read and agree to the{" "}
-              <Text className="text-accent font-bold">Terms & Conditions</Text>
+              <Text
+                className={`font-bold ${
+                  isDark ? "text-accent" : "text-blue-900"
+                }`}
+              >
+                Terms & Conditions
+              </Text>
             </Text>
             {!hasScrolledToBottom && (
               <Text
@@ -745,11 +766,11 @@ export default function AcceptTermsScreen() {
         <TouchableOpacity
           onPress={handleAccept}
           disabled={!isAccepted || isSubmitting}
-          className={`bg-accent rounded-2xl py-4 items-center flex-row justify-center ${
+          className={`rounded-2xl py-4 items-center flex-row justify-center ${
             !isAccepted || isSubmitting ? "opacity-60" : ""
-          }`}
+          } ${isDark ? "bg-accent" : "bg-blue-900"}`}
           style={{
-            shadowColor: "#AB8BFF",
+            shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.3,
             shadowRadius: 8,
@@ -758,13 +779,24 @@ export default function AcceptTermsScreen() {
         >
           {isSubmitting ? (
             <>
-              <ActivityIndicator color="#030014" size="small" />
-              <Text className="text-primary font-bold text-base ml-2">
+              <ActivityIndicator
+                color={isDark ? "#030014" : "#FFFFFF"}
+                size="small"
+              />
+              <Text
+                className={`font-bold text-base ml-2 ${
+                  isDark ? "text-primary" : "text-white"
+                }`}
+              >
                 Processing...
               </Text>
             </>
           ) : (
-            <Text className="text-primary font-bold text-base">
+            <Text
+              className={`font-bold text-base ${
+                isDark ? "text-primary" : "text-white"
+              }`}
+            >
               Accept & Continue
             </Text>
           )}

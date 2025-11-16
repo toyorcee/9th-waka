@@ -1,4 +1,5 @@
 import { IconNames, Icons, MCIconNames } from "@/constants/icons";
+import { SocketEvents } from "@/constants/socketEvents";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import {
@@ -8,6 +9,7 @@ import {
   Order,
 } from "@/services/orderApi";
 import { checkActiveOrders, updateRiderPresence } from "@/services/riderApi";
+import { socketClient } from "@/services/socketClient";
 import { updateSearchRadius } from "@/services/userApi";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
@@ -145,6 +147,37 @@ export default function DeliveriesScreen() {
     };
   }, [online, sendLocationOnce, stopLocationUpdates, fetchAvailableOrders]);
 
+  React.useEffect(() => {
+    if (!isRider || !online) return;
+
+    const socket = socketClient.socketInstance;
+    if (!socket || !socket.connected) return;
+
+    const handleNewOrder = (data: any) => {
+      fetchAvailableOrders();
+
+      const pickupAddress =
+        data.pickup?.address?.length > 35
+          ? data.pickup.address.substring(0, 35) + "..."
+          : data.pickup?.address || "Location";
+
+      Toast.show({
+        type: "info",
+        text1: "New delivery available",
+        text2: `${data.distanceKm}km away - ₦${Number(
+          data.price || 0
+        ).toLocaleString()}\n📍 ${pickupAddress}`,
+        visibilityTime: 5000,
+      });
+    };
+
+    socket.on(SocketEvents.NEW_ORDER_AVAILABLE, handleNewOrder);
+
+    return () => {
+      socket.off(SocketEvents.NEW_ORDER_AVAILABLE, handleNewOrder);
+    };
+  }, [isRider, online, fetchAvailableOrders]);
+
   const handleAcceptOrder = async (orderId: string) => {
     setAcceptingOrderId(orderId);
     try {
@@ -198,7 +231,10 @@ export default function DeliveriesScreen() {
           isDark ? "bg-primary" : "bg-white"
         }`}
       >
-        <ActivityIndicator size="large" color="#AB8BFF" />
+        <ActivityIndicator
+          size="large"
+          color={isDark ? "#AB8BFF" : "#1E3A8A"}
+        />
       </View>
     );
   }
@@ -245,11 +281,15 @@ export default function DeliveriesScreen() {
       <View className="pt-6 px-5 pb-8">
         {/* Modern Header with Icon */}
         <View className="flex-row items-center mb-6">
-          <View className="bg-accent/20 rounded-xl p-2.5 mr-3">
+          <View
+            className={`rounded-xl p-2.5 mr-3 ${
+              isDark ? "bg-accent/20" : "bg-blue-900/20"
+            }`}
+          >
             <Icons.delivery
               name={MCIconNames.delivery as any}
               size={22}
-              color="#AB8BFF"
+              color={isDark ? "#AB8BFF" : "#1E3A8A"}
             />
           </View>
           <View className="flex-1">
@@ -276,17 +316,31 @@ export default function DeliveriesScreen() {
 
         {/* KYC Completion Banner (Riders only) - Modern Design */}
         {isRider && !isKycComplete && (
-          <View className="bg-accent/20 border border-accent/30 rounded-3xl p-6 mb-6 shadow-lg">
+          <View
+            className={`border rounded-3xl p-6 mb-6 shadow-lg ${
+              isDark
+                ? "bg-accent/20 border-accent/30"
+                : "bg-blue-900/20 border-blue-900/30"
+            }`}
+          >
             <View className="flex-row items-start">
-              <View className="bg-accent/30 rounded-2xl p-3 mr-4">
+              <View
+                className={`rounded-2xl p-3 mr-4 ${
+                  isDark ? "bg-accent/30" : "bg-blue-900/30"
+                }`}
+              >
                 <Icons.safety
                   name={IconNames.securityOutline as any}
                   size={28}
-                  color="#AB8BFF"
+                  color={isDark ? "#AB8BFF" : "#1E3A8A"}
                 />
               </View>
               <View className="flex-1">
-                <Text className="text-accent font-bold text-xl mb-2">
+                <Text
+                  className={`font-bold text-xl mb-2 ${
+                    isDark ? "text-accent" : "text-blue-900"
+                  }`}
+                >
                   Complete Your KYC Verification
                 </Text>
                 <Text
@@ -299,9 +353,11 @@ export default function DeliveriesScreen() {
                 </Text>
                 <TouchableOpacity
                   onPress={() => router.push("/profile/edit" as any)}
-                  className="bg-accent rounded-2xl py-4 px-5 items-center flex-row justify-center shadow-lg"
+                  className={`rounded-2xl py-4 px-5 items-center flex-row justify-center shadow-lg ${
+                    isDark ? "bg-accent" : "bg-blue-900"
+                  }`}
                   style={{
-                    shadowColor: "#AB8BFF",
+                    shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
                     shadowOffset: { width: 0, height: 4 },
                     shadowOpacity: 0.3,
                     shadowRadius: 8,
@@ -311,10 +367,14 @@ export default function DeliveriesScreen() {
                   <Icons.action
                     name={IconNames.arrowForward as any}
                     size={18}
-                    color="#030014"
+                    color={isDark ? "#030014" : "#FFFFFF"}
                     style={{ marginRight: 8 }}
                   />
-                  <Text className="text-primary font-bold text-base">
+                  <Text
+                    className={`font-bold text-base ${
+                      isDark ? "text-primary" : "text-white"
+                    }`}
+                  >
                     Complete KYC Now
                   </Text>
                 </TouchableOpacity>
@@ -507,11 +567,15 @@ export default function DeliveriesScreen() {
             }}
           >
             <View className="flex-row items-center mb-4">
-              <View className="bg-accent/20 rounded-2xl p-2.5 mr-3">
+              <View
+                className={`rounded-2xl p-2.5 mr-3 ${
+                  isDark ? "bg-accent/20" : "bg-blue-900/20"
+                }`}
+              >
                 <Icons.map
                   name={IconNames.mapOutline as any}
                   size={22}
-                  color="#AB8BFF"
+                  color={isDark ? "#AB8BFF" : "#1E3A8A"}
                 />
               </View>
               <View className="flex-1">
@@ -537,7 +601,7 @@ export default function DeliveriesScreen() {
                   <Icons.compass
                     name={IconNames.compassOutline as any}
                     size={20}
-                    color="#AB8BFF"
+                    color={isDark ? "#AB8BFF" : "#1E3A8A"}
                     style={{ marginRight: 8 }}
                   />
                   <Text
@@ -558,13 +622,21 @@ export default function DeliveriesScreen() {
                     className={`w-11 h-11 rounded-xl items-center justify-center ${
                       searchRadius <= 1
                         ? "bg-dark-200 opacity-40"
-                        : "bg-accent/20 border border-accent/30 active:bg-accent/30"
+                        : isDark
+                        ? "bg-accent/20 border border-accent/30 active:bg-accent/30"
+                        : "bg-blue-900/20 border border-blue-900/30 active:bg-blue-900/30"
                     }`}
                   >
                     <Icons.action
                       name={IconNames.removeCircle as any}
                       size={22}
-                      color={searchRadius <= 1 ? "#636366" : "#AB8BFF"}
+                      color={
+                        searchRadius <= 1
+                          ? "#636366"
+                          : isDark
+                          ? "#AB8BFF"
+                          : "#1E3A8A"
+                      }
                     />
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -576,13 +648,21 @@ export default function DeliveriesScreen() {
                     className={`w-11 h-11 rounded-xl items-center justify-center ${
                       searchRadius >= 20
                         ? "bg-dark-200 opacity-40"
-                        : "bg-accent/20 border border-accent/30 active:bg-accent/30"
+                        : isDark
+                        ? "bg-accent/20 border border-accent/30 active:bg-accent/30"
+                        : "bg-blue-900/20 border border-blue-900/30 active:bg-blue-900/30"
                     }`}
                   >
                     <Icons.action
                       name={IconNames.addCircle as any}
                       size={22}
-                      color={searchRadius >= 20 ? "#636366" : "#AB8BFF"}
+                      color={
+                        searchRadius >= 20
+                          ? "#636366"
+                          : isDark
+                          ? "#AB8BFF"
+                          : "#1E3A8A"
+                      }
                     />
                   </TouchableOpacity>
                 </View>
@@ -623,12 +703,14 @@ export default function DeliveriesScreen() {
               className={`rounded-2xl py-4 px-5 items-center flex-row justify-center ${
                 updatingRadius || searchRadius === (user?.searchRadiusKm || 7)
                   ? "bg-dark-100 opacity-50"
-                  : "bg-accent"
+                  : isDark
+                  ? "bg-accent"
+                  : "bg-blue-900"
               }`}
               style={
                 !updatingRadius && searchRadius !== (user?.searchRadiusKm || 7)
                   ? {
-                      shadowColor: "#AB8BFF",
+                      shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
                       shadowOffset: { width: 0, height: 4 },
                       shadowOpacity: 0.3,
                       shadowRadius: 8,
@@ -638,20 +720,23 @@ export default function DeliveriesScreen() {
               }
             >
               {updatingRadius ? (
-                <ActivityIndicator size="small" color="#030014" />
+                <ActivityIndicator
+                  size="small"
+                  color={isDark ? "#030014" : "#FFFFFF"}
+                />
               ) : (
                 <>
                   {searchRadius !== (user?.searchRadiusKm || 7) && (
                     <Icons.action
                       name={IconNames.saveOutline as any}
                       size={18}
-                      color="#030014"
+                      color={isDark ? "#030014" : "#FFFFFF"}
                       style={{ marginRight: 8 }}
                     />
                   )}
                   <Text
                     className={`font-bold text-base ${
-                      isDark ? "text-white" : "text-primary"
+                      isDark ? "text-white" : "text-white"
                     }`}
                   >
                     {searchRadius === (user?.searchRadiusKm || 7)
@@ -668,11 +753,15 @@ export default function DeliveriesScreen() {
         {isRider && isKycComplete && (
           <View className="mb-6">
             <View className="flex-row items-center mb-4">
-              <View className="bg-accent/20 rounded-xl p-2 mr-3">
+              <View
+                className={`rounded-xl p-2 mr-3 ${
+                  isDark ? "bg-accent/20" : "bg-blue-900/20"
+                }`}
+              >
                 <Icons.package
                   name={MCIconNames.packageVariant as any}
                   size={20}
-                  color="#AB8BFF"
+                  color={isDark ? "#AB8BFF" : "#1E3A8A"}
                 />
               </View>
               <Text
@@ -683,8 +772,16 @@ export default function DeliveriesScreen() {
                 My Accepted Orders
               </Text>
               {acceptedOrders.length > 0 && (
-                <View className="bg-accent/20 rounded-full px-3 py-1 ml-3">
-                  <Text className="text-accent text-xs font-bold">
+                <View
+                  className={`rounded-full px-3 py-1 ml-3 ${
+                    isDark ? "bg-accent/20" : "bg-blue-900/20"
+                  }`}
+                >
+                  <Text
+                    className={`text-xs font-bold ${
+                      isDark ? "text-accent" : "text-blue-900"
+                    }`}
+                  >
                     {acceptedOrders.length}
                   </Text>
                 </View>
@@ -698,7 +795,10 @@ export default function DeliveriesScreen() {
                     : "bg-white border-gray-200"
                 }`}
               >
-                <ActivityIndicator size="large" color="#AB8BFF" />
+                <ActivityIndicator
+                  size="large"
+                  color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                />
                 <Text
                   className={`mt-3 text-sm ${
                     isDark ? "text-light-300" : "text-gray-600"
@@ -766,8 +866,16 @@ export default function DeliveriesScreen() {
                             {order.pickup?.address?.slice(0, 40) || "N/A"}
                           </Text>
                         </View>
-                        <View className="bg-accent/20 rounded-lg px-3 py-1.5">
-                          <Text className="text-accent text-xs font-semibold capitalize">
+                        <View
+                          className={`rounded-lg px-3 py-1.5 ${
+                            isDark ? "bg-accent/20" : "bg-blue-900/20"
+                          }`}
+                        >
+                          <Text
+                            className={`text-xs font-semibold capitalize ${
+                              isDark ? "text-accent" : "text-blue-900"
+                            }`}
+                          >
                             {order.status}
                           </Text>
                         </View>
@@ -785,11 +893,15 @@ export default function DeliveriesScreen() {
           <View className="mb-6">
             <View className="mb-4">
               <View className="flex-row items-center mb-3">
-                <View className="bg-accent/20 rounded-xl p-2 mr-3">
+                <View
+                  className={`rounded-xl p-2 mr-3 ${
+                    isDark ? "bg-accent/20" : "bg-blue-900/20"
+                  }`}
+                >
                   <Icons.package
                     name={MCIconNames.packageVariant as any}
                     size={20}
-                    color="#AB8BFF"
+                    color={isDark ? "#AB8BFF" : "#1E3A8A"}
                   />
                 </View>
                 <Text
@@ -800,8 +912,16 @@ export default function DeliveriesScreen() {
                   Available Deliveries
                 </Text>
                 {availableOrders.length > 0 && (
-                  <View className="bg-accent/20 rounded-full px-3 py-1 ml-3">
-                    <Text className="text-accent text-xs font-bold">
+                  <View
+                    className={`rounded-full px-3 py-1 ml-3 ${
+                      isDark ? "bg-accent/20" : "bg-blue-900/20"
+                    }`}
+                  >
+                    <Text
+                      className={`text-xs font-bold ${
+                        isDark ? "text-accent" : "text-blue-900"
+                      }`}
+                    >
                       {availableOrders.length}
                     </Text>
                   </View>
@@ -818,9 +938,13 @@ export default function DeliveriesScreen() {
                   }}
                   className={`rounded-xl px-3 py-2.5 flex-row items-center ${
                     online && showAllOrders
+                      ? isDark
                       ? "bg-accent border border-accent/30"
+                        : "bg-blue-900 border border-blue-900/30"
                       : online
+                      ? isDark
                       ? "bg-accent/20 border border-accent/30"
+                        : "bg-blue-900/20 border border-blue-900/30"
                       : "bg-dark-100 opacity-50"
                   }`}
                 >
@@ -829,9 +953,13 @@ export default function DeliveriesScreen() {
                     size={16}
                     color={
                       online && showAllOrders
+                        ? isDark
                         ? "#030014"
+                          : "#FFFFFF"
                         : online
+                        ? isDark
                         ? "#AB8BFF"
+                          : "#1E3A8A"
                         : "#636366"
                     }
                     style={{ marginRight: 6 }}
@@ -839,9 +967,13 @@ export default function DeliveriesScreen() {
                   <Text
                     className={`text-xs font-semibold ${
                       online && showAllOrders
+                        ? isDark
                         ? "text-primary"
+                          : "text-white"
                         : online
+                        ? isDark
                         ? "text-accent"
+                          : "text-blue-900"
                         : "text-light-400"
                     }`}
                   >
@@ -853,17 +985,24 @@ export default function DeliveriesScreen() {
                   onPress={fetchAvailableOrders}
                   className={`rounded-xl p-2.5 ${
                     online
+                      ? isDark
                       ? "bg-accent/20 border border-accent/30"
+                        : "bg-blue-900/20 border border-blue-900/30"
                       : "bg-dark-100 opacity-50"
                   }`}
                 >
                   {loadingOrders ? (
-                    <ActivityIndicator size="small" color="#AB8BFF" />
+                    <ActivityIndicator
+                      size="small"
+                      color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                    />
                   ) : (
                     <Icons.action
                       name={IconNames.refreshCircle as any}
                       size={22}
-                      color={online ? "#AB8BFF" : "#636366"}
+                      color={
+                        online ? (isDark ? "#AB8BFF" : "#1E3A8A") : "#636366"
+                      }
                     />
                   )}
                 </TouchableOpacity>
@@ -884,7 +1023,10 @@ export default function DeliveriesScreen() {
                   elevation: 4,
                 }}
               >
-                <ActivityIndicator size="large" color="#AB8BFF" />
+                <ActivityIndicator
+                  size="large"
+                  color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                />
                 <Text
                   className={`mt-4 text-sm ${
                     isDark ? "text-light-300" : "text-gray-600"
@@ -946,11 +1088,15 @@ export default function DeliveriesScreen() {
                       <View className="flex-row items-start justify-between mb-4">
                         <View className="flex-1 mr-3">
                           <View className="flex-row items-center mb-2">
-                            <View className="bg-accent/20 rounded-lg p-1.5 mr-2">
+                            <View
+                              className={`rounded-lg p-1.5 mr-2 ${
+                                isDark ? "bg-accent/20" : "bg-blue-900/20"
+                              }`}
+                            >
                               <Icons.package
                                 name={MCIconNames.packageVariant as any}
                                 size={16}
-                                color="#AB8BFF"
+                                color={isDark ? "#AB8BFF" : "#1E3A8A"}
                               />
                             </View>
                             <Text className="text-light-100 font-bold text-base flex-1">
@@ -1053,15 +1199,19 @@ export default function DeliveriesScreen() {
                             }
                             className={`px-5 py-2.5 rounded-xl flex-row items-center ${
                               isKycComplete && acceptingOrderId !== orderId
+                                ? isDark
                                 ? "bg-accent"
+                                  : "bg-blue-900"
                                 : isKycComplete && acceptingOrderId === orderId
+                                ? isDark
                                 ? "bg-accent/50"
+                                  : "bg-blue-900/50"
                                 : "bg-neutral-100/50 opacity-60"
                             }`}
                             style={
                               isKycComplete
                                 ? {
-                                    shadowColor: "#AB8BFF",
+                                    shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
                                     shadowOffset: { width: 0, height: 4 },
                                     shadowOpacity: 0.3,
                                     shadowRadius: 8,
@@ -1074,10 +1224,14 @@ export default function DeliveriesScreen() {
                               <>
                                 <ActivityIndicator
                                   size="small"
-                                  color="#030014"
+                                  color={isDark ? "#030014" : "#FFFFFF"}
                                   style={{ marginRight: 6 }}
                                 />
-                                <Text className="text-primary font-bold text-sm">
+                                <Text
+                                  className={`font-bold text-sm ${
+                                    isDark ? "text-primary" : "text-white"
+                                  }`}
+                                >
                                   Accepting...
                                 </Text>
                               </>
@@ -1086,13 +1240,21 @@ export default function DeliveriesScreen() {
                                 <Icons.action
                                   name={IconNames.checkmarkCircle as any}
                                   size={18}
-                                  color={isKycComplete ? "#030014" : "#9CA4AB"}
+                                  color={
+                                    isKycComplete
+                                      ? isDark
+                                        ? "#030014"
+                                        : "#FFFFFF"
+                                      : "#9CA4AB"
+                                  }
                                   style={{ marginRight: 6 }}
                                 />
                                 <Text
                                   className={`font-bold text-sm ${
                                     isKycComplete
+                                      ? isDark
                                       ? "text-primary"
+                                        : "text-white"
                                       : "text-light-400"
                                   }`}
                                 >

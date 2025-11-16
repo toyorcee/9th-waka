@@ -19,6 +19,9 @@ import presenceRoutes from "./routes/presence.js";
 import riderRoutes from "./routes/riders.js";
 import userRoutes from "./routes/user.js";
 import {
+  scheduleFridayReminder,
+  schedulePaymentBlocking,
+  schedulePayoutGeneration,
   scheduleSaturdayReminder,
   scheduleSundayPayment,
 } from "./services/scheduledNotifications.js";
@@ -156,8 +159,11 @@ httpServer.listen(PORT, "0.0.0.0", () => {
   console.log(`🔐 Auth API: ${publicBase}/api/auth`);
 
   // Initialize scheduled notifications (cron jobs)
-  scheduleSaturdayReminder(); // Reminder on Saturday (for Sunday payment)
-  scheduleSundayPayment(); // Payment day on Sunday
+  schedulePayoutGeneration(); // Generate payouts for all riders on Sunday 12 AM (start of new week)
+  scheduleFridayReminder(); // Reminder on Friday 9 AM (payment due tomorrow)
+  scheduleSaturdayReminder(); // Reminder on Saturday 9 AM (payment due TODAY)
+  scheduleSundayPayment(); // Final reminder on Sunday 9 AM (grace period ends today)
+  schedulePaymentBlocking(); // Block overdue riders on Monday 12 AM (after grace period)
 
   // SMTP transport startup verification
   const emailUser = process.env.EMAIL_USER;

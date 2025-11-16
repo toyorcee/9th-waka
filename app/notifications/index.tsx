@@ -129,7 +129,7 @@ export default function NotificationsScreen() {
               : "bg-dark-100 border-accent/50"
             : item.read
             ? "bg-white border-gray-200"
-            : "bg-white border-accent/50"
+            : "bg-white border-blue-900/50"
         }`}
       >
         <View className="flex-row items-start justify-between">
@@ -157,7 +157,11 @@ export default function NotificationsScreen() {
             </Text>
           </View>
           {!item.read && (
-            <View className="w-2 h-2 rounded-full bg-accent mt-2" />
+            <View
+              className={`w-2 h-2 rounded-full mt-2 ${
+                isDark ? "bg-accent" : "bg-blue-900"
+              }`}
+            />
           )}
         </View>
       </TouchableOpacity>
@@ -171,11 +175,11 @@ export default function NotificationsScreen() {
       style={{ paddingTop: insets.top + 12 }}
     >
       <View
-        className={`px-6 pb-4 border-b ${
+        className={`px-6 pb-6 border-b ${
           isDark ? "border-neutral-100/40" : "border-gray-200"
         }`}
       >
-        <View className="flex-row items-center justify-between mb-4">
+        <View className="flex-row items-center mb-4">
           <TouchableOpacity
             onPress={() => {
               if (router.canGoBack()) {
@@ -184,29 +188,51 @@ export default function NotificationsScreen() {
                 router.replace(Routes.tabs.home as any);
               }
             }}
-            className={`w-9 h-9 rounded-full items-center justify-center ${
-              isDark ? "bg-dark-200" : "bg-gray-100"
+            className={`w-11 h-11 rounded-full border items-center justify-center mr-4 ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
             }`}
           >
             <Icons.navigation
               name={IconNames.arrowBack as any}
               size={20}
-              color={isDark ? "#FFFFFF" : "#000000"}
+              color={isDark ? "#9CA4AB" : "#6E6E73"}
             />
           </TouchableOpacity>
+        </View>
 
+        {/* Enhanced Header */}
+        <View className="items-center mb-4">
+          <View
+            className={`rounded-2xl p-4 mb-3 ${
+              isDark ? "bg-accent/20" : "bg-blue-900/20"
+            }`}
+          >
+            <Icons.notification
+              name={IconNames.notificationsOutline as any}
+              size={32}
+              color={isDark ? "#AB8BFF" : "#1E3A8A"}
+            />
+          </View>
           <Text
-            className={`text-lg font-bold flex-1 text-center -ml-9 ${
+            className={`text-2xl font-bold text-center mb-2 ${
               isDark ? "text-light-100" : "text-black"
             }`}
           >
             Notifications
           </Text>
-
-          <View className="w-9 h-9" />
+          <Text
+            className={`text-sm text-center leading-5 px-4 ${
+              isDark ? "text-light-400" : "text-gray-600"
+            }`}
+          >
+            Stay updated with your orders, deliveries, and important updates
+            from 9thWaka
+          </Text>
         </View>
 
-        <View className="flex-row items-center justify-between">
+        <View className="flex-row items-center justify-between mt-2">
           <Text
             className={`text-sm ${isDark ? "text-light-300" : "text-gray-600"}`}
           >
@@ -222,7 +248,9 @@ export default function NotificationsScreen() {
                   ? isDark
                     ? "text-light-400"
                     : "text-gray-500"
-                  : "text-accent"
+                  : isDark
+                  ? "text-accent"
+                  : "text-blue-900"
               }`}
             >
               Mark all read
@@ -233,7 +261,10 @@ export default function NotificationsScreen() {
 
       {loading && !refreshing && notifications.length === 0 ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#AB8BFF" />
+          <ActivityIndicator
+            size="large"
+            color={isDark ? "#AB8BFF" : "#1E3A8A"}
+          />
         </View>
       ) : (
         <FlatList
@@ -259,7 +290,7 @@ export default function NotificationsScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor="#AB8BFF"
+              tintColor={isDark ? "#AB8BFF" : "#1E3A8A"}
             />
           }
           ListEmptyComponent={() => (

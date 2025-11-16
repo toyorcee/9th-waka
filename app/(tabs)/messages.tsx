@@ -471,7 +471,9 @@ export default function MessagesScreen() {
                 <View
                   className={`w-14 h-14 rounded-full items-center justify-center ${
                     hasUnread
-                      ? "bg-accent/20"
+                      ? isDark
+                        ? "bg-accent/20"
+                        : "bg-blue-900/20"
                       : isDark
                       ? "bg-dark-100"
                       : "bg-gray-100"
@@ -481,7 +483,13 @@ export default function MessagesScreen() {
                     name={IconNames.personCircle as any}
                     size={28}
                     color={
-                      hasUnread ? "#AB8BFF" : isDark ? "#9CA4AB" : "#6E6E73"
+                      hasUnread
+                        ? isDark
+                          ? "#AB8BFF"
+                          : "#1E3A8A"
+                        : isDark
+                        ? "#9CA4AB"
+                        : "#6E6E73"
                     }
                   />
                 </View>
@@ -492,8 +500,16 @@ export default function MessagesScreen() {
               )}
               {/* Unread Badge */}
               {hasUnread && (
-                <View className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-accent items-center justify-center border-2 border-white">
-                  <Text className="text-primary text-[10px] font-bold">
+                <View
+                  className={`absolute -top-1 -right-1 w-5 h-5 rounded-full items-center justify-center border-2 border-white ${
+                    isDark ? "bg-accent" : "bg-blue-900"
+                  }`}
+                >
+                  <Text
+                    className={`text-[10px] font-bold ${
+                      isDark ? "text-primary" : "text-white"
+                    }`}
+                  >
                     {conversation.unreadCount > 9
                       ? "9+"
                       : conversation.unreadCount}
@@ -668,7 +684,7 @@ export default function MessagesScreen() {
                   ],
                 }}
               >
-                <RobotIcon size={40} color="#30D158" helpBubble={true} />
+                <RobotIcon size={40} helpBubble={true} />
               </Animated.View>
             </View>
             <View className="flex-1">
@@ -772,16 +788,18 @@ export default function MessagesScreen() {
             onPress={() => setActiveTab("chats")}
             className={`flex-1 py-4 items-center border-b-2 ${
               activeTab === "chats"
-                ? "border-accent"
-                : isDark
-                ? "border-transparent"
+                ? isDark
+                  ? "border-accent"
+                  : "border-blue-900"
                 : "border-transparent"
             }`}
           >
             <Text
               className={`font-bold text-base ${
                 activeTab === "chats"
-                  ? "text-accent"
+                  ? isDark
+                    ? "text-accent"
+                    : "text-blue-900"
                   : isDark
                   ? "text-light-400"
                   : "text-gray-500"
@@ -790,8 +808,16 @@ export default function MessagesScreen() {
               Chats
             </Text>
             {conversations.length > 0 && (
-              <View className="bg-accent/20 rounded-full px-2 py-0.5 mt-1">
-                <Text className="text-accent text-[10px] font-bold">
+              <View
+                className={`rounded-full px-2 py-0.5 mt-1 ${
+                  isDark ? "bg-accent/20" : "bg-blue-900/20"
+                }`}
+              >
+                <Text
+                  className={`text-[10px] font-bold ${
+                    isDark ? "text-accent" : "text-blue-900"
+                  }`}
+                >
                   {conversations.length}
                 </Text>
               </View>
@@ -801,16 +827,18 @@ export default function MessagesScreen() {
             onPress={() => setActiveTab("archived")}
             className={`flex-1 py-4 items-center border-b-2 ${
               activeTab === "archived"
-                ? "border-accent"
-                : isDark
-                ? "border-transparent"
+                ? isDark
+                  ? "border-accent"
+                  : "border-blue-900"
                 : "border-transparent"
             }`}
           >
             <Text
               className={`font-bold text-base ${
                 activeTab === "archived"
-                  ? "text-accent"
+                  ? isDark
+                    ? "text-accent"
+                    : "text-blue-900"
                   : isDark
                   ? "text-light-400"
                   : "text-gray-500"
@@ -819,8 +847,16 @@ export default function MessagesScreen() {
               Archived
             </Text>
             {archivedConversations.length > 0 && (
-              <View className="bg-accent/20 rounded-full px-2 py-0.5 mt-1">
-                <Text className="text-accent text-[10px] font-bold">
+              <View
+                className={`rounded-full px-2 py-0.5 mt-1 ${
+                  isDark ? "bg-accent/20" : "bg-blue-900/20"
+                }`}
+              >
+                <Text
+                  className={`text-[10px] font-bold ${
+                    isDark ? "text-accent" : "text-blue-900"
+                  }`}
+                >
                   {archivedConversations.length}
                 </Text>
               </View>
@@ -838,14 +874,17 @@ export default function MessagesScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => loadConversations(true)}
-              tintColor="#AB8BFF"
+              tintColor={isDark ? "#AB8BFF" : "#1E3A8A"}
             />
           }
           showsVerticalScrollIndicator={false}
         >
           {loading && !refreshing ? (
             <View className="flex-1 items-center justify-center py-20">
-              <ActivityIndicator size="large" color="#AB8BFF" />
+              <ActivityIndicator
+                size="large"
+                color={isDark ? "#AB8BFF" : "#1E3A8A"}
+              />
               <Text
                 className={`mt-4 text-sm ${
                   isDark ? "text-light-300" : "text-gray-600"
@@ -870,13 +909,13 @@ export default function MessagesScreen() {
               >
                 <View
                   className={`rounded-full p-8 mb-6 ${
-                    isDark ? "bg-accent/10" : "bg-accent/5"
+                    isDark ? "bg-accent/10" : "bg-blue-900/10"
                   }`}
                 >
                   <Icons.communication
                     name={IconNames.chatbubbleOutline as any}
                     size={64}
-                    color={isDark ? "#AB8BFF" : "#6E6E73"}
+                    color={isDark ? "#AB8BFF" : "#1E3A8A"}
                   />
                 </View>
               </Animated.View>
@@ -911,9 +950,11 @@ export default function MessagesScreen() {
                       router.push(Routes.tabs.deliveries as any);
                     }
                   }}
-                  className="bg-accent rounded-2xl px-8 py-4 flex-row items-center"
+                  className={`rounded-2xl px-8 py-4 flex-row items-center ${
+                    isDark ? "bg-accent" : "bg-blue-900"
+                  }`}
                   style={{
-                    shadowColor: "#AB8BFF",
+                    shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
                     shadowOffset: { width: 0, height: 4 },
                     shadowOpacity: 0.3,
                     shadowRadius: 8,

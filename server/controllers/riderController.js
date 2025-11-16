@@ -17,6 +17,30 @@ function getWeekRange(date = new Date()) {
   return { start, end };
 }
 
+// Get payment due date (Saturday 11:59 PM - end of the week)
+function getPaymentDueDate(weekEnd) {
+  const dueDate = new Date(weekEnd);
+  // weekEnd is Sunday 00:00:00, so we subtract 1 day to get Saturday
+  dueDate.setDate(dueDate.getDate() - 1); // Saturday
+  dueDate.setHours(23, 59, 59, 999); // End of Saturday
+  return dueDate;
+}
+
+// Get payment grace period deadline (Sunday 11:59 PM - 1 day allowance)
+function getPaymentGraceDeadline(weekEnd) {
+  const graceDeadline = new Date(weekEnd);
+  // weekEnd is Sunday 00:00:00, so set to end of Sunday
+  graceDeadline.setHours(23, 59, 59, 999); // End of Sunday
+  return graceDeadline;
+}
+
+// Check if payment is overdue (after grace period)
+function isPaymentOverdue(payout, weekEnd) {
+  if (!payout || payout.status === "paid") return false;
+  const graceDeadline = getPaymentGraceDeadline(weekEnd);
+  return new Date() > graceDeadline;
+}
+
 export const getEarnings = async (req, res) => {
   try {
     if (!req.user || req.user.role !== "rider") {
@@ -79,6 +103,29 @@ export const getEarnings = async (req, res) => {
       weekStart: start,
     });
 
+    // Calculate payment due date and status
+    const paymentDueDate = getPaymentDueDate(end);
+    const graceDeadline = getPaymentGraceDeadline(end);
+    const isOverdue = currentPayout
+      ? isPaymentOverdue(currentPayout, end)
+      : false;
+    const daysUntilDue = Math.ceil(
+      (paymentDueDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+    );
+    const daysUntilGraceDeadline = Math.ceil(
+      (graceDeadline.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+    );
+    const isPaymentDue = weeklyTotals.commission > 0 && daysUntilDue <= 0;
+    const isInGracePeriod =
+      weeklyTotals.commission > 0 &&
+      daysUntilDue <= 0 &&
+      daysUntilGraceDeadline > 0;
+
+    // Check if rider is blocked
+    const rider = await User.findById(req.user._id).select(
+      "paymentBlocked paymentBlockedAt paymentBlockedReason"
+    );
+
     // Format trip earnings
     const trips = weekOrders.map((order) => {
       const fin = order.financial || {
@@ -113,9 +160,26 @@ export const getEarnings = async (req, res) => {
               paidAt: currentPayout.paidAt,
             }
           : null,
+        paymentDueDate,
+        graceDeadline,
+        isPaymentDue,
+        isOverdue,
+        isInGracePeriod,
+        daysUntilDue,
+        daysUntilGraceDeadline,
       },
       allTime: {
         totals: allTimeTotals,
+      },
+      paymentStatus: {
+        isBlocked: rider?.paymentBlocked || false,
+        blockedAt: rider?.paymentBlockedAt || null,
+        blockedReason: rider?.paymentBlockedReason || null,
+        strikes: rider?.strikes || 0,
+        strikeHistory: rider?.strikeHistory || [],
+        accountDeactivated: rider?.accountDeactivated || false,
+        accountDeactivatedAt: rider?.accountDeactivatedAt || null,
+        accountDeactivatedReason: rider?.accountDeactivatedReason || null,
       },
     });
   } catch (e) {
@@ -128,6 +192,29 @@ export const updatePresence = async (req, res) => {
     if (!req.user || req.user.role !== "rider") {
       return res.status(403).json({ success: false, error: "Rider only" });
     }
+
+    // Check if account is deactivated
+    const rider = await User.findById(req.user._id).select(
+      "accountDeactivated paymentBlocked strikes"
+    );
+    if (rider?.accountDeactivated) {
+      return res.status(403).json({
+        success: false,
+        error:
+          "Your account has been deactivated after receiving 3 strikes for late payment. Please contact support to resolve this issue.",
+      });
+    }
+
+    // Check if rider is blocked due to payment
+    if (rider?.paymentBlocked) {
+      return res.status(403).json({
+        success: false,
+        error: `Your account is blocked due to overdue commission payment. You have ${
+          rider.strikes || 0
+        } strike(s). Please contact support to resolve this issue.`,
+      });
+    }
+
     const { online, lat, lng } = req.body || {};
     if (typeof online !== "boolean") {
       return res

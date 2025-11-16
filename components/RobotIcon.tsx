@@ -18,7 +18,7 @@ export default function RobotIcon({
   const isDark = theme === "dark";
 
   // Theme-aware colors
-  const iconColor = color || (isDark ? "#30D158" : "#30D158");
+  const iconColor = color || (isDark ? "#AB8BFF" : "#1E3A8A");
   const bubbleBg = isDark ? "#FF69B4" : "#FFB6C1";
   const bubbleText = isDark ? "#FFFFFF" : "#FFFFFF";
 
