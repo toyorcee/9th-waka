@@ -60,7 +60,6 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 7,
       min: 1,
-      max: 20,
     },
     // KYC fields for riders
     nin: {
@@ -137,6 +136,18 @@ const userSchema = new mongoose.Schema(
     accountDeactivatedReason: {
       type: String,
       default: null,
+    },
+    // Rating fields (for riders)
+    averageRating: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5,
+    },
+    totalRatings: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
     // Email verification fields
     verificationCode: {

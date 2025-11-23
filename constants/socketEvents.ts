@@ -2,7 +2,7 @@ export const SocketEvents = {
   ORDER_CREATED: "order.created",
   ORDER_ASSIGNED: "order.assigned",
   ORDER_STATUS_UPDATED: "order.status_updated",
-  NEW_ORDER_AVAILABLE: "order.new_available", 
+  NEW_ORDER_AVAILABLE: "order.new_available",
   DELIVERY_OTP: "delivery.otp",
   DELIVERY_VERIFIED: "delivery.verified",
   DELIVERY_PROOF_UPDATED: "delivery.proof_updated",
@@ -10,6 +10,7 @@ export const SocketEvents = {
   PROFILE_UPDATED: "profile.updated",
   PAYOUT_GENERATED: "payout.generated",
   PAYOUT_PAID: "payout.paid",
+  PAYMENT_CONFIRMED: "payment.confirmed",
   PRICE_CHANGE_REQUESTED: "price.change_requested",
   PRICE_CHANGE_ACCEPTED: "price.change_accepted",
   PRICE_CHANGE_REJECTED: "price.change_rejected",
@@ -18,6 +19,7 @@ export const SocketEvents = {
   CHAT_MESSAGE_READ: "chat.message_read",
   USER_ONLINE: "user.online",
   USER_OFFLINE: "user.offline",
+  RATING_RECEIVED: "rating.received",
 } as const;
 
 export type SocketEventName = (typeof SocketEvents)[keyof typeof SocketEvents];

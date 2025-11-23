@@ -98,6 +98,37 @@ async function sendEmailNotification(to, subject, title, message) {
   }
 }
 
+// Export for direct email sending (e.g., invoices)
+export const sendEmailDirectly = async (to, subject, title, htmlContent) => {
+  // Skip email if SKIP_EMAIL is set
+  if (process.env.SKIP_EMAIL === "true") {
+    console.log(`✉️ [EMAIL] Skipped email (SKIP_EMAIL=true) to ${to}`);
+    return false;
+  }
+
+  const transporter = createEmailTransporter();
+  if (!transporter) {
+    return false;
+  }
+
+  try {
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+      to,
+      subject,
+      html: htmlContent || buildDarkEmailTemplate(title, "", null),
+    });
+    console.log(`✉️ [EMAIL] Email sent to ${to}`);
+    return true;
+  } catch (error) {
+    console.error(
+      `❌ [EMAIL] Failed to send email to ${to}:`,
+      error?.message || error
+    );
+    return false;
+  }
+};
+
 /**
  * Create and send notification respecting user preferences
  * @param {string} userId - User ID
@@ -171,9 +202,7 @@ export const createAndSendNotification = async (
         { type, metadata: metadata || {} }
       );
       if (!pushResult) {
-        console.warn(
-          `⚠️ [PUSH] Notification not delivered to user ${userId}`
-        );
+        console.warn(`⚠️ [PUSH] Notification not delivered to user ${userId}`);
       }
     } catch (error) {
       console.error(

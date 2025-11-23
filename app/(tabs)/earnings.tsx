@@ -12,9 +12,10 @@ import {
 import { socketClient } from "@/services/socketClient";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Image,
   Modal,
   ScrollView,
@@ -23,6 +24,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Reanimated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
@@ -45,6 +47,39 @@ export default function EarningsScreen() {
   const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(
     null
   );
+
+  // Animation refs
+  const icon1Anim = useRef(new Animated.Value(1)).current;
+  const icon2Anim = useRef(new Animated.Value(1)).current;
+  const icon3Anim = useRef(new Animated.Value(1)).current;
+
+  // Start icon animations after 3 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const createPulseAnimation = (animValue: Animated.Value) => {
+        return Animated.loop(
+          Animated.sequence([
+            Animated.timing(animValue, {
+              toValue: 1.2,
+              duration: 1000,
+              useNativeDriver: true,
+            }),
+            Animated.timing(animValue, {
+              toValue: 1,
+              duration: 1000,
+              useNativeDriver: true,
+            }),
+          ])
+        );
+      };
+
+      createPulseAnimation(icon1Anim).start();
+      createPulseAnimation(icon2Anim).start();
+      createPulseAnimation(icon3Anim).start();
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const isRider = user?.role === "rider";
   const tabBarHeight = 65;
@@ -113,7 +148,7 @@ export default function EarningsScreen() {
     return (
       <View
         className={`flex-1 items-center justify-center ${
-          isDark ? "bg-primary" : "bg-white"
+          isDark ? "bg-black" : "bg-white"
         }`}
       >
         <ActivityIndicator
@@ -128,7 +163,7 @@ export default function EarningsScreen() {
     return (
       <View
         className={`flex-1 items-center justify-center ${
-          isDark ? "bg-primary" : "bg-white"
+          isDark ? "bg-black" : "bg-white"
         }`}
       >
         <Text className={`${isDark ? "text-light-300" : "text-gray-600"}`}>
@@ -142,12 +177,41 @@ export default function EarningsScreen() {
     return (
       <View
         className={`flex-1 items-center justify-center ${
-          isDark ? "bg-primary" : "bg-white"
+          isDark ? "bg-black" : "bg-white"
         }`}
       >
-        <Text className={`${isDark ? "text-light-300" : "text-gray-600"}`}>
-          No earnings data
-        </Text>
+        <Animated.View
+          style={{
+            transform: [{ scale: icon1Anim }],
+          }}
+          className="items-center"
+        >
+          <View
+            className={`rounded-full p-8 mb-6 ${
+              isDark ? "bg-dark-100" : "bg-gray-100"
+            }`}
+          >
+            <Icons.money
+              name={MCIconNames.cash as any}
+              size={64}
+              color={isDark ? "#AB8BFF" : "#1E3A8A"}
+            />
+          </View>
+          <Text
+            className={`text-xl font-bold mb-2 ${
+              isDark ? "text-light-400" : "text-black"
+            }`}
+          >
+            No Earnings Yet
+          </Text>
+          <Text
+            className={`text-sm text-center px-8 ${
+              isDark ? "text-light-400" : "text-gray-500"
+            }`}
+          >
+            Start accepting deliveries to see your earnings here
+          </Text>
+        </Animated.View>
       </View>
     );
   }
@@ -169,30 +233,42 @@ export default function EarningsScreen() {
   const daysUntilGraceDeadline = currentWeek.daysUntilGraceDeadline || 0;
 
   return (
-    <>
-      <ScrollView
-        className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
-        contentContainerStyle={{
+    <View className={`flex-1 ${isDark ? "bg-black" : "bg-white"}`}>
+      {/* Fixed Header */}
+      <View
+        className="absolute top-0 left-0 right-0 z-50"
+        style={{
           paddingTop: insets.top,
-          paddingBottom: contentBottomPadding,
+          backgroundColor: isDark
+            ? "rgba(0, 0, 0, 0.98)"
+            : "rgba(255, 255, 255, 0.98)",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          elevation: 8,
         }}
-        showsVerticalScrollIndicator={false}
       >
-        <View className="pt-6 px-5 pb-10">
-          {/* Modern Header with Icon */}
-          <View className="flex-row items-center justify-between mb-6">
+        <View className="px-5 py-4">
+          <View className="flex-row items-center justify-between mb-4">
             <View className="flex-row items-center flex-1">
-              <View
-                className={`rounded-xl p-2.5 mr-3 ${
-                  isDark ? "bg-accent/20" : "bg-blue-900/20"
-                }`}
+              <Animated.View
+                style={{
+                  transform: [{ scale: icon1Anim }],
+                }}
               >
-                <Icons.money
-                  name={MCIconNames.cash as any}
-                  size={22}
-                  color={isDark ? "#AB8BFF" : "#1E3A8A"}
-                />
-              </View>
+                <View
+                  className={`rounded-xl p-2.5 mr-3 ${
+                    isDark ? "bg-accent/20" : "bg-blue-900/20"
+                  }`}
+                >
+                  <Icons.money
+                    name={MCIconNames.cash as any}
+                    size={22}
+                    color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                  />
+                </View>
+              </Animated.View>
               <View className="flex-1">
                 <Text
                   className={`text-xl font-bold mb-0.5 ${
@@ -234,6 +310,133 @@ export default function EarningsScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Statistics Cards */}
+          <Reanimated.View
+            entering={FadeInDown.delay(100).duration(400)}
+            className={`rounded-3xl p-4 mb-4 ${
+              isDark ? "bg-secondary" : "bg-white"
+            }`}
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 8,
+              elevation: 4,
+            }}
+          >
+            <View className="flex-row items-center justify-between">
+              <Animated.View
+                style={{
+                  transform: [{ scale: icon1Anim }],
+                }}
+                className="flex-1 items-center"
+              >
+                <View
+                  className={`rounded-2xl p-3 mb-2 ${
+                    isDark ? "bg-dark-100" : "bg-blue-50"
+                  }`}
+                >
+                  <Icons.money
+                    name={MCIconNames.cash as any}
+                    size={24}
+                    color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                  />
+                </View>
+                <Text
+                  className={`text-xs mb-1 ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
+                  This Week
+                </Text>
+                <Text
+                  className={`text-lg font-bold ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
+                  ₦{currentWeek.totals.riderNet.toLocaleString()}
+                </Text>
+              </Animated.View>
+
+              <Animated.View
+                style={{
+                  transform: [{ scale: icon2Anim }],
+                }}
+                className="flex-1 items-center"
+              >
+                <View
+                  className={`rounded-2xl p-3 mb-2 ${
+                    isDark ? "bg-dark-100" : "bg-green-50"
+                  }`}
+                >
+                  <Icons.action
+                    name={IconNames.chevronUp as any}
+                    size={24}
+                    color={isDark ? "#30D158" : "#10B981"}
+                  />
+                </View>
+                <Text
+                  className={`text-xs mb-1 ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
+                  All Time
+                </Text>
+                <Text
+                  className={`text-lg font-bold ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
+                  ₦{allTime.totals.riderNet.toLocaleString()}
+                </Text>
+              </Animated.View>
+
+              <Animated.View
+                style={{
+                  transform: [{ scale: icon3Anim }],
+                }}
+                className="flex-1 items-center"
+              >
+                <View
+                  className={`rounded-2xl p-3 mb-2 ${
+                    isDark ? "bg-dark-100" : "bg-purple-50"
+                  }`}
+                >
+                  <Icons.package
+                    name={MCIconNames.packageVariant as any}
+                    size={24}
+                    color={isDark ? "#AB8BFF" : "#8B5CF6"}
+                  />
+                </View>
+                <Text
+                  className={`text-xs mb-1 ${
+                    isDark ? "text-light-400" : "text-gray-500"
+                  }`}
+                >
+                  Deliveries
+                </Text>
+                <Text
+                  className={`text-lg font-bold ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
+                  {allTime.totals.count}
+                </Text>
+              </Animated.View>
+            </View>
+          </Reanimated.View>
+        </View>
+      </View>
+
+      <ScrollView
+        className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
+        contentContainerStyle={{
+          paddingTop: insets.top + 200,
+          paddingBottom: contentBottomPadding,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View className="pt-6 px-5 pb-10">
           {/* Account Deactivated Warning */}
           {paymentStatus.accountDeactivated && (
             <View
@@ -2006,6 +2209,6 @@ export default function EarningsScreen() {
           )}
         </View>
       </Modal>
-    </>
+    </View>
   );
 }

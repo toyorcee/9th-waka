@@ -20,7 +20,7 @@ import { socketClient } from "@/services/socketClient";
 import { toAbsoluteUrl } from "@/services/url";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -36,6 +36,7 @@ import {
   GestureHandlerRootView,
   Swipeable,
 } from "react-native-gesture-handler";
+import Reanimated, { FadeInRight, SlideInRight } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
@@ -76,6 +77,11 @@ export default function MessagesScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [hasOnlineAdmins, setHasOnlineAdmins] = useState(false);
   const [checkingAdmins, setCheckingAdmins] = useState(false);
+
+  // Slide-in animation from left to right
+  const slideAnim = useRef(new Animated.Value(-300)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const hasAnimatedRef = useRef(false);
 
   const loadConversations = async (showRefreshing = false) => {
     if (!isAuthenticated) return;
@@ -154,6 +160,25 @@ export default function MessagesScreen() {
       checkOnlineAdmins();
       const interval = setInterval(checkOnlineAdmins, 30000);
       return () => clearInterval(interval);
+    }
+  }, [isAuthenticated]);
+
+  // Slide-in animation on mount
+  useEffect(() => {
+    if (!hasAnimatedRef.current && isAuthenticated) {
+      hasAnimatedRef.current = true;
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ]).start();
     }
   }, [isAuthenticated]);
 
@@ -620,9 +645,16 @@ export default function MessagesScreen() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <View className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}>
+      <Animated.View
+        className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
+        style={{
+          transform: [{ translateX: slideAnim }],
+          opacity: opacityAnim,
+        }}
+      >
         {/* Header */}
-        <View
+        <Reanimated.View
+          entering={FadeInRight.delay(100).duration(400)}
           className={`px-6 pt-4 pb-3 ${isDark ? "bg-secondary" : "bg-white"}`}
           style={{
             paddingTop: insets.top + 12,
@@ -724,11 +756,12 @@ export default function MessagesScreen() {
               color={isDark ? "#9CA4AB" : "#6E6E73"}
             />
           </TouchableOpacity>
-        </View>
+        </Reanimated.View>
 
         {/* Search Bar */}
         {currentConversations.length > 0 && (
-          <View
+          <Reanimated.View
+            entering={FadeInRight.delay(200).duration(400)}
             className={`px-6 py-3 ${isDark ? "bg-secondary" : "bg-white"}`}
             style={{
               borderBottomWidth: 1,
@@ -771,11 +804,12 @@ export default function MessagesScreen() {
                 </TouchableOpacity>
               )}
             </View>
-          </View>
+          </Reanimated.View>
         )}
 
         {/* Tabs */}
-        <View
+        <Reanimated.View
+          entering={FadeInRight.delay(300).duration(400)}
           className={`flex-row ${isDark ? "bg-secondary" : "bg-white"}`}
           style={{
             borderBottomWidth: 1,
@@ -862,7 +896,7 @@ export default function MessagesScreen() {
               </View>
             )}
           </TouchableOpacity>
-        </View>
+        </Reanimated.View>
 
         {/* Content */}
         <ScrollView
@@ -880,7 +914,10 @@ export default function MessagesScreen() {
           showsVerticalScrollIndicator={false}
         >
           {loading && !refreshing ? (
-            <View className="flex-1 items-center justify-center py-20">
+            <Reanimated.View
+              entering={FadeInRight.delay(100).duration(400)}
+              className="flex-1 items-center justify-center py-20"
+            >
               <ActivityIndicator
                 size="large"
                 color={isDark ? "#AB8BFF" : "#1E3A8A"}
@@ -892,9 +929,12 @@ export default function MessagesScreen() {
               >
                 Loading conversations...
               </Text>
-            </View>
+            </Reanimated.View>
           ) : filteredConversations.length === 0 ? (
-            <View className="flex-1 items-center justify-center px-6 py-20">
+            <Reanimated.View
+              entering={FadeInRight.delay(200).duration(400)}
+              className="flex-1 items-center justify-center px-6 py-20"
+            >
               <Animated.View
                 style={{
                   transform: [
@@ -972,16 +1012,24 @@ export default function MessagesScreen() {
                   </Text>
                 </TouchableOpacity>
               )}
-            </View>
+            </Reanimated.View>
           ) : (
             <View>
-              {filteredConversations.map((conversation) =>
-                renderConversationItem(conversation, activeTab === "archived")
-              )}
+              {filteredConversations.map((conversation, index) => (
+                <Reanimated.View
+                  key={conversation._id || conversation.orderId}
+                  entering={SlideInRight.delay(index * 50).duration(400)}
+                >
+                  {renderConversationItem(
+                    conversation,
+                    activeTab === "archived"
+                  )}
+                </Reanimated.View>
+              ))}
             </View>
           )}
         </ScrollView>
-      </View>
+      </Animated.View>
 
       {/* Chat Modal */}
       {chatOrderId && (

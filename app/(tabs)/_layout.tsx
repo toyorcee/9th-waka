@@ -90,7 +90,7 @@ export default function TabsLayout() {
         },
         tabBarStyle: isAuthenticated
           ? {
-              backgroundColor: isDark ? "#030014" : "#FFFFFF",
+              backgroundColor: isDark ? "#000000" : "#FFFFFF",
               borderTopLeftRadius: 25,
               borderTopRightRadius: 25,
               borderBottomLeftRadius: 0,

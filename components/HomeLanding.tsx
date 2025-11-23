@@ -1,6 +1,6 @@
 import NotificationBell from "@/components/NotificationBell";
 import OrderTrackingMap from "@/components/OrderTrackingMap";
-import { IconNames, Icons } from "@/constants/icons";
+import { IconNames, Icons, MCIconNames } from "@/constants/icons";
 import { images } from "@/constants/images";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -23,6 +23,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Reanimated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function OrderSkeletonLoader() {
@@ -129,7 +135,39 @@ export default function HomeLanding() {
   const promoCarouselRef = useRef<FlatList>(null);
   const screenWidth = Dimensions.get("window").width;
 
+  // Animation for Sign In button bounce/shake
+  const signInBounceAnim = useRef(new Animated.Value(1)).current;
+  const signInShakeAnim = useRef(new Animated.Value(0)).current;
+
+  // Animation for Welcome text
+  const welcomeFadeAnim = useRef(new Animated.Value(0)).current;
+  const welcomeSlideAnim = useRef(new Animated.Value(20)).current;
+
+  // Slide in animation for home page
+  const translateX = useSharedValue(-screenWidth);
+  const opacity = useSharedValue(0);
+  const hasAnimatedRef = useRef(false);
+
   const isDark = theme === "dark";
+
+  // Slide in from left animation only on mount when user is authenticated
+  useEffect(() => {
+    if (isAuthenticated && !hasAnimatedRef.current) {
+      // First mount for authenticated user - run animation
+      translateX.value = -screenWidth;
+      opacity.value = 0;
+      translateX.value = withSpring(0, {
+        damping: 15,
+        stiffness: 100,
+      });
+      opacity.value = withTiming(1, { duration: 400 });
+      hasAnimatedRef.current = true;
+    } else {
+      // Subsequent visits or not authenticated - no animation
+      translateX.value = 0;
+      opacity.value = 1;
+    }
+  }, [isAuthenticated]);
 
   // Promo banners data
   const promoBanners = [
@@ -159,15 +197,21 @@ export default function HomeLanding() {
     },
   ];
 
-  // Featured partners data
-  const featuredPartners = [
-    { id: "1", name: "BoltFood", logo: images.partners.boltFood },
-    { id: "2", name: "Chowdeck", logo: images.partners.chowdeck },
-    { id: "3", name: "DHL", logo: images.partners.dhl },
-    { id: "4", name: "Glovo", logo: images.partners.glovo },
-    { id: "5", name: "Item7", logo: images.partners.item7 },
-    { id: "6", name: "Xtabel-Buka", logo: images.partners.xtabelBuka },
-  ];
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(welcomeFadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.spring(welcomeSlideAnim, {
+        toValue: 0,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   // Auto-slide promo carousel
   useEffect(() => {
@@ -195,6 +239,94 @@ export default function HomeLanding() {
       return () => clearInterval(interval);
     }
   }, [isAuthenticated, user?.role]);
+
+  useEffect(() => {
+    if (isAuthenticated) return;
+
+    const timer = setTimeout(() => {
+      Animated.sequence([
+        Animated.parallel([
+          Animated.spring(signInBounceAnim, {
+            toValue: 1.15,
+            tension: 100,
+            friction: 3,
+            useNativeDriver: true,
+          }),
+          Animated.sequence([
+            Animated.timing(signInShakeAnim, {
+              toValue: -8,
+              duration: 50,
+              useNativeDriver: true,
+            }),
+            Animated.timing(signInShakeAnim, {
+              toValue: 8,
+              duration: 50,
+              useNativeDriver: true,
+            }),
+            Animated.timing(signInShakeAnim, {
+              toValue: -6,
+              duration: 50,
+              useNativeDriver: true,
+            }),
+            Animated.timing(signInShakeAnim, {
+              toValue: 6,
+              duration: 50,
+              useNativeDriver: true,
+            }),
+            Animated.timing(signInShakeAnim, {
+              toValue: 0,
+              duration: 50,
+              useNativeDriver: true,
+            }),
+          ]),
+        ]),
+        Animated.spring(signInBounceAnim, {
+          toValue: 1,
+          tension: 100,
+          friction: 3,
+          useNativeDriver: true,
+        }),
+        Animated.delay(200),
+        Animated.parallel([
+          Animated.spring(signInBounceAnim, {
+            toValue: 1.1,
+            tension: 100,
+            friction: 3,
+            useNativeDriver: true,
+          }),
+          Animated.sequence([
+            Animated.timing(signInShakeAnim, {
+              toValue: -5,
+              duration: 40,
+              useNativeDriver: true,
+            }),
+            Animated.timing(signInShakeAnim, {
+              toValue: 5,
+              duration: 40,
+              useNativeDriver: true,
+            }),
+            Animated.timing(signInShakeAnim, {
+              toValue: 0,
+              duration: 40,
+              useNativeDriver: true,
+            }),
+          ]),
+        ]),
+        Animated.spring(signInBounceAnim, {
+          toValue: 1,
+          tension: 100,
+          friction: 3,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, 3000);
+
+    return () => {
+      clearTimeout(timer);
+      signInBounceAnim.setValue(1);
+      signInShakeAnim.setValue(0);
+    };
+  }, [isAuthenticated, signInBounceAnim, signInShakeAnim]);
 
   const loadActiveOrders = async () => {
     if (!isAuthenticated) return;
@@ -236,8 +368,15 @@ export default function HomeLanding() {
     }
   };
 
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: translateX.value }],
+      opacity: opacity.value,
+    };
+  });
+
   return (
-    <>
+    <Reanimated.View style={[{ flex: 1 }, animatedStyle]}>
       {/* Fixed Header */}
       <View
         className={`absolute top-0 left-0 right-0 z-50 ${
@@ -279,32 +418,43 @@ export default function HomeLanding() {
               />
             </TouchableOpacity>
             {!isAuthenticated ? (
-              <TouchableOpacity
-                onPress={() => router.push(Routes.standalone.auth)}
-                className="rounded-xl px-4 py-2.5 flex-row items-center"
-                style={{
-                  backgroundColor: isDark ? "#AB8BFF" : "#1E3A8A",
-                  shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 4,
-                  elevation: 4,
-                }}
-              >
-                <Icons.action
-                  name={IconNames.arrowForward as any}
-                  size={18}
-                  color={isDark ? "#030014" : "#FFFFFF"}
-                  style={{ marginRight: 6 }}
-                />
+              <View className="items-center">
+                <Animated.View
+                  style={{
+                    transform: [
+                      { scale: signInBounceAnim },
+                      { translateX: signInShakeAnim },
+                    ],
+                  }}
+                >
+                  <TouchableOpacity
+                    onPress={() => router.push(Routes.standalone.auth)}
+                    className="rounded-full w-10 h-10 items-center justify-center"
+                    style={{
+                      backgroundColor: isDark ? "#AB8BFF" : "#1E3A8A",
+                      shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 4,
+                      elevation: 4,
+                      padding: 0,
+                    }}
+                  >
+                    <Icons.user
+                      name={IconNames.personCircle as any}
+                      size={35}
+                      color={isDark ? "#030014" : "#FFFFFF"}
+                    />
+                  </TouchableOpacity>
+                </Animated.View>
                 <Text
-                  className={`font-bold text-sm ${
-                    isDark ? "text-primary" : "text-white"
+                  className={`text-xs font-semibold mt-1.5 ${
+                    isDark ? "text-light-300" : "text-gray-700"
                   }`}
                 >
                   Sign In
                 </Text>
-              </TouchableOpacity>
+              </View>
             ) : (
               <>
                 <NotificationBell />
@@ -359,7 +509,7 @@ export default function HomeLanding() {
         className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
         contentContainerStyle={{
           paddingTop: insets.top + 100,
-          paddingBottom: tabBarPadding,
+          paddingBottom: isAuthenticated ? tabBarPadding : 100,
           paddingHorizontal: 24,
         }}
         showsVerticalScrollIndicator={false}
@@ -367,24 +517,31 @@ export default function HomeLanding() {
         <View>
           {/* Welcome Section */}
           <View className="mb-6 mt-2">
-            <Text
-              className={`text-2xl font-bold mb-1 ${
-                isDark ? "text-light-100" : "text-black"
-              }`}
+            <Animated.View
               style={{
-                fontStyle: "italic",
-                letterSpacing: 0.5,
-                fontFamily: Platform.select({
-                  ios: "Georgia",
-                  android: "serif",
-                  default: "Georgia",
-                }),
+                opacity: welcomeFadeAnim,
+                transform: [{ translateY: welcomeSlideAnim }],
               }}
             >
-              {isAuthenticated && user?.fullName
-                ? `Welcome, ${user.fullName.split(" ")[0]}!`
-                : "Welcome to 9thWaka"}
-            </Text>
+              <Text
+                className={`text-3xl font-bold mb-1 ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+                style={{
+                  letterSpacing: 1,
+                  fontFamily: Platform.select({
+                    ios: "System",
+                    android: "sans-serif-medium",
+                    default: "System",
+                  }),
+                  fontWeight: "700",
+                }}
+              >
+                {isAuthenticated && user?.fullName
+                  ? `Welcome, ${user.fullName.split(" ")[0]}!`
+                  : "Welcome to 9thWaka"}
+              </Text>
+            </Animated.View>
             <Text
               className={`text-sm ${
                 isDark ? "text-light-400" : "text-gray-500"
@@ -661,60 +818,62 @@ export default function HomeLanding() {
             </View>
           </View>
 
-          {/* Track Shipment Search Bar */}
-          <View className="mb-4">
-            <View
-              className={`flex-row items-center rounded-2xl px-4 py-3 border ${
-                isDark
-                  ? "bg-dark-100 border-neutral-100"
-                  : "bg-gray-100 border-gray-200"
-              }`}
-              style={{
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: isDark ? 0.1 : 0.05,
-                shadowRadius: 4,
-                elevation: 2,
-              }}
-            >
-              <Icons.search
-                name={IconNames.search as any}
-                size={20}
-                color={isDark ? "#9CA4AB" : "#6E6E73"}
-                style={{ marginRight: 12 }}
-              />
-              <TextInput
-                placeholder="Enter tracking code or order ID"
-                placeholderTextColor={isDark ? "#9CA4AB" : "#6E6E73"}
-                value={trackingCode}
-                onChangeText={setTrackingCode}
-                className={`flex-1 text-base ${
-                  isDark ? "text-light-100" : "text-black"
+          {/* Track Shipment Search Bar - Only show when authenticated */}
+          {isAuthenticated && (
+            <View className="mb-4">
+              <View
+                className={`flex-row items-center rounded-2xl px-4 py-3 border ${
+                  isDark
+                    ? "bg-dark-100 border-neutral-100"
+                    : "bg-gray-100 border-gray-200"
                 }`}
-                onSubmitEditing={() => {
-                  if (trackingCode.trim()) {
-                    router.push(`/orders/${trackingCode.trim()}` as any);
-                  }
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: isDark ? 0.1 : 0.05,
+                  shadowRadius: 4,
+                  elevation: 2,
                 }}
-              />
-              {trackingCode.length > 0 && (
-                <TouchableOpacity
-                  onPress={() => {
+              >
+                <Icons.search
+                  name={IconNames.search as any}
+                  size={20}
+                  color={isDark ? "#9CA4AB" : "#6E6E73"}
+                  style={{ marginRight: 12 }}
+                />
+                <TextInput
+                  placeholder="Enter tracking code or order ID"
+                  placeholderTextColor={isDark ? "#9CA4AB" : "#6E6E73"}
+                  value={trackingCode}
+                  onChangeText={setTrackingCode}
+                  className={`flex-1 text-base ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                  onSubmitEditing={() => {
                     if (trackingCode.trim()) {
                       router.push(`/orders/${trackingCode.trim()}` as any);
                     }
                   }}
-                  className="ml-2"
-                >
-                  <Icons.action
-                    name={IconNames.arrowForward as any}
-                    size={20}
-                    color={isDark ? "#AB8BFF" : "#1E3A8A"}
-                  />
-                </TouchableOpacity>
-              )}
+                />
+                {trackingCode.length > 0 && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (trackingCode.trim()) {
+                        router.push(`/orders/${trackingCode.trim()}` as any);
+                      }
+                    }}
+                    className="ml-2"
+                  >
+                    <Icons.action
+                      name={IconNames.arrowForward as any}
+                      size={20}
+                      color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                    />
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
-          </View>
+          )}
 
           {/* Promo Carousel */}
           <View className="mb-6">
@@ -874,27 +1033,25 @@ export default function HomeLanding() {
 
             {isAuthenticated && user?.role === "rider" ? (
               /* Rider Quick Actions */
-              <View className="flex-row flex-wrap gap-2.5">
+              <View className="flex-row flex-wrap gap-3">
                 <TouchableOpacity
                   onPress={() => handleAction("deliveries")}
-                  className={`px-4 py-3.5 flex-1 min-w-[30%] ${
-                    isDark ? "bg-accent" : ""
+                  className={`px-4 py-4 flex-1 min-w-[30%] rounded-2xl ${
+                    isDark ? "bg-accent" : "bg-blue-900"
                   }`}
                   style={{
-                    borderRadius: 20,
-                    backgroundColor: isDark ? undefined : "#1E3A8A",
                     shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
-                    shadowOffset: { width: 0, height: 3 },
+                    shadowOffset: { width: 0, height: 4 },
                     shadowOpacity: 0.3,
-                    shadowRadius: 6,
-                    elevation: 5,
+                    shadowRadius: 8,
+                    elevation: 6,
                   }}
                 >
                   <Icons.package
                     name={IconNames.packageOutline as any}
-                    size={20}
+                    size={22}
                     color={isDark ? "#030014" : "#FFFFFF"}
-                    style={{ marginBottom: 6, alignSelf: "center" }}
+                    style={{ marginBottom: 8, alignSelf: "center" }}
                   />
                   <Text
                     className={`font-bold text-center text-xs ${
@@ -906,24 +1063,22 @@ export default function HomeLanding() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleAction("track")}
-                  className={`px-4 py-3.5 flex-1 min-w-[30%] ${
-                    isDark ? "bg-info/80" : ""
+                  className={`px-4 py-4 flex-1 min-w-[30%] rounded-2xl ${
+                    isDark ? "bg-info" : "bg-blue-500"
                   }`}
                   style={{
-                    borderRadius: 20,
-                    backgroundColor: isDark ? undefined : "#0EA5E9",
-                    shadowColor: isDark ? "#5AC8FA" : "#0EA5E9",
-                    shadowOffset: { width: 0, height: 3 },
+                    shadowColor: isDark ? "#5AC8FA" : "#3B82F6",
+                    shadowOffset: { width: 0, height: 4 },
                     shadowOpacity: 0.3,
-                    shadowRadius: 6,
-                    elevation: 5,
+                    shadowRadius: 8,
+                    elevation: 6,
                   }}
                 >
                   <Icons.map
                     name={IconNames.mapOutline as any}
-                    size={20}
+                    size={22}
                     color="#FFFFFF"
-                    style={{ marginBottom: 6, alignSelf: "center" }}
+                    style={{ marginBottom: 8, alignSelf: "center" }}
                   />
                   <Text className="text-white font-bold text-center text-xs">
                     My Deliveries
@@ -931,13 +1086,12 @@ export default function HomeLanding() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleAction("earnings")}
-                  className={`border-2 px-4 py-3.5 flex-1 min-w-[30%] ${
+                  className={`px-4 py-4 flex-1 min-w-[30%] rounded-2xl border-2 ${
                     isDark
-                      ? "border-accent/30 bg-secondary"
-                      : "border-blue-900/30 bg-white"
+                      ? "border-accent/40 bg-secondary"
+                      : "border-blue-900/40 bg-white"
                   }`}
                   style={{
-                    borderRadius: 20,
                     shadowColor: "#000",
                     shadowOffset: { width: 0, height: 2 },
                     shadowOpacity: 0.1,
@@ -946,10 +1100,10 @@ export default function HomeLanding() {
                   }}
                 >
                   <Icons.money
-                    name={IconNames.cash as any}
-                    size={20}
+                    name={MCIconNames.cash as any}
+                    size={22}
                     color={isDark ? "#AB8BFF" : "#1E3A8A"}
-                    style={{ marginBottom: 6, alignSelf: "center" }}
+                    style={{ marginBottom: 8, alignSelf: "center" }}
                   />
                   <Text
                     className={`font-bold text-center text-xs ${
@@ -1377,32 +1531,25 @@ export default function HomeLanding() {
 
           {/* CTA for guests */}
           {!isAuthenticated && (
-            <View className="mb-6">
+            <View className="mb-6 items-center">
               <TouchableOpacity
                 onPress={async () => {
                   await navigationHelper.setPendingAction("request");
                   router.push(Routes.standalone.auth);
                 }}
-                className="rounded-2xl py-4 px-6 flex-row items-center justify-center"
-                style={{
-                  backgroundColor: isDark ? "#AB8BFF" : "#1E3A8A",
-                  shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 8,
-                  elevation: 6,
-                }}
+                className="flex-row items-center justify-center"
+                activeOpacity={0.7}
               >
                 <Icons.action
-                  name={IconNames.addCircle as any}
+                  name={IconNames.arrowUp as any}
                   size={20}
-                  color={isDark ? "#030014" : "#FFFFFF"}
+                  color={isDark ? "#AB8BFF" : "#1E3A8A"}
                   style={{ marginRight: 8 }}
                 />
                 <Text
-                  className="font-bold text-base"
+                  className="font-semibold text-base"
                   style={{
-                    color: isDark ? "#030014" : "#FFFFFF",
+                    color: isDark ? "#AB8BFF" : "#1E3A8A",
                   }}
                 >
                   Get Started - Request Your First Delivery
@@ -1437,6 +1584,65 @@ export default function HomeLanding() {
           />
         )}
       </Modal>
-    </>
+
+      {/* Fixed Bottom CTA Footer for Unauthenticated Users */}
+      {!isAuthenticated && (
+        <View
+          className={`absolute bottom-0 left-0 right-0 ${
+            isDark ? "bg-primary" : "bg-white"
+          }`}
+          style={{
+            borderTopLeftRadius: 25,
+            borderTopRightRadius: 25,
+            borderTopWidth: 1,
+            borderColor: isDark ? "#3A3A3C" : "#E5E5EA",
+            paddingTop: 16,
+            paddingBottom: insets.bottom > 0 ? insets.bottom : 20,
+            paddingHorizontal: 24,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: isDark ? 0.3 : 0.1,
+            shadowRadius: 8,
+            elevation: 8,
+            zIndex: 1000,
+            minHeight: 90,
+          }}
+        >
+          <TouchableOpacity
+            onPress={() => router.push(Routes.standalone.auth)}
+            className="rounded-2xl py-4 px-6 flex-row items-center justify-center"
+            style={{
+              backgroundColor: isDark ? "#AB8BFF" : "#1E3A8A",
+              shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 6,
+            }}
+          >
+            <Icons.user
+              name={IconNames.personCircle as any}
+              size={20}
+              color={isDark ? "#030014" : "#FFFFFF"}
+              style={{ marginRight: 8 }}
+            />
+            <Text
+              className="font-bold text-base"
+              style={{
+                color: isDark ? "#030014" : "#FFFFFF",
+              }}
+            >
+              Sign In to Get Started
+            </Text>
+            <Icons.action
+              name={IconNames.arrowForward as any}
+              size={18}
+              color={isDark ? "#030014" : "#FFFFFF"}
+              style={{ marginLeft: 8 }}
+            />
+          </TouchableOpacity>
+        </View>
+      )}
+    </Reanimated.View>
   );
 }

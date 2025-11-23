@@ -306,12 +306,10 @@ export const uploadVehiclePicture = async (req, res) => {
 export const updateSearchRadius = async (req, res) => {
   try {
     if (req.user.role !== "rider") {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          error: "Only riders can update search radius",
-        });
+      return res.status(403).json({
+        success: false,
+        error: "Only riders can update search radius",
+      });
     }
 
     const { searchRadiusKm } = req.body;
@@ -323,10 +321,10 @@ export const updateSearchRadius = async (req, res) => {
       });
     }
 
-    if (searchRadiusKm < 1 || searchRadiusKm > 20) {
+    if (searchRadiusKm < 1 || searchRadiusKm > 30) {
       return res.status(400).json({
         success: false,
-        error: "Search radius must be between 1km and 20km",
+        error: "Search radius must be between 1km and 30km",
       });
     }
 

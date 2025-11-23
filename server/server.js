@@ -16,6 +16,7 @@ import notificationRoutes from "./routes/notifications.js";
 import orderRoutes from "./routes/orders.js";
 import payoutRoutes from "./routes/payouts.js";
 import presenceRoutes from "./routes/presence.js";
+import ratingRoutes from "./routes/ratings.js";
 import riderRoutes from "./routes/riders.js";
 import userRoutes from "./routes/user.js";
 import {
@@ -128,11 +129,8 @@ app.use("/api/analytics", analyticsRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/presence", presenceRoutes);
 app.use("/api/geocoding", geocodingRoutes);
-// Add more routes as you build them
-// app.use("/api/delivery", deliveryRoutes);
-// app.use("/api/rider", riderRoutes);
+app.use("/api/ratings", ratingRoutes);
 
-// Health check endpoint
 app.get("/api/health", (req, res) => {
   res.json({
     status: "OK",

@@ -12,6 +12,8 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Dimensions,
   Linking,
   Platform,
   ScrollView,
@@ -21,9 +23,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Reanimated, { FadeInDown, SlideInUp } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
-
 export default function NewOrderScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -75,6 +77,23 @@ export default function NewOrderScreen() {
 
   const lastPickup = useRef("");
   const lastDropoff = useRef("");
+
+  // Animation refs for page slide-in from bottom
+  const screenHeight = Dimensions.get("window").height;
+  const pageSlideAnim = useRef(new Animated.Value(screenHeight)).current;
+  const pageOpacityAnim = useRef(new Animated.Value(0)).current;
+  const hasPageAnimatedRef = useRef(false);
+
+  // Icon animations (animate after 3 seconds)
+  const icon1Anim = useRef(new Animated.Value(1)).current;
+  const icon2Anim = useRef(new Animated.Value(1)).current;
+  const icon3Anim = useRef(new Animated.Value(1)).current;
+  const icon4Anim = useRef(new Animated.Value(1)).current;
+
+  // Carousel auto-scroll refs
+  const vehicleCarouselRef = useRef<ScrollView>(null);
+  const carouselScrollX = useRef(0);
+  const carouselAutoScrollInterval = useRef<number | null>(null);
 
   // --------------------------------------------------
   // 🔧 Helper: Valid lat/lng
@@ -251,6 +270,104 @@ export default function NewOrderScreen() {
     const timer = setTimeout(doEstimate, 900);
     return () => clearTimeout(timer);
   }, [pickupCoords, dropoffCoords, pickupAddress, dropoffAddress]);
+
+  // Page slide-in animation from bottom
+  useEffect(() => {
+    if (!hasPageAnimatedRef.current) {
+      hasPageAnimatedRef.current = true;
+      Animated.parallel([
+        Animated.timing(pageSlideAnim, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pageOpacityAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      pageSlideAnim.setValue(0);
+      pageOpacityAnim.setValue(1);
+    }
+  }, []);
+
+  // Icon animations after 3 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const createPulseAnimation = (
+        animValue: Animated.Value,
+        delay: number
+      ) => {
+        return Animated.loop(
+          Animated.sequence([
+            Animated.delay(delay),
+            Animated.timing(animValue, {
+              toValue: 1.2,
+              duration: 600,
+              useNativeDriver: true,
+            }),
+            Animated.timing(animValue, {
+              toValue: 1,
+              duration: 600,
+              useNativeDriver: true,
+            }),
+          ])
+        );
+      };
+
+      const anim1 = createPulseAnimation(icon1Anim, 0);
+      const anim2 = createPulseAnimation(icon2Anim, 150);
+      const anim3 = createPulseAnimation(icon3Anim, 300);
+      const anim4 = createPulseAnimation(icon4Anim, 450);
+
+      anim1.start();
+      anim2.start();
+      anim3.start();
+      anim4.start();
+
+      return () => {
+        anim1.stop();
+        anim2.stop();
+        anim3.stop();
+        anim4.stop();
+      };
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Auto-scroll vehicle carousel continuously
+  useEffect(() => {
+    if (!estimatedPrice || !vehicleCarouselRef.current) return;
+
+    const startAutoScroll = () => {
+      carouselAutoScrollInterval.current = setInterval(() => {
+        if (vehicleCarouselRef.current) {
+          carouselScrollX.current += 142; // Width of each item + gap
+
+          // Reset to start if we've scrolled past all items (5 items * 142 = 710)
+          if (carouselScrollX.current >= 710) {
+            carouselScrollX.current = 0;
+          }
+
+          vehicleCarouselRef.current.scrollTo({
+            x: carouselScrollX.current,
+            animated: true,
+          });
+        }
+      }, 2000); // Scroll every 2 seconds
+    };
+
+    startAutoScroll();
+
+    return () => {
+      if (carouselAutoScrollInterval.current) {
+        clearInterval(carouselAutoScrollInterval.current);
+      }
+    };
+  }, [estimatedPrice]);
 
   const getAddressSuggestions = async (query: string) => {
     try {
@@ -430,7 +547,11 @@ export default function NewOrderScreen() {
       });
 
       const orderId = res.data?.order?._id || res.data?.order?.id;
-      Toast.show({ type: "success", text1: "Order created" });
+      Toast.show({
+        type: "success",
+        text1: "Order created successfully",
+        text2: "Your order has been placed and is being processed",
+      });
 
       if (orderId) {
         router.replace({
@@ -457,18 +578,30 @@ export default function NewOrderScreen() {
   // UI
   // --------------------------------------------------
   return (
-    <ScrollView
-      className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
-      contentContainerStyle={{
-        paddingTop: insets.top + 20,
-        paddingBottom: insets.bottom + 40,
-        paddingHorizontal: 24,
+    <Animated.View
+      style={{
+        flex: 1,
+        transform: [{ translateY: pageSlideAnim }],
+        opacity: pageOpacityAnim,
       }}
-      showsVerticalScrollIndicator={false}
     >
-      <View>
-        {/* HEADER */}
-        <View className="flex-row items-center justify-between mb-6">
+      {/* Fixed Header */}
+      <View
+        className={`absolute top-0 left-0 right-0 z-50 ${
+          isDark ? "bg-primary" : "bg-white"
+        }`}
+        style={{
+          paddingTop: insets.top + 10,
+          paddingBottom: 16,
+        paddingHorizontal: 24,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: isDark ? 0.15 : 0.08,
+          shadowRadius: 8,
+          elevation: 8,
+      }}
+    >
+        <View className="flex-row items-center justify-between">
           <TouchableOpacity
             onPress={() => {
               if (router.canGoBack()) {
@@ -498,20 +631,28 @@ export default function NewOrderScreen() {
           </TouchableOpacity>
           <View className="flex-1 items-center">
             <View className="flex-row items-center">
+              <Animated.View
+                style={{
+                  transform: [{ scale: icon1Anim }],
+                }}
+              >
               <View
-                className={`rounded-lg p-1.5 mr-2 ${
-                  isDark ? "bg-accent/20" : "bg-blue-900/20"
+                  className={`rounded-2xl p-2.5 mr-3 ${
+                    isDark
+                      ? "bg-accent/30 border border-accent/40"
+                      : "bg-blue-50 border border-blue-100"
                 }`}
               >
                 <Icons.action
                   name={IconNames.addCircle as any}
-                  size={18}
+                    size={24}
                   color={isDark ? "#AB8BFF" : "#1E3A8A"}
                 />
               </View>
+              </Animated.View>
               <Text
                 className={`text-2xl font-bold ${
-                  isDark ? "text-light-100" : "text-black"
+                  isDark ? "text-light-100" : "text-gray-900"
                 }`}
               >
                 New Delivery
@@ -520,44 +661,53 @@ export default function NewOrderScreen() {
           </View>
           <View className="w-11" />
         </View>
+        </View>
 
-        {/* DEFAULT ADDRESS SECTION */}
+      <ScrollView
+        className={`flex-1 ${isDark ? "bg-primary" : "bg-gray-50"}`}
+        contentContainerStyle={{
+          paddingTop: insets.top + 90,
+          paddingBottom: insets.bottom + 40,
+          paddingHorizontal: 24,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View>
+          {/* DEFAULT ADDRESS SECTION - OPay Style with Parent Background */}
         {user?.defaultAddress ? (
+            <Reanimated.View
+              entering={FadeInDown.delay(100).duration(400)}
+              className="mb-6"
+            >
           <View
-            className={`rounded-3xl mb-6 border p-5 ${
-              isDark
-                ? useDefaultAddress
-                  ? "bg-accent/10 border-accent/30"
-                  : "bg-secondary border-neutral-100"
-                : useDefaultAddress
-                ? "bg-blue-900/5 border-blue-800/20"
-                : "bg-white border-gray-200"
+                className={`rounded-3xl p-5 ${
+                  isDark ? "bg-secondary" : "bg-white"
             }`}
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: isDark ? 0.1 : 0.05,
               shadowRadius: 8,
-              elevation: 4,
+                  elevation: 3,
             }}
           >
             <View className="flex-row items-center justify-between">
               <View className="flex-1 mr-3">
                 <View className="flex-row items-center mb-3">
                   <View
-                    className={`rounded-lg p-1.5 mr-2 ${
+                        className={`rounded-xl p-2 mr-3 ${
                       useDefaultAddress
                         ? isDark
                           ? "bg-accent/20"
-                          : "bg-blue-900/20"
+                              : "bg-blue-50"
                         : isDark
                         ? "bg-accent/10"
-                        : "bg-blue-900/5"
+                            : "bg-gray-100"
                     }`}
                   >
                     <Icons.status
                       name={IconNames.checkmarkCircle as any}
-                      size={18}
+                          size={20}
                       color={
                         useDefaultAddress
                           ? isDark
@@ -578,13 +728,13 @@ export default function NewOrderScreen() {
                   </Text>
                 </View>
                 <Text
-                  className={`text-sm ml-10 mb-3 ${
+                      className={`text-sm ml-14 mb-3 ${
                     isDark ? "text-light-300" : "text-gray-600"
                   }`}
                 >
                   Auto-fill pickup address from your profile
                 </Text>
-                <View className="flex-row items-start ml-10">
+                    <View className="flex-row items-start ml-14">
                   <Icons.location
                     name={IconNames.locationOutline as any}
                     size={18}
@@ -635,27 +785,34 @@ export default function NewOrderScreen() {
               />
             </View>
           </View>
+            </Reanimated.View>
         ) : (
+            <Reanimated.View
+              entering={FadeInDown.delay(100).duration(400)}
+              className="mb-6"
+            >
           <View
-            className={`border rounded-3xl p-5 mb-6 ${
-              isDark
-                ? "bg-secondary/50 border-neutral-100"
-                : "bg-white border-gray-200"
+                className={`rounded-3xl p-5 ${
+                  isDark ? "bg-secondary" : "bg-white"
             }`}
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: isDark ? 0.05 : 0.03,
-              shadowRadius: 4,
-              elevation: 2,
+                  shadowOpacity: isDark ? 0.1 : 0.05,
+                  shadowRadius: 8,
+                  elevation: 3,
             }}
           >
             <View className="flex-row items-start">
-              <View className="bg-info/20 rounded-lg p-1.5 mr-3">
+                  <View
+                    className={`rounded-xl p-2 mr-3 ${
+                      isDark ? "bg-info/20" : "bg-blue-50"
+                    }`}
+                  >
                 <Icons.info
                   name={IconNames.informationOutline as any}
-                  size={18}
-                  color="#5AC8FA"
+                      size={20}
+                      color={isDark ? "#5AC8FA" : "#1E3A8A"}
                 />
               </View>
               <View className="flex-1">
@@ -671,8 +828,8 @@ export default function NewOrderScreen() {
                     isDark ? "text-light-400" : "text-gray-500"
                   }`}
                 >
-                  Add your default address in your profile to quickly fill it
-                  here with one tap
+                      Add your default address in your profile to quickly fill
+                      it here with one tap
                 </Text>
                 <TouchableOpacity
                   onPress={() => router.push("/profile/edit" as any)}
@@ -700,11 +857,16 @@ export default function NewOrderScreen() {
               </View>
             </View>
           </View>
+            </Reanimated.View>
         )}
 
         {/* PICKUP FIELD */}
+          <Reanimated.View
+            entering={FadeInDown.delay(200).duration(400)}
+            className="mb-4"
+          >
         <View
-          className={`border rounded-3xl p-5 mb-4 ${
+              className={`border rounded-3xl p-5 ${
             isDark
               ? "bg-secondary border-neutral-100"
               : "bg-white border-gray-200"
@@ -719,13 +881,23 @@ export default function NewOrderScreen() {
           }}
         >
           <View className="flex-row items-center mb-3">
-            <View className="bg-info/20 rounded-lg p-1.5 mr-2">
+                <Animated.View
+                  style={{
+                    transform: [{ scale: icon2Anim }],
+                  }}
+                >
+                  <View
+                    className={`rounded-xl p-2 mr-3 ${
+                      isDark ? "bg-info/20" : "bg-blue-50"
+                    }`}
+                  >
               <Icons.location
                 name={IconNames.locationOutline as any}
-                size={16}
-                color="#5AC8FA"
+                      size={20}
+                      color={isDark ? "#5AC8FA" : "#1E3A8A"}
               />
             </View>
+                </Animated.View>
             <Text
               className={`font-bold text-base ${
                 isDark ? "text-light-100" : "text-black"
@@ -815,8 +987,9 @@ export default function NewOrderScreen() {
           {pickupError && !geocodingPickup && (
             <View className="mt-2">
               <Text className="text-red-500 text-xs">
-                ❌ No results found for "{pickupError}". Please be more specific
-                (e.g., "Lekki Phase 1, Lagos" instead of just "Lekki").
+                    ❌ No results found for "{pickupError}". Please be more
+                    specific (e.g., "Lekki Phase 1, Lagos" instead of just
+                    "Lekki").
               </Text>
             </View>
           )}
@@ -885,7 +1058,8 @@ export default function NewOrderScreen() {
                     isDark ? "text-light-400" : "text-gray-500"
                   }`}
                 >
-                  Tip: Save your address in your profile to quickly fill it here
+                      Tip: Save your address in your profile to quickly fill it
+                      here
                 </Text>
               </View>
             )}
@@ -900,10 +1074,15 @@ export default function NewOrderScreen() {
             )}
           </View>
         </View>
+          </Reanimated.View>
 
         {/* DROPOFF FIELD */}
+          <Reanimated.View
+            entering={FadeInDown.delay(300).duration(400)}
+            className="mb-4"
+          >
         <View
-          className={`border rounded-3xl p-5 mb-4 ${
+              className={`border rounded-3xl p-5 ${
             isDark
               ? "bg-secondary border-neutral-100"
               : "bg-white border-gray-200"
@@ -919,13 +1098,23 @@ export default function NewOrderScreen() {
           }}
         >
           <View className="flex-row items-center mb-3">
-            <View className="bg-accentWarm/20 rounded-lg p-1.5 mr-2">
+                <Animated.View
+                  style={{
+                    transform: [{ scale: icon3Anim }],
+                  }}
+                >
+                  <View
+                    className={`rounded-xl p-2 mr-3 ${
+                      isDark ? "bg-accentWarm/20" : "bg-orange-50"
+                    }`}
+                  >
               <Icons.location
                 name={IconNames.locationOutline as any}
-                size={16}
-                color="#FF9500"
+                      size={20}
+                      color={isDark ? "#FF9500" : "#EA580C"}
               />
             </View>
+                </Animated.View>
             <Text
               className={`font-bold text-base ${
                 isDark ? "text-light-100" : "text-black"
@@ -971,7 +1160,8 @@ export default function NewOrderScreen() {
             <View className="mt-2">
               <Text className="text-red-500 text-xs">
                 ❌ No results found for "{dropoffError}". Please be more
-                specific (e.g., "Lekki Phase 1, Lagos" instead of just "Lekki").
+                    specific (e.g., "Lekki Phase 1, Lagos" instead of just
+                    "Lekki").
               </Text>
             </View>
           )}
@@ -1034,10 +1224,15 @@ export default function NewOrderScreen() {
             </View>
           </View>
         </View>
+          </Reanimated.View>
 
         {/* ITEMS */}
+          <Reanimated.View
+            entering={FadeInDown.delay(400).duration(400)}
+            className="mb-4"
+          >
         <View
-          className={`border rounded-3xl p-5 mb-4 ${
+              className={`border rounded-3xl p-5 ${
             isDark
               ? "bg-secondary border-neutral-100"
               : "bg-white border-gray-200"
@@ -1051,17 +1246,23 @@ export default function NewOrderScreen() {
           }}
         >
           <View className="flex-row items-center mb-3">
+                <Animated.View
+                  style={{
+                    transform: [{ scale: icon4Anim }],
+                  }}
+                >
             <View
-              className={`rounded-lg p-1.5 mr-2 ${
-                isDark ? "bg-accent/20" : "bg-blue-900/20"
+                    className={`rounded-xl p-2 mr-3 ${
+                      isDark ? "bg-accent/20" : "bg-purple-50"
               }`}
             >
               <Icons.package
                 name={IconNames.packageOutline as any}
-                size={16}
-                color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                      size={20}
+                      color={isDark ? "#AB8BFF" : "#9333EA"}
               />
             </View>
+                </Animated.View>
             <Text
               className={`font-bold text-base ${
                 isDark ? "text-light-100" : "text-black"
@@ -1073,7 +1274,7 @@ export default function NewOrderScreen() {
           <TextInput
             value={items}
             onChangeText={setItems}
-            placeholder="Laptop + charger"
+                placeholder="Describe your package (e.g., Laptop + charger, Documents, Food items)"
             placeholderTextColor="#9CA4AB"
             className={`rounded-xl px-4 py-3.5 border ${
               isDark
@@ -1082,9 +1283,14 @@ export default function NewOrderScreen() {
             }`}
           />
         </View>
+          </Reanimated.View>
 
         {/* VEHICLE SELECTION */}
         {estimatedPrice && (
+            <Reanimated.View
+              entering={SlideInUp.delay(500).duration(500).springify()}
+              className="mb-4"
+            >
           <View
             className={`border rounded-3xl p-5 mb-4 ${
               isDark
@@ -1120,73 +1326,96 @@ export default function NewOrderScreen() {
               </Text>
             </View>
             <ScrollView
+                  ref={vehicleCarouselRef}
               horizontal
               showsHorizontalScrollIndicator={false}
               className="mb-2"
+                  contentContainerStyle={{
+                    paddingHorizontal: 16,
+                    paddingVertical: 4,
+                  }}
+                  snapToInterval={142}
+                  decelerationRate="fast"
+                  snapToAlignment="start"
+                  pagingEnabled={false}
+                  bounces={true}
+                  alwaysBounceHorizontal={true}
+                  onScroll={(event) => {
+                    carouselScrollX.current = event.nativeEvent.contentOffset.x;
+                  }}
+                  scrollEventThrottle={16}
             >
-              <View className="flex-row gap-3">
+                  <View className="flex-row" style={{ gap: 12 }}>
                 {[
                   {
                     type: "bicycle" as const,
                     label: "Bicycle",
                     icon: "bicycle",
                     price: vehiclePrices.bicycle,
+                        color: "#10B981", // Green
                   },
                   {
                     type: "motorbike" as const,
                     label: "Motorbike",
                     icon: "motorbike",
                     price: vehiclePrices.motorbike,
+                        color: "#F59E0B", // Amber/Orange
                   },
                   {
                     type: "tricycle" as const,
                     label: "Tricycle",
                     icon: "rickshaw",
                     price: vehiclePrices.tricycle,
+                        color: "#8B5CF6", // Purple
                   },
                   {
                     type: "car" as const,
                     label: "Car",
                     icon: "car-outline",
                     price: vehiclePrices.car,
+                        color: "#3B82F6", // Blue
                   },
                   {
                     type: "van" as const,
                     label: "Van",
                     icon: "van-utility",
                     price: vehiclePrices.van,
+                        color: "#EF4444", // Red
                   },
                 ].map((vehicle) => (
                   <TouchableOpacity
                     key={vehicle.type}
                     onPress={() => setPreferredVehicleType(vehicle.type)}
+                        activeOpacity={0.7}
                     className={`rounded-2xl p-4 border-2 ${
                       preferredVehicleType === vehicle.type
                         ? isDark
                           ? "border-accent bg-accent/20"
-                          : "border-blue-800"
+                              : "border-blue-600 bg-blue-500"
                         : isDark
                         ? "border-neutral-100 bg-dark-100"
                         : "border-gray-200 bg-gray-100"
                     }`}
                     style={[
                       {
-                        width: 120,
+                            width: 130,
                         shadowColor:
                           preferredVehicleType === vehicle.type
                             ? isDark
                               ? "#AB8BFF"
-                              : "#1E3A8A"
+                                  : "#3B82F6"
                             : "#000",
-                        shadowOffset: { width: 0, height: 2 },
+                            shadowOffset: { width: 0, height: 4 },
                         shadowOpacity:
-                          preferredVehicleType === vehicle.type ? 0.2 : 0.05,
-                        shadowRadius: 4,
+                              preferredVehicleType === vehicle.type
+                                ? 0.3
+                                : 0.05,
+                            shadowRadius: 6,
                         elevation:
-                          preferredVehicleType === vehicle.type ? 4 : 2,
+                              preferredVehicleType === vehicle.type ? 6 : 2,
                       },
                       preferredVehicleType === vehicle.type && !isDark
-                        ? { backgroundColor: "#1E3A8A" }
+                            ? { backgroundColor: "#3B82F6" }
                         : undefined,
                     ]}
                   >
@@ -1199,7 +1428,7 @@ export default function NewOrderScreen() {
                             ? isDark
                               ? "#AB8BFF"
                               : "#FFFFFF"
-                            : "#9CA4AB"
+                                : vehicle.color
                         }
                       />
                     </View>
@@ -1237,11 +1466,16 @@ export default function NewOrderScreen() {
               </View>
             </ScrollView>
           </View>
+            </Reanimated.View>
         )}
 
         {/* PRICE & ESTIMATE */}
+          <Reanimated.View
+            entering={FadeInDown.delay(550).duration(400)}
+            className="mb-6"
+          >
         <View
-          className={`border rounded-3xl p-5 mb-6 ${
+              className={`border rounded-3xl p-5 ${
             isDark
               ? "bg-secondary border-neutral-100"
               : "bg-white border-gray-200"
@@ -1336,7 +1570,8 @@ export default function NewOrderScreen() {
                         ₦
                         {vehiclePrices[
                           preferredVehicleType
-                        ]?.toLocaleString() || estimatedPrice?.toLocaleString()}
+                            ]?.toLocaleString() ||
+                              estimatedPrice?.toLocaleString()}
                       </Text>
                     </View>
                   )}
@@ -1383,67 +1618,67 @@ export default function NewOrderScreen() {
             </View>
           )}
         </View>
+          </Reanimated.View>
 
-        {/* SUBMIT */}
+          {/* SUBMIT - Small Button with Icon and Text */}
+          <Reanimated.View
+            entering={FadeInDown.delay(600).duration(400)}
+            className="mb-6 items-center"
+          >
         <TouchableOpacity
           disabled={!canSubmit || submitting}
           onPress={createOrder}
-          className={`rounded-2xl items-center justify-center h-14 flex-row ${
+              activeOpacity={0.8}
+              className={`rounded-2xl items-center justify-center ${
             canSubmit && !submitting
-              ? ""
+                  ? isDark
+                    ? "bg-accent"
+                    : "bg-blue-500"
               : isDark
-              ? "bg-dark-100 border border-neutral-100"
-              : "bg-gray-100 border border-gray-200"
+                  ? "bg-dark-100"
+                  : "bg-gray-200"
           }`}
           style={{
-            backgroundColor:
-              canSubmit && !submitting
-                ? isDark
-                  ? "#AB8BFF"
-                  : "#1E3A8A"
-                : undefined,
+                paddingVertical: 12,
+                paddingHorizontal: 20,
+                minWidth: 100,
             shadowColor:
               canSubmit && !submitting
                 ? isDark
                   ? "#AB8BFF"
-                  : "#1E3A8A"
+                      : "#3B82F6"
                 : "#000",
-            shadowOffset: { width: 0, height: 4 },
+                shadowOffset: { width: 0, height: 2 },
             shadowOpacity: canSubmit && !submitting ? 0.3 : 0.1,
-            shadowRadius: 8,
-            elevation: canSubmit && !submitting ? 6 : 2,
+                shadowRadius: 4,
+                elevation: canSubmit && !submitting ? 4 : 2,
           }}
         >
           {submitting ? (
-            <>
+                <View className="items-center">
               <ActivityIndicator
                 color={isDark ? "#030014" : "#FFFFFF"}
                 size="small"
               />
               <Text
-                className={`font-bold ml-2 ${
+                    className={`font-semibold text-xs mt-2 ${
                   isDark ? "text-primary" : "text-white"
                 }`}
               >
                 Creating...
               </Text>
-            </>
+                </View>
           ) : (
-            <>
+                <View className="items-center">
               <Icons.action
                 name={IconNames.addCircle as any}
                 size={20}
                 color={
-                  canSubmit
-                    ? isDark
-                      ? "#030014"
-                      : "#FFFFFF"
-                    : "#9CA4AB"
+                      canSubmit ? (isDark ? "#030014" : "#FFFFFF") : "#9CA4AB"
                 }
-                style={{ marginRight: 8 }}
               />
               <Text
-                className={`font-bold text-base ${
+                    className={`font-semibold text-xs mt-1.5 ${
                   canSubmit
                     ? isDark
                       ? "text-primary"
@@ -1455,10 +1690,12 @@ export default function NewOrderScreen() {
               >
                 Create Order
               </Text>
-            </>
+                </View>
           )}
         </TouchableOpacity>
+          </Reanimated.View>
       </View>
     </ScrollView>
+    </Animated.View>
   );
 }

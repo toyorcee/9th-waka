@@ -4,6 +4,7 @@ import RiderLocation from "../models/RiderLocation.js";
 import Transaction from "../models/Transaction.js";
 import User from "../models/User.js";
 import { io } from "../server.js";
+import { buildDarkEmailTemplate } from "../services/emailTemplates.js";
 import {
   calculateDistance,
   geocodeAddress,
@@ -395,23 +396,28 @@ export const createOrder = async (req, res) => {
     appendTimeline(order, "pending", "Order created");
     await order.save();
 
-    try {
-      await createAndSendNotification(user._id, {
-        type: "order_created",
-        title: "Order created",
-        message: `Order #${order._id} created, awaiting assignment`,
-        metadata: { orderId: order._id.toString() },
-      });
-    } catch {}
     io.to(`user:${user._id}`).emit(SocketEvents.ORDER_CREATED, {
       id: order._id.toString(),
     });
 
-    // Notify nearby online riders about the new order
+    createAndSendNotification(user._id, {
+      type: "order_created",
+      title: "Order created",
+      message: `Order #${order._id} created, awaiting assignment`,
+      metadata: { orderId: order._id.toString() },
+    }).catch((notifError) => {
+      console.warn(
+        `[ORDER] Notification failed for order ${order._id} (non-critical):`,
+        notifError?.message || notifError
+      );
+    });
+
     if (pickupData.lat && pickupData.lng) {
       try {
         const defaultRadius = Number(process.env.RIDER_ORDER_RADIUS_KM || 7);
-        const MAX_NOTIFICATION_RADIUS = 20;
+        const MAX_NOTIFICATION_RADIUS = Number(
+          process.env.MAX_RIDER_RADIUS_KM || 30
+        );
 
         const onlineRiders = await RiderLocation.find({
           online: true,
@@ -633,7 +639,7 @@ export const getAvailableOrders = async (req, res) => {
     const defaultRadius = Number(process.env.RIDER_ORDER_RADIUS_KM || 7);
     const maxRadiusKm = rider?.searchRadiusKm || defaultRadius;
 
-    const MAX_ALLOWED_RADIUS = 20;
+    const MAX_ALLOWED_RADIUS = Number(process.env.MAX_RIDER_RADIUS_KM || 30);
     const effectiveRadius = showAll
       ? Infinity
       : Math.min(maxRadiusKm, MAX_ALLOWED_RADIUS);
@@ -1265,13 +1271,19 @@ export const getOrder = async (req, res) => {
       return res.status(404).json({ success: false, error: "Order not found" });
     const user = req.user;
     const isOwner = String(order.customerId) === String(user._id);
-    const isRider = order.riderId && String(order.riderId) === String(user._id);
+    const isAssignedRider =
+      order.riderId && String(order.riderId) === String(user._id);
     const isAdmin = user.role === "admin";
-    if (!isOwner && !isRider && !isAdmin)
+    const isRiderViewingAvailableOrder =
+      user.role === "rider" && order.status === "pending" && !order.riderId;
+    if (
+      !isOwner &&
+      !isAssignedRider &&
+      !isAdmin &&
+      !isRiderViewingAvailableOrder
+    )
       return res.status(403).json({ success: false, error: "Forbidden" });
 
-    // Include rider location if order is active (assigned, picked_up, or delivering)
-    // and user is customer, admin, or the assigned rider
     const orderObj = order.toObject();
     if (
       order.riderId &&
@@ -1527,7 +1539,7 @@ export const updateDeliveryProof = async (req, res) => {
     if (recipientName) order.delivery.recipientName = recipientName;
     if (recipientPhone) order.delivery.recipientPhone = recipientPhone;
     if (note) order.delivery.note = note;
-    // Rider confirms payment received from recipient
+    const wasPaymentPending = order.payment.status !== "paid";
     if (paymentReceived === true) {
       order.payment.status = "paid";
       order.payment.ref = `cash-${order._id}-${Date.now()}`;
@@ -1536,14 +1548,197 @@ export const updateDeliveryProof = async (req, res) => {
     appendTimeline(order, order.status, "Delivery proof updated");
     await order.save();
 
-    try {
-      await createAndSendNotification(order.customerId, {
-        type: "delivery_proof_updated",
-        title: "Delivery proof updated",
-        message: `Delivery proof for order #${order._id} has been updated`,
-        metadata: { orderId: order._id.toString() },
-      });
-    } catch {}
+    if (
+      paymentReceived === true &&
+      wasPaymentPending &&
+      order.status === "delivered"
+    ) {
+      try {
+        const customer = await User.findById(order.customerId).select(
+          "email fullName"
+        );
+        if (customer?.email) {
+          const orderDate = new Date(order.createdAt).toLocaleDateString(
+            "en-NG",
+            {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            }
+          );
+          const deliveryDate = order.delivery?.deliveredAt
+            ? new Date(order.delivery.deliveredAt).toLocaleDateString("en-NG", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "N/A";
+
+          const invoiceHtml = `
+            <div style="margin-bottom: 24px;">
+              <h2 style="color: #AB8BFF; margin-bottom: 16px;">Thank You for Using 9thWaka!</h2>
+              <p style="color: #C9CDD9; margin-bottom: 12px;">Your order has been successfully delivered and payment confirmed.</p>
+            </div>
+            
+            <div style="background: #1A1E2E; border: 1px solid #3C4160; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+              <h3 style="color: #E6E6F0; margin-bottom: 16px; font-size: 16px;">Order Invoice</h3>
+              
+              <div style="margin-bottom: 12px;">
+                <span style="color: #8D93A5; font-size: 13px;">Order ID:</span>
+                <span style="color: #E6E6F0; margin-left: 8px; font-weight: 600;">#${String(
+                  order._id
+                )
+                  .slice(-8)
+                  .toUpperCase()}</span>
+              </div>
+              
+              <div style="margin-bottom: 12px;">
+                <span style="color: #8D93A5; font-size: 13px;">Order Date:</span>
+                <span style="color: #E6E6F0; margin-left: 8px;">${orderDate}</span>
+              </div>
+              
+              <div style="margin-bottom: 12px;">
+                <span style="color: #8D93A5; font-size: 13px;">Delivery Date:</span>
+                <span style="color: #E6E6F0; margin-left: 8px;">${deliveryDate}</span>
+              </div>
+              
+              <div style="margin-bottom: 12px;">
+                <span style="color: #8D93A5; font-size: 13px;">Items:</span>
+                <span style="color: #E6E6F0; margin-left: 8px;">${
+                  order.items || "N/A"
+                }</span>
+              </div>
+              
+              <div style="margin-bottom: 12px;">
+                <span style="color: #8D93A5; font-size: 13px;">Pickup:</span>
+                <span style="color: #E6E6F0; margin-left: 8px;">${
+                  order.pickup?.address || "N/A"
+                }</span>
+              </div>
+              
+              <div style="margin-bottom: 12px;">
+                <span style="color: #8D93A5; font-size: 13px;">Dropoff:</span>
+                <span style="color: #E6E6F0; margin-left: 8px;">${
+                  order.dropoff?.address || "N/A"
+                }</span>
+              </div>
+              
+              <div style="border-top: 1px solid #3C4160; margin-top: 16px; padding-top: 16px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                  <span style="color: #8D93A5; font-size: 13px;">Delivery Fee:</span>
+                  <span style="color: #E6E6F0; font-weight: 600;">₦${Number(
+                    order.price || 0
+                  ).toLocaleString()}</span>
+                </div>
+                ${
+                  order.priceNegotiation?.status === "accepted" &&
+                  order.price !== order.originalPrice
+                    ? `<div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                      <span style="color: #8D93A5; font-size: 13px;">Original Price:</span>
+                      <span style="color: #E6E6F0; text-decoration: line-through;">₦${Number(
+                        order.originalPrice || 0
+                      ).toLocaleString()}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                      <span style="color: #8D93A5; font-size: 13px;">Negotiated Price:</span>
+                      <span style="color: #AB8BFF; font-weight: 600;">₦${Number(
+                        order.price || 0
+                      ).toLocaleString()}</span>
+                    </div>`
+                    : ""
+                }
+                <div style="display: flex; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid #3C4160;">
+                  <span style="color: #E6E6F0; font-size: 16px; font-weight: 700;">Total Paid:</span>
+                  <span style="color: #AB8BFF; font-size: 18px; font-weight: 700;">₦${Number(
+                    order.price || 0
+                  ).toLocaleString()}</span>
+                </div>
+              </div>
+              
+              <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #3C4160;">
+                <div style="color: #8D93A5; font-size: 12px; margin-bottom: 4px;">Payment Reference:</div>
+                <div style="color: #E6E6F0; font-size: 13px; font-family: monospace;">${
+                  order.payment.ref || "N/A"
+                }</div>
+              </div>
+            </div>
+            
+            <div style="background: #1A1E2E; border: 1px solid #3C4160; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+              <p style="color: #C9CDD9; margin: 0; line-height: 1.6;">
+                We hope you had a great experience with 9thWaka. If you have any questions or concerns, please don't hesitate to contact our support team.
+              </p>
+            </div>
+            
+            <p style="color: #8D93A5; font-size: 13px; margin-top: 24px;">
+              This email serves as your receipt and invoice for this transaction.
+            </p>
+          `;
+
+          // Send thank you email with invoice
+          const { sendEmailDirectly } = await import(
+            "../services/notificationService.js"
+          );
+          await sendEmailDirectly(
+            customer.email,
+            `Order Invoice - Order #${String(order._id)
+              .slice(-8)
+              .toUpperCase()}`,
+            "Thank You for Using 9thWaka!",
+            buildDarkEmailTemplate(
+              "Thank You for Using 9thWaka!",
+              invoiceHtml,
+              null
+            )
+          );
+        }
+      } catch (emailError) {
+        console.error(
+          "❌ [ORDER] Failed to send invoice email:",
+          emailError?.message || emailError
+        );
+      }
+
+      try {
+        await createAndSendNotification(order.customerId, {
+          type: "order_payment_confirmed",
+          title: "Payment Confirmed - Thank You!",
+          message: `Your payment of ₦${Number(
+            order.price || 0
+          ).toLocaleString()} has been confirmed. Check your email for your invoice.`,
+          metadata: { orderId: order._id.toString() },
+        });
+      } catch {}
+    } else {
+      // Regular delivery proof update notification
+      try {
+        await createAndSendNotification(order.customerId, {
+          type: "delivery_proof_updated",
+          title: "Delivery proof updated",
+          message: `Delivery proof for order #${order._id} has been updated`,
+          metadata: { orderId: order._id.toString() },
+        });
+      } catch {}
+    }
+
+    // Emit payment confirmed event when payment is marked as received
+    if (paymentReceived === true && wasPaymentPending) {
+      try {
+        io.to(`user:${order.customerId}`).emit(SocketEvents.PAYMENT_CONFIRMED, {
+          orderId: order._id.toString(),
+          amount: order.price || 0,
+        });
+        if (order.riderId) {
+          io.to(`user:${order.riderId}`).emit(SocketEvents.PAYMENT_CONFIRMED, {
+            orderId: order._id.toString(),
+            amount: order.price || 0,
+          });
+        }
+      } catch {}
+    }
 
     io.to(`user:${order.customerId}`).emit(
       SocketEvents.DELIVERY_PROOF_UPDATED,

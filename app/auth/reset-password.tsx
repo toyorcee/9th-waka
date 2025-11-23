@@ -1,15 +1,16 @@
+import BackButton from "@/components/BackButton";
 import { IconNames, Icons } from "@/constants/icons";
 import { images } from "@/constants/images";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTheme } from "@/contexts/ThemeContext";
 import { apiClient } from "@/services/apiClient";
 import { Routes } from "@/services/navigationHelper";
 import { Image } from "expo-image";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useRef, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
+  Dimensions,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -18,17 +19,20 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Reanimated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
   const { login } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const insets = useSafeAreaInsets();
 
   const isRouterReady = router && typeof router.replace === "function";
-  const isDark = theme === "dark";
   const params = useLocalSearchParams<{
     email?: string;
     phoneNumber?: string;
@@ -49,6 +53,31 @@ export default function ResetPasswordScreen() {
   const successScale = useRef(new Animated.Value(0)).current;
   const successOpacity = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  // Slide in animation from left to right
+  const translateX = useSharedValue(-Dimensions.get("window").width);
+  const opacity = useSharedValue(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      translateX.value = -Dimensions.get("window").width;
+      opacity.value = 0;
+      translateX.value = withTiming(0, {
+        duration: 400,
+      });
+      opacity.value = withTiming(1, { duration: 400 });
+      return () => {
+        // Optional cleanup
+      };
+    }, [])
+  );
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: translateX.value }],
+      opacity: opacity.value,
+    };
+  });
 
   const resetMethod = (params.method as "email" | "phone") || "email";
   const identifier =
@@ -227,445 +256,274 @@ export default function ResetPasswordScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className="flex-1"
-    >
-      {/* Background Image with Overlay - Fixed */}
-      <View className="absolute inset-0">
-        <Image
-          source={images.homeHero}
-          style={{ width: "100%", height: "100%" }}
-          contentFit="cover"
-        />
-        <View
-          className={`absolute inset-0 ${
-            isDark ? "bg-primary/10" : "bg-white/10"
-          }`}
-        />
-      </View>
-
-      <ScrollView
+    <Reanimated.View style={[{ flex: 1 }, animatedStyle]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
-        contentContainerStyle={{
-          flexGrow: 1,
-          paddingTop: insets.top,
-          paddingBottom: insets.bottom,
-        }}
-        showsVerticalScrollIndicator={false}
       >
-        <View className="flex-1 justify-center px-6 py-12">
-          {/* Back Button and Theme Toggle */}
-          <View
-            className="absolute top-0 left-0 right-0 z-10 flex-row justify-between items-center px-6"
-            style={{ marginTop: insets.top + 8 }}
-          >
-            <TouchableOpacity
-              onPress={() => {
-                if (!isRouterReady) return;
-                try {
-                  if (
-                    router.canGoBack &&
-                    typeof router.canGoBack === "function"
-                  ) {
-                    const canGoBack = router.canGoBack();
-                    if (canGoBack && typeof router.back === "function") {
-                      router.back();
-                      return;
-                    }
-                  }
-                  if (typeof router.replace === "function") {
-                    router.replace("/auth/forgot-password");
-                  }
-                } catch (error) {
-                  if (typeof router.replace === "function") {
-                    try {
-                      router.replace("/auth/forgot-password");
-                    } catch (e) {
-                      // Ignore navigation errors
-                    }
-                  }
-                }
-              }}
-              className={`rounded-full p-1.5 ${
-                isDark ? "bg-secondary/80" : "bg-gray-50/90"
-              }`}
-            >
-              <Icons.navigation
-                name={IconNames.arrowBack as any}
-                size={20}
-                color={isDark ? "#AB8BFF" : "#1E3A8A"}
-              />
-            </TouchableOpacity>
+        {/* Background Image with Overlay - Fixed */}
+        <View className="absolute inset-0">
+          <Image
+            source={images.homeHero}
+            style={{ width: "100%", height: "100%" }}
+            contentFit="cover"
+          />
+          <View className="absolute inset-0 bg-primary/10" />
+        </View>
 
-            <TouchableOpacity
-              onPress={toggleTheme}
-              className={`rounded-full p-1.5 ${
-                isDark ? "bg-secondary/80" : "bg-gray-50/90"
-              }`}
-              accessibilityRole="button"
-              accessibilityLabel={
-                isDark ? "Switch to light mode" : "Switch to dark mode"
-              }
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingTop: insets.top,
+            paddingBottom: insets.bottom,
+          }}
+          showsVerticalScrollIndicator={false}
+        >
+          <View className="flex-1 justify-center px-6 py-12">
+            {/* Back Button */}
+            <View
+              className="absolute top-0 left-0 right-0 z-10 flex-row justify-start items-center px-6"
+              style={{ marginTop: insets.top + 8 }}
             >
-              <Icons.action
-                name={isDark ? "moon-outline" : "sunny-outline"}
-                size={20}
-                color={isDark ? "#AB8BFF" : "#1E3A8A"}
-              />
-            </TouchableOpacity>
-          </View>
-
-          {/* Logo/Branding Section */}
-          <View className="items-center mb-8">
-            <Image
-              source={images.logo}
-              style={{ width: 100, height: 50 }}
-              contentFit="contain"
-              className="mb-3"
-            />
-            <Text
-              className={`text-base text-center ${
-                isDark ? "text-light-200" : "text-white"
-              }`}
-            >
-              Create New Password
-            </Text>
-          </View>
-
-          {/* Auth Card */}
-          <Animated.View
-            className={`rounded-3xl p-6 border backdrop-blur ${
-              isDark
-                ? "bg-secondary/95 border-neutral-100/50"
-                : "bg-gray-50/98 border-gray-300/60 shadow-lg"
-            }`}
-            style={[
-              !isDark
-                ? {
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 8 },
-                    shadowOpacity: 0.12,
-                    shadowRadius: 16,
-                    elevation: 8,
-                  }
-                : undefined,
-              { opacity: fadeAnim },
-            ]}
-          >
-            <Text
-              className={`text-2xl font-bold mb-2 text-center ${
-                isDark ? "text-light-100" : "text-white"
-              }`}
-            >
-              Reset Password
-            </Text>
-            <Text
-              className={`text-sm text-center mb-6 ${
-                isDark ? "text-light-400" : "text-white"
-              }`}
-            >
-              Enter the 6-digit code sent to{" "}
-              {resetMethod === "email" ? identifier : identifier} and create a
-              new password.
-            </Text>
-
-            {/* Reset Code */}
-            <View className="mb-4">
-              <View
-                className={`mb-2 px-2 py-1 rounded-xl ${
-                  isDark ? "" : "bg-white"
-                }`}
-              >
-                <Text
-                  className={`text-xs font-medium ${
-                    isDark ? "text-light-400" : "text-blue-900"
-                  }`}
-                >
-                  Reset Code
-                </Text>
-              </View>
-              <TextInput
-                value={code}
-                onChangeText={setCode}
-                keyboardType="number-pad"
-                maxLength={6}
-                className={`rounded-xl p-4 tracking-widest text-center text-2xl border ${
-                  isDark
-                    ? "bg-dark-100 text-light-100 border-neutral-100"
-                    : "bg-gray-100 text-white border-gray-200"
-                }`}
-                placeholder="000000"
-                placeholderTextColor="#9CA4AB"
+              <BackButton
+                fallbackRoute="/auth/forgot-password"
+                className="rounded-full p-1.5 bg-secondary/80"
               />
             </View>
 
-            {/* New Password */}
-            <View className="mb-4">
-              <View
-                className={`mb-2 px-2 py-1 rounded-xl ${
-                  isDark ? "" : "bg-white"
-                }`}
-              >
-                <Text
-                  className={`text-xs font-medium ${
-                    isDark ? "text-light-400" : "text-blue-900"
-                  }`}
-                >
-                  New Password
-                </Text>
-              </View>
-              <View
-                className={`flex-row items-center rounded-xl px-4 border ${
-                  isDark
-                    ? "bg-dark-100 border-neutral-100"
-                    : "bg-gray-100 border-gray-200"
-                }`}
-              >
-                <Icons.safety
-                  name={IconNames.security as any}
-                  size={20}
-                  color={isDark ? "#9CA4AB" : "#6E6E73"}
-                  style={{ marginRight: 12 }}
-                />
-                <TextInput
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  placeholder="Enter new password"
-                  placeholderTextColor="#9CA4AB"
-                  secureTextEntry={!showPassword}
-                  className={`flex-1 py-4 ${
-                    isDark ? "text-light-100" : "text-white"
-                  }`}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                >
-                  <Icons.action
-                    name={
-                      showPassword
-                        ? (IconNames.eyeOutline as any)
-                        : (IconNames.eyeOffOutline as any)
-                    }
-                    size={20}
-                    color={isDark ? "#9CA4AB" : "#6E6E73"}
-                  />
-                </TouchableOpacity>
-              </View>
-              {/* Password Strength Indicator */}
-              {newPassword.length > 0 && (
-                <View className="mt-2">
-                  <View className="flex-row items-center gap-2 mb-1">
-                    <View
-                      className={`h-1 flex-1 rounded-full ${
-                        passwordStrength === "strong"
-                          ? "bg-success"
-                          : passwordStrength === "medium"
-                          ? "bg-warning"
-                          : "bg-danger"
-                      }`}
-                    />
-                    <Text
-                      className={`text-xs ${
-                        isDark ? "text-light-400" : "text-gray-500"
-                      }`}
-                    >
-                      {passwordStrength === "strong"
-                        ? "Strong"
-                        : passwordStrength === "medium"
-                        ? "Medium"
-                        : "Weak"}
-                    </Text>
-                  </View>
+            {/* Logo/Branding Section */}
+            <View className="items-center mb-8">
+              <Image
+                source={images.logo}
+                style={{ width: 100, height: 50 }}
+                contentFit="contain"
+                className="mb-3"
+              />
+              <Text className="text-base text-center text-light-200">
+                Create New Password
+              </Text>
+            </View>
+
+            {/* Auth Card */}
+            <Animated.View
+              className="rounded-3xl p-6 border backdrop-blur bg-secondary/95 border-neutral-100/50"
+              style={[{ opacity: fadeAnim }]}
+            >
+              <Text className="text-2xl font-bold mb-2 text-center text-light-100">
+                Reset Password
+              </Text>
+              <Text className="text-sm text-center mb-6 text-light-400">
+                Enter the 6-digit code sent to{" "}
+                {resetMethod === "email" ? identifier : identifier} and create a
+                new password.
+              </Text>
+
+              {/* Reset Code */}
+              <View className="mb-4">
+                <View className="mb-2 px-2 py-1 rounded-xl">
+                  <Text className="text-xs font-medium text-light-400">
+                    Reset Code
+                  </Text>
                 </View>
-              )}
-            </View>
-
-            {/* Confirm Password */}
-            <View className="mb-6">
-              <View
-                className={`mb-2 px-2 py-1 rounded-xl ${
-                  isDark ? "" : "bg-white"
-                }`}
-              >
-                <Text
-                  className={`text-xs font-medium ${
-                    isDark ? "text-light-400" : "text-blue-900"
-                  }`}
-                >
-                  Confirm Password
-                </Text>
-              </View>
-              <View
-                className={`flex-row items-center rounded-xl px-4 border ${
-                  isDark
-                    ? "bg-dark-100 border-neutral-100"
-                    : "bg-gray-100 border-gray-200"
-                }`}
-              >
-                <Icons.safety
-                  name={IconNames.security as any}
-                  size={20}
-                  color={isDark ? "#9CA4AB" : "#6E6E73"}
-                  style={{ marginRight: 12 }}
-                />
                 <TextInput
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  placeholder="Confirm new password"
+                  value={code}
+                  onChangeText={setCode}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  className="rounded-xl p-4 tracking-widest text-center text-2xl border bg-dark-100 text-light-100 border-neutral-100"
+                  placeholder="000000"
                   placeholderTextColor="#9CA4AB"
-                  secureTextEntry={!showConfirmPassword}
-                  className={`flex-1 py-4 ${
-                    isDark ? "text-light-100" : "text-white"
-                  }`}
                 />
-                <TouchableOpacity
-                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                >
-                  <Icons.action
-                    name={
-                      showConfirmPassword
-                        ? (IconNames.eyeOutline as any)
-                        : (IconNames.eyeOffOutline as any)
-                    }
-                    size={20}
-                    color={isDark ? "#9CA4AB" : "#6E6E73"}
-                  />
-                </TouchableOpacity>
               </View>
-              {confirmPassword.length > 0 &&
-                newPassword !== confirmPassword && (
-                  <Text className="text-danger text-xs mt-1">
-                    Passwords don't match
+
+              {/* New Password */}
+              <View className="mb-4">
+                <View className="mb-2 px-2 py-1 rounded-xl">
+                  <Text className="text-xs font-medium text-light-400">
+                    New Password
+                  </Text>
+                </View>
+                <View className="flex-row items-center rounded-xl px-4 border bg-dark-100 border-neutral-100">
+                  <Icons.safety
+                    name={IconNames.security as any}
+                    size={20}
+                    color="#9CA4AB"
+                    style={{ marginRight: 12 }}
+                  />
+                  <TextInput
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    placeholder="Enter new password"
+                    placeholderTextColor="#9CA4AB"
+                    secureTextEntry={!showPassword}
+                    className="flex-1 py-4 text-light-100"
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    <Icons.action
+                      name={
+                        showPassword
+                          ? (IconNames.eyeOutline as any)
+                          : (IconNames.eyeOffOutline as any)
+                      }
+                      size={20}
+                      color="#9CA4AB"
+                    />
+                  </TouchableOpacity>
+                </View>
+                {/* Password Strength Indicator */}
+                {newPassword.length > 0 && (
+                  <View className="mt-2">
+                    <View className="flex-row items-center gap-2 mb-1">
+                      <View
+                        className={`h-1 flex-1 rounded-full ${
+                          passwordStrength === "strong"
+                            ? "bg-success"
+                            : passwordStrength === "medium"
+                            ? "bg-warning"
+                            : "bg-danger"
+                        }`}
+                      />
+                      <Text className="text-xs text-light-400">
+                        {passwordStrength === "strong"
+                          ? "Strong"
+                          : passwordStrength === "medium"
+                          ? "Medium"
+                          : "Weak"}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+
+              {/* Confirm Password */}
+              <View className="mb-6">
+                <View className="mb-2 px-2 py-1 rounded-xl">
+                  <Text className="text-xs font-medium text-light-400">
+                    Confirm Password
+                  </Text>
+                </View>
+                <View className="flex-row items-center rounded-xl px-4 border bg-dark-100 border-neutral-100">
+                  <Icons.safety
+                    name={IconNames.security as any}
+                    size={20}
+                    color="#9CA4AB"
+                    style={{ marginRight: 12 }}
+                  />
+                  <TextInput
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    placeholder="Confirm new password"
+                    placeholderTextColor="#9CA4AB"
+                    secureTextEntry={!showConfirmPassword}
+                    className="flex-1 py-4 text-light-100"
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    <Icons.action
+                      name={
+                        showConfirmPassword
+                          ? (IconNames.eyeOutline as any)
+                          : (IconNames.eyeOffOutline as any)
+                      }
+                      size={20}
+                      color="#9CA4AB"
+                    />
+                  </TouchableOpacity>
+                </View>
+                {confirmPassword.length > 0 &&
+                  newPassword !== confirmPassword && (
+                    <Text className="text-danger text-xs mt-1">
+                      Passwords don't match
+                    </Text>
+                  )}
+              </View>
+
+              {/* Submit Button */}
+              <TouchableOpacity
+                onPress={handleResetPassword}
+                disabled={isLoading}
+                className={`rounded-xl py-4 items-center mb-3 ${
+                  isLoading ? "bg-accent/60" : "bg-accent"
+                }`}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#030014" />
+                ) : (
+                  <Text className="font-bold text-base text-primary">
+                    Reset Password
                   </Text>
                 )}
-            </View>
+              </TouchableOpacity>
 
-            {/* Submit Button */}
-            <TouchableOpacity
-              onPress={handleResetPassword}
-              disabled={isLoading}
-              className={`rounded-xl py-4 items-center mb-3 ${
-                isLoading
-                  ? isDark
-                    ? "bg-accent/60"
-                    : "bg-blue-800/60"
-                  : isDark
-                  ? "bg-accent"
-                  : ""
-              }`}
-              style={
-                !isLoading && !isDark
-                  ? { backgroundColor: "#1E3A8A" }
-                  : undefined
-              }
-            >
-              {isLoading ? (
-                <ActivityIndicator color={isDark ? "#030014" : "#FFFFFF"} />
-              ) : (
-                <Text
-                  className={`font-bold text-base ${
-                    isDark ? "text-primary" : "text-white"
-                  }`}
-                >
-                  Reset Password
-                </Text>
-              )}
-            </TouchableOpacity>
-
-            {/* Resend Code */}
-            <TouchableOpacity
-              onPress={handleResendCode}
-              disabled={isResending}
-              className={`rounded-xl py-3 items-center border ${
-                isDark ? "border-neutral-100" : "border-gray-200"
-              } ${isResending ? "opacity-60" : ""}`}
-            >
-              {isResending ? (
-                <View className="flex-row items-center gap-2">
-                  <ActivityIndicator
-                    color={isDark ? "#9CA4AB" : "#6E6E73"}
-                    size="small"
-                  />
-                  <Text
-                    className={`font-semibold text-sm ${
-                      isDark ? "text-light-300" : "text-white"
-                    }`}
-                  >
-                    Sending…
-                  </Text>
-                </View>
-              ) : (
-                <Text
-                  className={`font-semibold text-sm ${
-                    isDark ? "text-light-300" : "text-white"
-                  }`}
-                >
-                  Resend Code
-                </Text>
-              )}
-            </TouchableOpacity>
-          </Animated.View>
-
-          {/* Success Overlay */}
-          {resetSuccess && (
-            <Animated.View
-              className="absolute inset-0 items-center justify-center z-20"
-              style={{
-                opacity: successOpacity,
-                transform: [{ scale: successScale }],
-              }}
-            >
-              <View
-                className={`rounded-3xl p-8 items-center ${
-                  isDark ? "bg-secondary" : "bg-white"
+              {/* Resend Code */}
+              <TouchableOpacity
+                onPress={handleResendCode}
+                disabled={isResending}
+                className={`rounded-xl py-3 items-center border border-neutral-100 ${
+                  isResending ? "opacity-60" : ""
                 }`}
+              >
+                {isResending ? (
+                  <View className="flex-row items-center gap-2">
+                    <ActivityIndicator color="#9CA4AB" size="small" />
+                    <Text className="font-semibold text-sm text-light-300">
+                      Sending…
+                    </Text>
+                  </View>
+                ) : (
+                  <Text className="font-semibold text-sm text-light-300">
+                    Resend Code
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </Animated.View>
+
+            {/* Success Overlay */}
+            {resetSuccess && (
+              <Animated.View
+                className="absolute inset-0 items-center justify-center z-20"
                 style={{
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 8 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 16,
-                  elevation: 10,
-                  minWidth: 280,
+                  opacity: successOpacity,
+                  transform: [{ scale: successScale }],
                 }}
               >
                 <View
-                  className={`rounded-full p-4 mb-4 ${
-                    isDark ? "bg-accent/20" : "bg-blue-900/20"
-                  }`}
+                  className="rounded-3xl p-8 items-center bg-secondary"
+                  style={{
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 8 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 16,
+                    elevation: 10,
+                    minWidth: 280,
+                  }}
                 >
-                  <Icons.status
-                    name={IconNames.checkmarkCircle as any}
-                    size={48}
-                    color={isDark ? "#30D158" : "#10B981"}
-                  />
+                  <View className="rounded-full p-4 mb-4 bg-accent/20">
+                    <Icons.status
+                      name={IconNames.checkmarkCircle as any}
+                      size={48}
+                      color="#30D158"
+                    />
+                  </View>
+                  <Text className="text-2xl font-bold mb-2 text-center text-light-100">
+                    Password Reset! 🎉
+                  </Text>
+                  <Text className="text-sm text-center mb-4 text-light-400">
+                    Your password has been successfully updated
+                  </Text>
+                  <Text className="text-xs text-center text-light-500">
+                    {hasToken ? "Signing you in..." : "Redirecting to login..."}
+                  </Text>
                 </View>
-                <Text
-                  className={`text-2xl font-bold mb-2 text-center ${
-                    isDark ? "text-light-100" : "text-black"
-                  }`}
-                >
-                  Password Reset! 🎉
-                </Text>
-                <Text
-                  className={`text-sm text-center mb-4 ${
-                    isDark ? "text-light-400" : "text-gray-600"
-                  }`}
-                >
-                  Your password has been successfully updated
-                </Text>
-                <Text
-                  className={`text-xs text-center ${
-                    isDark ? "text-light-500" : "text-gray-500"
-                  }`}
-                >
-                  {hasToken ? "Signing you in..." : "Redirecting to login..."}
-                </Text>
-              </View>
-            </Animated.View>
-          )}
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+              </Animated.View>
+            )}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Reanimated.View>
   );
 }

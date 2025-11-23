@@ -233,8 +233,8 @@ export async function requestPriceChange(
 export interface PriceEstimate {
   success: boolean;
   estimatedPrice: number;
-  bikePrice?: number; 
-  carPrice?: number; 
+  bikePrice?: number;
+  carPrice?: number;
   distanceKm: number | null;
   currency: string;
   prices?: {
@@ -277,4 +277,32 @@ export async function respondToPriceRequest(
     accept,
   });
   return response.data?.order || response.data;
+}
+
+export interface Rating {
+  _id: string;
+  orderId: string;
+  customerId: string;
+  riderId: string;
+  rating: number;
+  comment?: string | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+export async function createRating(
+  orderId: string,
+  rating: number,
+  comment?: string | null
+): Promise<Rating> {
+  const response = await apiClient.post(`/ratings/order/${orderId}`, {
+    rating,
+    comment: comment || null,
+  });
+  return response.data?.rating || response.data;
+}
+
+export async function getRating(orderId: string): Promise<Rating | null> {
+  const response = await apiClient.get(`/ratings/order/${orderId}`);
+  return response.data?.rating || null;
 }

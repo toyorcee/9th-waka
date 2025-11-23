@@ -5,15 +5,17 @@ import { Routes } from "@/services/navigationHelper";
 import { toAbsoluteUrl } from "@/services/url";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Modal,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import Reanimated, { FadeInDown, SlideInRight } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ProfileScreen() {
@@ -26,6 +28,29 @@ export default function ProfileScreen() {
   const bottomPadding = insets.bottom > 0 ? insets.bottom : 20;
   const contentBottomPadding = tabBarHeight + bottomPadding + 32;
   const isDark = theme === "dark";
+  
+  // Slide-in animation from right to left
+  const slideAnim = useRef(new Animated.Value(300)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const hasAnimatedRef = useRef(false);
+  
+  useEffect(() => {
+    if (!hasAnimatedRef.current && user) {
+      hasAnimatedRef.current = true;
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [user]);
 
   const handleLogout = async () => {
     setShowLogout(true);
@@ -47,18 +72,26 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScrollView
+    <Animated.View
       className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
+      style={{
+        transform: [{ translateX: slideAnim }],
+        opacity: opacityAnim,
+      }}
+    >
+      <ScrollView
+        className="flex-1"
       contentContainerStyle={{
-        paddingTop: insets.top + 20,
-        paddingBottom: tabBarHeight + insets.bottom + 40,
+          paddingTop: insets.top + 32,
+          paddingBottom: tabBarHeight + insets.bottom + 60,
         paddingHorizontal: 24,
       }}
       showsVerticalScrollIndicator={false}
     >
       <View>
         {/* Profile Header Card - Enhanced */}
-        <View
+          <Reanimated.View
+            entering={FadeInDown.delay(100).duration(400)}
           className={`rounded-3xl p-6 mb-6 border ${
             isDark
               ? "bg-secondary border-neutral-100"
@@ -193,10 +226,11 @@ export default function ProfileScreen() {
               Edit Profile
             </Text>
           </TouchableOpacity>
-        </View>
+          </Reanimated.View>
 
         {/* Menu Options - Enhanced */}
         <View className="gap-3 mb-6">
+            <Reanimated.View entering={SlideInRight.delay(200).duration(400)}>
           <TouchableOpacity
             onPress={() => router.push(Routes.standalone.profileEdit)}
             className={`rounded-2xl p-5 flex-row items-center justify-between border active:opacity-80 ${
@@ -247,7 +281,9 @@ export default function ProfileScreen() {
               color={isDark ? "#9CA4AB" : "#6E6E73"}
             />
           </TouchableOpacity>
+            </Reanimated.View>
 
+            <Reanimated.View entering={SlideInRight.delay(300).duration(400)}>
           <TouchableOpacity
             onPress={() => router.push(Routes.standalone.profileSettings)}
             className={`rounded-2xl p-5 flex-row items-center justify-between border active:opacity-80 ${
@@ -294,7 +330,9 @@ export default function ProfileScreen() {
               color={isDark ? "#9CA4AB" : "#6E6E73"}
             />
           </TouchableOpacity>
+            </Reanimated.View>
 
+            <Reanimated.View entering={SlideInRight.delay(400).duration(400)}>
           <TouchableOpacity
             onPress={() => router.push("/support" as any)}
             className={`rounded-2xl p-5 flex-row items-center justify-between border active:opacity-80 mb-3 ${
@@ -341,9 +379,13 @@ export default function ProfileScreen() {
               color={isDark ? "#9CA4AB" : "#6E6E73"}
             />
           </TouchableOpacity>
+            </Reanimated.View>
 
           {/* Legal Section */}
-          <View className="mb-3">
+            <Reanimated.View
+              entering={SlideInRight.delay(500).duration(400)}
+              className="mb-3"
+            >
             <Text
               className={`text-xs font-semibold mb-2 px-1 ${
                 isDark ? "text-light-400" : "text-gray-500"
@@ -428,13 +470,14 @@ export default function ProfileScreen() {
                 />
               </TouchableOpacity>
             </View>
-          </View>
+            </Reanimated.View>
         </View>
 
         {/* Logout Button - Enhanced */}
+          <Reanimated.View entering={SlideInRight.delay(600).duration(400)}>
         <TouchableOpacity
           onPress={handleLogout}
-          className="rounded-2xl p-5 items-center flex-row justify-center active:opacity-90"
+          className="rounded-2xl p-5 items-center flex-row justify-center active:opacity-90 mb-8"
           style={{
             backgroundColor: "#FF3B30",
             borderWidth: 1,
@@ -454,7 +497,9 @@ export default function ProfileScreen() {
           />
           <Text className="text-light-100 font-bold text-base">Logout</Text>
         </TouchableOpacity>
+          </Reanimated.View>
       </View>
+      </ScrollView>
       {/* Logout Confirm Modal - Enhanced */}
       <Modal
         visible={showLogout}
@@ -550,6 +595,6 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </Animated.View>
   );
 }

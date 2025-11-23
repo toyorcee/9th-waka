@@ -17,6 +17,7 @@ export const SocketEvents = {
   // Finance/payouts
   PAYOUT_GENERATED: "payout.generated",
   PAYOUT_PAID: "payout.paid",
+  PAYMENT_CONFIRMED: "payment.confirmed",
 
   // Price negotiation
   PRICE_CHANGE_REQUESTED: "price.change_requested",
@@ -34,4 +35,7 @@ export const SocketEvents = {
   // User Presence
   USER_ONLINE: "user.online",
   USER_OFFLINE: "user.offline",
+
+  // Ratings
+  RATING_RECEIVED: "rating.received",
 };

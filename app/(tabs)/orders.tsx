@@ -5,9 +5,11 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { Routes } from "@/services/navigationHelper";
 import { getMyOrders, Order } from "@/services/orderApi";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
+  Modal,
   RefreshControl,
   ScrollView,
   Text,
@@ -15,25 +17,61 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Reanimated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
-const getStatusColor = (status: string) => {
+const getStatusColor = (status: string, isDark: boolean) => {
   switch (status) {
     case "pending":
-      return { bg: "bg-warning/20", text: "text-warning", label: "Pending" };
+      return {
+        bg: isDark ? "bg-warning/20" : "bg-yellow-100",
+        text: isDark ? "text-warning" : "text-yellow-700",
+        border: isDark ? "border-warning/30" : "border-yellow-300",
+        label: "Pending",
+      };
     case "assigned":
-      return { bg: "bg-info/20", text: "text-info", label: "Assigned" };
+      return {
+        bg: isDark ? "bg-info/20" : "bg-blue-100",
+        text: isDark ? "text-info" : "text-blue-700",
+        border: isDark ? "border-info/30" : "border-blue-300",
+        label: "Assigned",
+      };
     case "picked_up":
-      return { bg: "bg-accent/20", text: "text-accent", label: "Picked Up" };
+      return {
+        bg: isDark ? "bg-accent/20" : "bg-purple-100",
+        text: isDark ? "text-accent" : "text-purple-700",
+        border: isDark ? "border-accent/30" : "border-purple-300",
+        label: "Picked Up",
+      };
     case "delivering":
-      return { bg: "bg-accent/20", text: "text-accent", label: "In Transit" };
+      return {
+        bg: isDark ? "bg-accent/20" : "bg-purple-100",
+        text: isDark ? "text-accent" : "text-purple-700",
+        border: isDark ? "border-accent/30" : "border-purple-300",
+        label: "In Transit",
+      };
     case "delivered":
-      return { bg: "bg-active/20", text: "text-active", label: "Delivered" };
+      return {
+        bg: isDark ? "bg-active/20" : "bg-green-100",
+        text: isDark ? "text-active" : "text-green-700",
+        border: isDark ? "border-active/30" : "border-green-300",
+        label: "Delivered",
+      };
     case "cancelled":
-      return { bg: "bg-danger/20", text: "text-danger", label: "Cancelled" };
+      return {
+        bg: isDark ? "bg-danger/20" : "bg-red-100",
+        text: isDark ? "text-danger" : "text-red-700",
+        border: isDark ? "border-danger/30" : "border-red-300",
+        label: "Cancelled",
+      };
     default:
-      return { bg: "bg-neutral-100/20", text: "text-gray-600", label: status };
+      return {
+        bg: isDark ? "bg-neutral-100/20" : "bg-gray-100",
+        text: isDark ? "text-light-300" : "text-gray-700",
+        border: isDark ? "border-neutral-100/30" : "border-gray-300",
+        label: status,
+      };
   }
 };
 
@@ -80,6 +118,16 @@ export default function OrdersScreen() {
 
   const tabBarHeight = 65;
 
+  const card1Anim = useRef(new Animated.Value(0)).current;
+  const card2Anim = useRef(new Animated.Value(0)).current;
+  const card3Anim = useRef(new Animated.Value(0)).current;
+  const hasAnimatedRef = useRef(false);
+
+  const [showPromoModal, setShowPromoModal] = useState(false);
+
+  const starRotateAnim = useRef(new Animated.Value(0)).current;
+  const starShineAnim = useRef(new Animated.Value(1)).current;
+
   const loadOrders = useCallback(
     async (showRefreshing = false, page: number = 1, search: string = "") => {
       if (!isAuthenticated) return;
@@ -118,6 +166,82 @@ export default function OrdersScreen() {
       loadOrders(false, 1, ""); // Load first page on mount
     }
   }, [isAuthenticated, loadOrders]);
+
+  // Animate summary cards on mount (first time only)
+  useEffect(() => {
+    if (!hasAnimatedRef.current && isAuthenticated) {
+      hasAnimatedRef.current = true;
+      // Animate cards with staggered delay
+      Animated.parallel([
+        Animated.timing(card1Anim, {
+          toValue: 1,
+          duration: 600,
+          delay: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(card2Anim, {
+          toValue: 1,
+          duration: 600,
+          delay: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(card3Anim, {
+          toValue: 1,
+          duration: 600,
+          delay: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      // Set to final state immediately if already animated or not authenticated
+      card1Anim.setValue(1);
+      card2Anim.setValue(1);
+      card3Anim.setValue(1);
+    }
+  }, [isAuthenticated]);
+
+  // Promo star rotation and shine animation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Rotation animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(starRotateAnim, {
+            toValue: 1,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(starRotateAnim, {
+            toValue: 0,
+            duration: 0,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+
+      // Shine animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(starShineAnim, {
+            toValue: 1.3,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(starShineAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }, 3000);
+
+    return () => {
+      clearTimeout(timer);
+      starRotateAnim.stopAnimation();
+      starShineAnim.stopAnimation();
+    };
+  }, []);
 
   // Handle search with debouncing
   useEffect(() => {
@@ -218,10 +342,130 @@ export default function OrdersScreen() {
 
   return (
     <>
+      <View
+        className={`absolute top-0 left-0 right-0 z-50 ${
+          isDark ? "bg-primary" : "bg-white"
+        }`}
+        style={{
+          paddingTop: insets.top + 10,
+          paddingBottom: 16,
+          paddingHorizontal: 24,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: isDark ? 0.1 : 0.05,
+          shadowRadius: 4,
+          elevation: 4,
+        }}
+      >
+        {/* Modern Header with Icon - Fixed */}
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center flex-1">
+            <View
+              className={`rounded-xl p-2.5 mr-3 ${
+                isDark ? "bg-accent/20" : "bg-blue-900/20"
+              }`}
+            >
+              <Icons.package
+                name={MCIconNames.packageVariant as any}
+                size={22}
+                color={isDark ? "#AB8BFF" : "#1E3A8A"}
+              />
+            </View>
+            <View className="flex-1">
+              <Text
+                className={`text-xl font-bold mb-0.5 ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
+                My Orders
+              </Text>
+              <Text
+                className={`text-xs ${
+                  isDark ? "text-light-400" : "text-gray-500"
+                }`}
+              >
+                {statistics.total} {statistics.total === 1 ? "order" : "orders"}{" "}
+                total
+              </Text>
+            </View>
+          </View>
+          <View className="flex-row items-end gap-3">
+            <View className="items-center">
+              <TouchableOpacity
+                onPress={() => setShowPromoModal(true)}
+                className={`rounded-xl p-2 items-center justify-center ${
+                  isDark ? "bg-accent/20" : "bg-blue-50"
+                }`}
+              >
+                <Animated.View
+                  style={{
+                    transform: [
+                      {
+                        rotate: starRotateAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ["0deg", "360deg"],
+                        }),
+                      },
+                      {
+                        scale: starShineAnim,
+                      },
+                    ],
+                  }}
+                >
+                  <Icons.status
+                    name={IconNames.star as any}
+                    size={18}
+                    color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                  />
+                </Animated.View>
+              </TouchableOpacity>
+              <Text
+                className={`text-[10px] mt-1 font-medium ${
+                  isDark ? "text-light-400" : "text-gray-600"
+                }`}
+              >
+                Promo
+              </Text>
+            </View>
+            <View className="items-center">
+              <TouchableOpacity
+                onPress={() => router.push(Routes.standalone.newOrder)}
+                className={`rounded-xl p-2 items-center justify-center ${
+                  isDark ? "bg-accent" : "bg-blue-500"
+                }`}
+                style={
+                  isDark
+                    ? {
+                        shadowColor: "#AB8BFF",
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 4,
+                        elevation: 4,
+                      }
+                    : {}
+                }
+              >
+                <Icons.action
+                  name={IconNames.addCircle as any}
+                  size={18}
+                  color={isDark ? "#030014" : "#FFFFFF"}
+                />
+              </TouchableOpacity>
+              <Text
+                className={`text-[10px] mt-1 font-medium ${
+                  isDark ? "text-light-400" : "text-gray-600"
+                }`}
+              >
+                New Order
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
       <ScrollView
         className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
         contentContainerStyle={{
-          paddingTop: insets.top + 20,
+          paddingTop: insets.top + 90,
           paddingBottom: tabBarHeight + insets.bottom + 40,
           paddingHorizontal: 24,
         }}
@@ -235,171 +479,162 @@ export default function OrdersScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View>
-          {/* Modern Header with Icon */}
-          <View className="flex-row items-center justify-between mb-6">
-            <View className="flex-row items-center flex-1">
-              <View
-                className={`rounded-xl p-2.5 mr-3 ${
-                  isDark ? "bg-accent/20" : "bg-blue-900/20"
-                }`}
-              >
-                <Icons.package
-                  name={MCIconNames.packageVariant as any}
-                  size={22}
-                  color={isDark ? "#AB8BFF" : "#1E3A8A"}
-                />
-              </View>
-              <View className="flex-1">
-                <Text
-                  className={`text-xl font-bold mb-0.5 ${
-                    isDark ? "text-light-100" : "text-black"
-                  }`}
-                >
-                  My Orders
-                </Text>
-                <Text
-                  className={`text-xs ${
-                    isDark ? "text-light-400" : "text-gray-500"
-                  }`}
-                >
-                  {statistics.total}{" "}
-                  {statistics.total === 1 ? "order" : "orders"} total
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              onPress={() => router.push(Routes.standalone.newOrder)}
-              className="flex-row items-center"
-            >
-              <Text
-                className={`text-xs mr-2 ${
-                  isDark ? "text-light-400" : "text-gray-500"
-                }`}
-              >
-                Create new order
-              </Text>
-              <View
-                className="rounded-xl p-2 items-center justify-center"
-                style={{
-                  backgroundColor: isDark ? "#AB8BFF" : "#1E3A8A",
-                  shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 4,
-                  elevation: 4,
-                }}
-              >
-                <Icons.action
-                  name={IconNames.addCircle as any}
-                  size={18}
-                  color={isDark ? "#030014" : "#FFFFFF"}
-                />
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          {/* Statistics Cards - OPay Style Perfectly Squared */}
+          {/* Statistics Cards - OPay Style with Parent Background */}
           {orders.length > 0 && (
-            <View className="flex-row gap-2.5 mb-6">
-              <View
-                className={`flex-1 rounded-2xl p-4 ${
-                  isDark ? "bg-secondary" : "bg-white"
-                }`}
-                style={{
-                  aspectRatio: 1,
-                }}
-              >
-                <View className="items-center justify-center flex-1">
-                  <View className="bg-info/10 rounded-2xl p-2.5 mb-2">
-                    <Icons.package
-                      name={MCIconNames.packageVariant as any}
-                      size={22}
-                      color="#5AC8FA"
-                    />
-                  </View>
-                  <Text
-                    className={`text-xs font-medium mb-1.5 ${
-                      isDark ? "text-light-400" : "text-gray-500"
-                    }`}
-                  >
-                    Total
-                  </Text>
-                  <Text
-                    className={`text-2xl font-bold ${
-                      isDark ? "text-light-100" : "text-black"
-                    }`}
-                  >
-                    {statistics.total}
-                  </Text>
-                </View>
-              </View>
-              <View
-                className={`flex-1 rounded-2xl p-4 ${
-                  isDark ? "bg-secondary" : "bg-white"
-                }`}
-                style={{
-                  aspectRatio: 1,
-                }}
-              >
-                <View className="items-center justify-center flex-1">
-                  <View className="bg-active/10 rounded-2xl p-2.5 mb-2">
-                    <Icons.status
-                      name={IconNames.checkmarkCircle as any}
-                      size={22}
-                      color="#30D158"
-                    />
-                  </View>
-                  <Text
-                    className={`text-xs font-medium mb-1.5 ${
-                      isDark ? "text-light-400" : "text-gray-500"
-                    }`}
-                  >
-                    Completed
-                  </Text>
-                  <Text
-                    className={`text-2xl font-bold ${
-                      isDark ? "text-light-100" : "text-black"
-                    }`}
-                  >
-                    {statistics.completed}
-                  </Text>
-                </View>
-              </View>
-              <View
-                className={`flex-1 rounded-2xl p-4 ${
-                  isDark ? "bg-secondary" : "bg-white"
-                }`}
-                style={{
-                  aspectRatio: 1,
-                }}
-              >
-                <View className="items-center justify-center flex-1">
+            <View
+              className={`rounded-3xl p-4 mb-6 ${
+                isDark ? "bg-secondary" : "bg-white"
+              }`}
+              style={{
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: isDark ? 0.1 : 0.05,
+                shadowRadius: 8,
+                elevation: 3,
+              }}
+            >
+              <View className="flex-row gap-2.5">
+                <Animated.View
+                  className="flex-1"
+                  style={{
+                    aspectRatio: 1,
+                    opacity: card1Anim,
+                    transform: [
+                      {
+                        translateY: card1Anim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [20, 0],
+                        }),
+                      },
+                    ],
+                  }}
+                >
                   <View
-                    className={`rounded-2xl p-2.5 mb-2 ${
-                      isDark ? "bg-accent/10" : "bg-blue-900/10"
+                    className={`rounded-2xl p-4 items-center justify-center flex-1 ${
+                      isDark ? "bg-dark-100" : "bg-blue-50"
                     }`}
                   >
-                    <Icons.money
-                      name={MCIconNames.cash as any}
-                      size={22}
-                      color={isDark ? "#AB8BFF" : "#1E3A8A"}
-                    />
+                    <View
+                      className={`rounded-xl p-2.5 mb-2 ${
+                        isDark ? "bg-info/20" : "bg-blue-100"
+                      }`}
+                    >
+                      <Icons.package
+                        name={MCIconNames.packageVariant as any}
+                        size={22}
+                        color={isDark ? "#5AC8FA" : "#1E3A8A"}
+                      />
+                    </View>
+                    <Text
+                      className={`text-xs font-medium mb-1.5 ${
+                        isDark ? "text-light-400" : "text-gray-600"
+                      }`}
+                    >
+                      Total
+                    </Text>
+                    <Text
+                      className={`text-2xl font-bold ${
+                        isDark ? "text-light-100" : "text-gray-900"
+                      }`}
+                    >
+                      {statistics.total}
+                    </Text>
                   </View>
-                  <Text
-                    className={`text-xs font-medium mb-1.5 ${
-                      isDark ? "text-light-400" : "text-gray-500"
+                </Animated.View>
+                <Animated.View
+                  className="flex-1"
+                  style={{
+                    aspectRatio: 1,
+                    opacity: card2Anim,
+                    transform: [
+                      {
+                        translateY: card2Anim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [20, 0],
+                        }),
+                      },
+                    ],
+                  }}
+                >
+                  <View
+                    className={`rounded-2xl p-4 items-center justify-center flex-1 ${
+                      isDark ? "bg-dark-100" : "bg-green-50"
                     }`}
                   >
-                    Spent
-                  </Text>
-                  <Text
-                    className={`text-lg font-bold ${
-                      isDark ? "text-light-100" : "text-black"
+                    <View
+                      className={`rounded-xl p-2.5 mb-2 ${
+                        isDark ? "bg-active/20" : "bg-green-100"
+                      }`}
+                    >
+                      <Icons.status
+                        name={IconNames.checkmarkCircle as any}
+                        size={22}
+                        color={isDark ? "#30D158" : "#059669"}
+                      />
+                    </View>
+                    <Text
+                      className={`text-xs font-medium mb-1.5 ${
+                        isDark ? "text-light-400" : "text-gray-600"
+                      }`}
+                    >
+                      Completed
+                    </Text>
+                    <Text
+                      className={`text-2xl font-bold ${
+                        isDark ? "text-light-100" : "text-gray-900"
+                      }`}
+                    >
+                      {statistics.completed}
+                    </Text>
+                  </View>
+                </Animated.View>
+                <Animated.View
+                  className="flex-1"
+                  style={{
+                    aspectRatio: 1,
+                    opacity: card3Anim,
+                    transform: [
+                      {
+                        translateY: card3Anim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [20, 0],
+                        }),
+                      },
+                    ],
+                  }}
+                >
+                  <View
+                    className={`rounded-2xl p-4 items-center justify-center flex-1 ${
+                      isDark ? "bg-dark-100" : "bg-purple-50"
                     }`}
                   >
-                    ₦{statistics.totalSpent.toLocaleString()}
-                  </Text>
-                </View>
+                    <View
+                      className={`rounded-xl p-2.5 mb-2 ${
+                        isDark ? "bg-accent/20" : "bg-purple-100"
+                      }`}
+                    >
+                      <Icons.money
+                        name={MCIconNames.cash as any}
+                        size={22}
+                        color={isDark ? "#AB8BFF" : "#7C3AED"}
+                      />
+                    </View>
+                    <Text
+                      className={`text-xs font-medium mb-1.5 ${
+                        isDark ? "text-light-400" : "text-gray-600"
+                      }`}
+                    >
+                      Spent
+                    </Text>
+                    <Text
+                      className={`text-lg font-bold ${
+                        isDark ? "text-light-100" : "text-gray-900"
+                      }`}
+                    >
+                      ₦{statistics.totalSpent.toLocaleString()}
+                    </Text>
+                  </View>
+                </Animated.View>
               </View>
             </View>
           )}
@@ -752,316 +987,311 @@ export default function OrdersScreen() {
               ) : (
                 <View className="gap-4">
                   {filteredOrders.map((order, index) => {
-                    const statusInfo = getStatusColor(order.status);
+                    const statusInfo = getStatusColor(order.status, isDark);
                     const orderId = order._id || order.id || "";
                     const createdAt = order.createdAt
                       ? formatDate(order.createdAt)
                       : "";
 
                     return (
-                      <TouchableOpacity
+                      <Reanimated.View
                         key={orderId}
-                        onPress={() =>
-                          router.push(
-                            Routes.standalone.orderDetail(orderId) as any
-                          )
-                        }
-                        className={`rounded-3xl p-5 border active:opacity-80 ${
-                          isDark
-                            ? "bg-secondary border-neutral-100"
-                            : "bg-white border-gray-200"
-                        }`}
-                        style={{
-                          shadowColor: "#000",
-                          shadowOffset: { width: 0, height: 4 },
-                          shadowOpacity: 0.15,
-                          shadowRadius: 12,
-                          elevation: 6,
-                        }}
+                        entering={FadeInDown.delay(index * 100)
+                          .duration(500)
+                          .springify()}
                       >
-                        {/* Header with Status */}
-                        <View className="flex-row items-start justify-between mb-4">
-                          <View className="flex-1 mr-3">
-                            <View className="flex-row items-center mb-2">
-                              <View
-                                className={`rounded-lg p-1.5 mr-2 ${
-                                  isDark ? "bg-accent/20" : "bg-blue-900/20"
-                                }`}
+                        <TouchableOpacity
+                          onPress={() =>
+                            router.push(
+                              Routes.standalone.orderDetail(orderId) as any
+                            )
+                          }
+                          className={`rounded-3xl p-5 border active:opacity-80 ${
+                            isDark
+                              ? "bg-secondary border-neutral-100"
+                              : "bg-white border-gray-200"
+                          }`}
+                          style={{
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 4 },
+                            shadowOpacity: 0.15,
+                            shadowRadius: 12,
+                            elevation: 6,
+                          }}
+                        >
+                          {/* Header with Status */}
+                          <View className="flex-row items-start justify-between mb-4">
+                            <View className="flex-1 mr-3">
+                              <View className="flex-row items-center mb-2">
+                                <View
+                                  className={`rounded-lg p-1.5 mr-2 ${
+                                    isDark ? "bg-accent/20" : "bg-blue-900/20"
+                                  }`}
+                                >
+                                  <Icons.package
+                                    name={MCIconNames.packageVariant as any}
+                                    size={16}
+                                    color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                                  />
+                                </View>
+                                <Text
+                                  className={`font-bold text-base ${
+                                    isDark ? "text-light-100" : "text-black"
+                                  }`}
+                                >
+                                  Order #
+                                  {String(orderId).slice(-6).toUpperCase()}
+                                </Text>
+                              </View>
+                              <View className="flex-row items-center">
+                                <Icons.time
+                                  name={IconNames.timeOutline as any}
+                                  size={12}
+                                  color={isDark ? "#9CA4AB" : "#6E6E73"}
+                                  style={{ marginRight: 6 }}
+                                />
+                                <Text
+                                  className={`text-xs ${
+                                    isDark ? "text-light-400" : "text-gray-500"
+                                  }`}
+                                >
+                                  {createdAt}
+                                </Text>
+                              </View>
+                            </View>
+                            <View
+                              className={`${statusInfo.bg} px-3 py-2 rounded-xl border ${statusInfo.border}`}
+                            >
+                              <Text
+                                className={`${statusInfo.text} text-xs font-bold`}
                               >
-                                <Icons.package
-                                  name={MCIconNames.packageVariant as any}
-                                  size={16}
-                                  color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                                {statusInfo.label}
+                              </Text>
+                            </View>
+                          </View>
+
+                          {/* Route Info */}
+                          <View className="mb-4">
+                            <View className="flex-row items-start mb-3">
+                              <View className="bg-info/20 rounded-xl p-2 mr-3">
+                                <Icons.location
+                                  name={IconNames.locationOutline as any}
+                                  size={14}
+                                  color="#5AC8FA"
                                 />
                               </View>
-                              <Text
-                                className={`font-bold text-base ${
-                                  isDark ? "text-light-100" : "text-black"
+                              <View className="flex-1">
+                                <Text
+                                  className={`text-xs mb-1 font-medium ${
+                                    isDark ? "text-light-400" : "text-gray-500"
+                                  }`}
+                                >
+                                  Pickup Location
+                                </Text>
+                                <Text
+                                  className={`text-sm ${
+                                    isDark ? "text-light-100" : "text-black"
+                                  }`}
+                                  numberOfLines={2}
+                                >
+                                  {order.pickup?.address || "N/A"}
+                                </Text>
+                              </View>
+                            </View>
+                            <View className="flex-row items-start mb-2">
+                              <View className="bg-warning/20 rounded-xl p-2 mr-3">
+                                <Icons.location
+                                  name={IconNames.locationOutline as any}
+                                  size={14}
+                                  color="#FF9500"
+                                />
+                              </View>
+                              <View className="flex-1">
+                                <Text
+                                  className={`text-xs mb-1 font-medium ${
+                                    isDark ? "text-light-400" : "text-gray-500"
+                                  }`}
+                                >
+                                  Dropoff Location
+                                </Text>
+                                <Text
+                                  className={`text-sm ${
+                                    isDark ? "text-light-100" : "text-black"
+                                  }`}
+                                  numberOfLines={2}
+                                >
+                                  {order.dropoff?.address || "N/A"}
+                                </Text>
+                              </View>
+                            </View>
+                            {/* Distance and Rider Info */}
+                            {(order.distanceKm ||
+                              order.meta?.distanceKm ||
+                              order.riderId) && (
+                              <View
+                                className={`flex-row items-center gap-3 mt-2 pt-2 border-t ${
+                                  isDark
+                                    ? "border-neutral-100/30"
+                                    : "border-gray-200"
                                 }`}
                               >
-                                Order #{String(orderId).slice(-6).toUpperCase()}
-                              </Text>
-                            </View>
-                            <View className="flex-row items-center">
-                              <Icons.time
-                                name={IconNames.timeOutline as any}
-                                size={12}
-                                color={isDark ? "#9CA4AB" : "#6E6E73"}
-                                style={{ marginRight: 6 }}
-                              />
-                              <Text
-                                className={`text-xs ${
-                                  isDark ? "text-light-400" : "text-gray-500"
-                                }`}
-                              >
-                                {createdAt}
-                              </Text>
-                            </View>
+                                {order.distanceKm || order.meta?.distanceKm ? (
+                                  <View className="flex-row items-center">
+                                    <Icons.map
+                                      name={IconNames.navigateOutline as any}
+                                      size={12}
+                                      color="#5AC8FA"
+                                      style={{ marginRight: 4 }}
+                                    />
+                                    <Text
+                                      className={`text-xs ${
+                                        isDark
+                                          ? "text-light-400"
+                                          : "text-gray-500"
+                                      }`}
+                                    >
+                                      {(
+                                        order.distanceKm ||
+                                        order.meta?.distanceKm
+                                      )?.toFixed(1)}{" "}
+                                      km
+                                    </Text>
+                                  </View>
+                                ) : null}
+                                {order.riderId && (
+                                  <View className="flex-row items-center">
+                                    <Icons.user
+                                      name={IconNames.personOutline as any}
+                                      size={12}
+                                      color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                                      style={{ marginRight: 4 }}
+                                    />
+                                    <Text
+                                      className={`text-xs ${
+                                        isDark
+                                          ? "text-light-400"
+                                          : "text-gray-500"
+                                      }`}
+                                    >
+                                      Rider Assigned
+                                    </Text>
+                                  </View>
+                                )}
+                              </View>
+                            )}
                           </View>
-                          <View
-                            className={`${
-                              statusInfo.bg
-                            } px-3 py-2 rounded-xl border ${
-                              order.status === "pending"
-                                ? "border-warning/30"
-                                : order.status === "assigned"
-                                ? "border-info/30"
-                                : order.status === "picked_up" ||
-                                  order.status === "delivering"
-                                ? "border-accent/30"
-                                : order.status === "delivered"
-                                ? "border-active/30"
-                                : order.status === "cancelled"
-                                ? "border-danger/30"
-                                : "border-neutral-100/30"
-                            }`}
-                          >
-                            <Text
-                              className={`${statusInfo.text} text-xs font-bold`}
-                            >
-                              {statusInfo.label}
-                            </Text>
-                          </View>
-                        </View>
 
-                        {/* Route Info */}
-                        <View className="mb-4">
-                          <View className="flex-row items-start mb-3">
-                            <View className="bg-info/20 rounded-xl p-2 mr-3">
-                              <Icons.location
-                                name={IconNames.locationOutline as any}
-                                size={14}
-                                color="#5AC8FA"
-                              />
-                            </View>
+                          {/* Items & Price */}
+                          <View className="flex-row items-center justify-between pt-4 border-t border-neutral-100/50">
                             <View className="flex-1">
+                              <View className="flex-row items-center mb-1">
+                                <Icons.package
+                                  name={IconNames.boxOutline as any}
+                                  size={14}
+                                  color="#D6C6FF"
+                                  style={{ marginRight: 6 }}
+                                />
+                                <Text className="text-light-400 text-xs">
+                                  Items
+                                </Text>
+                              </View>
                               <Text
-                                className={`text-xs mb-1 font-medium ${
-                                  isDark ? "text-light-400" : "text-gray-500"
+                                className={`text-sm font-medium ${
+                                  isDark ? "text-light-200" : "text-black"
                                 }`}
+                                numberOfLines={1}
                               >
-                                Pickup Location
-                              </Text>
-                              <Text
-                                className={`text-sm ${
-                                  isDark ? "text-light-100" : "text-black"
-                                }`}
-                                numberOfLines={2}
-                              >
-                                {order.pickup?.address || "N/A"}
+                                {order.items || "No items specified"}
                               </Text>
                             </View>
-                          </View>
-                          <View className="flex-row items-start mb-2">
-                            <View className="bg-warning/20 rounded-xl p-2 mr-3">
-                              <Icons.location
-                                name={IconNames.locationOutline as any}
-                                size={14}
-                                color="#FF9500"
-                              />
-                            </View>
-                            <View className="flex-1">
+                            <View className="items-end ml-4">
+                              <View className="flex-row items-center mb-1">
+                                <Icons.money
+                                  name={MCIconNames.cash as any}
+                                  size={14}
+                                  color="#30D158"
+                                  style={{ marginRight: 4 }}
+                                />
+                                <Text className="text-light-400 text-xs">
+                                  Price
+                                </Text>
+                              </View>
                               <Text
-                                className={`text-xs mb-1 font-medium ${
-                                  isDark ? "text-light-400" : "text-gray-500"
+                                className={`font-bold text-xl ${
+                                  isDark ? "text-accent" : "text-blue-900"
                                 }`}
                               >
-                                Dropoff Location
-                              </Text>
-                              <Text
-                                className={`text-sm ${
-                                  isDark ? "text-light-100" : "text-black"
-                                }`}
-                                numberOfLines={2}
-                              >
-                                {order.dropoff?.address || "N/A"}
+                                ₦{order.price?.toLocaleString() || "0"}
                               </Text>
                             </View>
                           </View>
-                          {/* Distance and Rider Info */}
-                          {(order.distanceKm ||
-                            order.meta?.distanceKm ||
-                            order.riderId) && (
-                            <View
-                              className={`flex-row items-center gap-3 mt-2 pt-2 border-t ${
-                                isDark
-                                  ? "border-neutral-100/30"
-                                  : "border-gray-200"
-                              }`}
-                            >
-                              {order.distanceKm || order.meta?.distanceKm ? (
-                                <View className="flex-row items-center">
-                                  <Icons.map
-                                    name={IconNames.navigateOutline as any}
-                                    size={12}
-                                    color="#5AC8FA"
-                                    style={{ marginRight: 4 }}
-                                  />
-                                  <Text
-                                    className={`text-xs ${
-                                      isDark
-                                        ? "text-light-400"
-                                        : "text-gray-500"
-                                    }`}
-                                  >
-                                    {(
-                                      order.distanceKm || order.meta?.distanceKm
-                                    )?.toFixed(1)}{" "}
-                                    km
-                                  </Text>
-                                </View>
-                              ) : null}
-                              {order.riderId && (
-                                <View className="flex-row items-center">
-                                  <Icons.user
-                                    name={IconNames.personOutline as any}
-                                    size={12}
-                                    color={isDark ? "#AB8BFF" : "#1E3A8A"}
-                                    style={{ marginRight: 4 }}
-                                  />
-                                  <Text
-                                    className={`text-xs ${
-                                      isDark
-                                        ? "text-light-400"
-                                        : "text-gray-500"
-                                    }`}
-                                  >
-                                    Rider Assigned
-                                  </Text>
-                                </View>
-                              )}
-                            </View>
-                          )}
-                        </View>
 
-                        {/* Items & Price */}
-                        <View className="flex-row items-center justify-between pt-4 border-t border-neutral-100/50">
-                          <View className="flex-1">
-                            <View className="flex-row items-center mb-1">
-                              <Icons.package
-                                name={IconNames.boxOutline as any}
-                                size={14}
-                                color="#D6C6FF"
-                                style={{ marginRight: 6 }}
-                              />
-                              <Text className="text-light-400 text-xs">
-                                Items
-                              </Text>
-                            </View>
-                            <Text
-                              className={`text-sm font-medium ${
-                                isDark ? "text-light-200" : "text-black"
-                              }`}
-                              numberOfLines={1}
-                            >
-                              {order.items || "No items specified"}
-                            </Text>
-                          </View>
-                          <View className="items-end ml-4">
-                            <View className="flex-row items-center mb-1">
-                              <Icons.money
-                                name={MCIconNames.cash as any}
-                                size={14}
-                                color="#30D158"
-                                style={{ marginRight: 4 }}
-                              />
-                              <Text className="text-light-400 text-xs">
-                                Price
-                              </Text>
-                            </View>
-                            <Text
-                              className={`font-bold text-xl ${
-                                isDark ? "text-accent" : "text-blue-900"
-                              }`}
-                            >
-                              ₦{order.price?.toLocaleString() || "0"}
-                            </Text>
-                          </View>
-                        </View>
-
-                        {/* Action Buttons */}
-                        <View className="flex-row items-center gap-3 mt-4 pt-4 border-t border-neutral-100/30">
-                          <TouchableOpacity
-                            onPress={(e) => {
-                              e.stopPropagation();
-                              router.push(
-                                Routes.standalone.orderDetail(orderId) as any
-                              );
-                            }}
-                            className={`flex-1 border rounded-xl py-2.5 px-4 flex-row items-center justify-center active:opacity-80 ${
-                              isDark
-                                ? "bg-secondary border-neutral-100"
-                                : "bg-white border-gray-200"
-                            }`}
-                          >
-                            <Icons.info
-                              name={IconNames.informationOutline as any}
-                              size={16}
-                              color="#5AC8FA"
-                              style={{ marginRight: 6 }}
-                            />
-                            <Text
-                              className={`text-xs font-semibold ${
-                                isDark ? "text-light-100" : "text-black"
-                              }`}
-                            >
-                              Details
-                            </Text>
-                          </TouchableOpacity>
-                          {(order.riderId || user?.role === "rider") && (
+                          {/* Action Buttons */}
+                          <View className="flex-row items-center gap-3 mt-4 pt-4 border-t border-neutral-100/30">
                             <TouchableOpacity
                               onPress={(e) => {
                                 e.stopPropagation();
-                                setChatOrderId(orderId);
-                                setShowChat(true);
+                                router.push(
+                                  Routes.standalone.orderDetail(orderId) as any
+                                );
                               }}
-                              className="flex-1 rounded-xl py-2.5 px-4 flex-row items-center justify-center active:opacity-80"
-                              style={{
-                                backgroundColor: isDark ? "#AB8BFF" : "#1E3A8A",
-                                shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
-                                shadowOffset: { width: 0, height: 2 },
-                                shadowOpacity: 0.3,
-                                shadowRadius: 4,
-                                elevation: 4,
-                              }}
+                              className={`flex-1 border rounded-xl py-2.5 px-4 flex-row items-center justify-center active:opacity-80 ${
+                                isDark
+                                  ? "bg-secondary border-neutral-100"
+                                  : "bg-white border-gray-200"
+                              }`}
                             >
-                              <Icons.communication
-                                name={IconNames.chatbubbleOutline as any}
+                              <Icons.info
+                                name={IconNames.informationOutline as any}
                                 size={16}
-                                color={isDark ? "#030014" : "#FFFFFF"}
+                                color="#5AC8FA"
                                 style={{ marginRight: 6 }}
                               />
                               <Text
-                                className={`text-xs font-bold ${
-                                  isDark ? "text-primary" : "text-white"
+                                className={`text-xs font-semibold ${
+                                  isDark ? "text-light-100" : "text-black"
                                 }`}
                               >
-                                Chat
+                                Details
                               </Text>
                             </TouchableOpacity>
-                          )}
-                        </View>
-                      </TouchableOpacity>
+                            {(order.riderId || user?.role === "rider") && (
+                              <TouchableOpacity
+                                onPress={(e) => {
+                                  e.stopPropagation();
+                                  setChatOrderId(orderId);
+                                  setShowChat(true);
+                                }}
+                                className="flex-1 rounded-xl py-2.5 px-4 flex-row items-center justify-center active:opacity-80"
+                                style={{
+                                  backgroundColor: isDark
+                                    ? "#AB8BFF"
+                                    : "#1E3A8A",
+                                  shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
+                                  shadowOffset: { width: 0, height: 2 },
+                                  shadowOpacity: 0.3,
+                                  shadowRadius: 4,
+                                  elevation: 4,
+                                }}
+                              >
+                                <Icons.communication
+                                  name={IconNames.chatbubbleOutline as any}
+                                  size={16}
+                                  color={isDark ? "#030014" : "#FFFFFF"}
+                                  style={{ marginRight: 6 }}
+                                />
+                                <Text
+                                  className={`text-xs font-bold ${
+                                    isDark ? "text-primary" : "text-white"
+                                  }`}
+                                >
+                                  Chat
+                                </Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        </TouchableOpacity>
+                      </Reanimated.View>
                     );
                   })}
                 </View>
@@ -1245,10 +1475,182 @@ export default function OrdersScreen() {
         </View>
       </ScrollView>
 
+      {/* Promo Modal */}
+      <Modal
+        visible={showPromoModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowPromoModal(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-end">
+          <View
+            className={`rounded-t-3xl p-6 pb-10 ${
+              isDark ? "bg-secondary" : "bg-white"
+            }`}
+            style={{
+              maxHeight: "70%",
+            }}
+          >
+            <View className="flex-row items-center justify-between mb-6">
+              <View className="flex-row items-center">
+                <View
+                  className={`rounded-xl p-2.5 mr-3 ${
+                    isDark ? "bg-accent/20" : "bg-blue-100"
+                  }`}
+                >
+                  <Icons.status
+                    name={IconNames.star as any}
+                    size={24}
+                    color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                  />
+                </View>
+                <Text
+                  className={`text-2xl font-bold ${
+                    isDark ? "text-light-100" : "text-black"
+                  }`}
+                >
+                  Special Promos
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowPromoModal(false)}
+                className={`rounded-xl p-2 ${
+                  isDark ? "bg-dark-100" : "bg-gray-100"
+                }`}
+              >
+                <Icons.navigation
+                  name={IconNames.close as any}
+                  size={20}
+                  color={isDark ? "#E6E6F0" : "#000000"}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View className="gap-4">
+                {/* Promo Card 1 */}
+                <View
+                  className={`rounded-2xl p-5 border ${
+                    isDark
+                      ? "bg-accent/10 border-accent/30"
+                      : "bg-blue-50 border-blue-200"
+                  }`}
+                >
+                  <View className="flex-row items-center mb-3">
+                    <View
+                      className={`rounded-xl p-2.5 mr-3 ${
+                        isDark ? "bg-accent/30" : "bg-blue-100"
+                      }`}
+                    >
+                      <Icons.money
+                        name={MCIconNames.cash as any}
+                        size={20}
+                        color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                      />
+                    </View>
+                    <Text
+                      className={`text-lg font-bold flex-1 ${
+                        isDark ? "text-light-100" : "text-gray-900"
+                      }`}
+                    >
+                      20% Off Next Order
+                    </Text>
+                  </View>
+                  <Text
+                    className={`text-sm ${
+                      isDark ? "text-light-400" : "text-gray-600"
+                    }`}
+                  >
+                    Get 20% discount on your next 3 orders. Use code PROMO20 at
+                    checkout. Limited time offer!
+                  </Text>
+                </View>
+
+                {/* Promo Card 2 */}
+                <View
+                  className={`rounded-2xl p-5 border ${
+                    isDark
+                      ? "bg-green-500/10 border-green-500/30"
+                      : "bg-green-50 border-green-200"
+                  }`}
+                >
+                  <View className="flex-row items-center mb-3">
+                    <View
+                      className={`rounded-xl p-2.5 mr-3 ${
+                        isDark ? "bg-green-500/30" : "bg-green-100"
+                      }`}
+                    >
+                      <Icons.status
+                        name={IconNames.checkmarkCircle as any}
+                        size={20}
+                        color={isDark ? "#10B981" : "#059669"}
+                      />
+                    </View>
+                    <Text
+                      className={`text-lg font-bold flex-1 ${
+                        isDark ? "text-light-100" : "text-gray-900"
+                      }`}
+                    >
+                      Free Delivery Weekend
+                    </Text>
+                  </View>
+                  <Text
+                    className={`text-sm ${
+                      isDark ? "text-light-400" : "text-gray-600"
+                    }`}
+                  >
+                    Enjoy free delivery on all orders placed during weekends. No
+                    minimum order required!
+                  </Text>
+                </View>
+
+                {/* Promo Card 3 */}
+                <View
+                  className={`rounded-2xl p-5 border ${
+                    isDark
+                      ? "bg-purple-500/10 border-purple-500/30"
+                      : "bg-purple-50 border-purple-200"
+                  }`}
+                >
+                  <View className="flex-row items-center mb-3">
+                    <View
+                      className={`rounded-xl p-2.5 mr-3 ${
+                        isDark ? "bg-purple-500/30" : "bg-purple-100"
+                      }`}
+                    >
+                      <Icons.status
+                        name={IconNames.star as any}
+                        size={20}
+                        color={isDark ? "#9333EA" : "#7C3AED"}
+                      />
+                    </View>
+                    <Text
+                      className={`text-lg font-bold flex-1 ${
+                        isDark ? "text-light-100" : "text-gray-900"
+                      }`}
+                    >
+                      Referral Bonus
+                    </Text>
+                  </View>
+                  <Text
+                    className={`text-sm ${
+                      isDark ? "text-light-400" : "text-gray-600"
+                    }`}
+                  >
+                    Refer a friend and both of you get ₦500 credit. Share your
+                    referral code now!
+                  </Text>
+                </View>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* Chat Modal */}
       {chatOrderId && (
         <OrderChat
-          orderId={chatOrderId}
+          orderId={chatOrderId || ""}
           visible={showChat}
           onClose={() => {
             setShowChat(false);
