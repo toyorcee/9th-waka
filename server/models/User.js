@@ -66,10 +66,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
-    bvn: {
-      type: String,
-      default: null,
-    },
     driverLicenseNumber: {
       type: String,
       default: null,
@@ -83,10 +79,6 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
     ninVerified: {
-      type: Boolean,
-      default: false,
-    },
-    bvnVerified: {
       type: Boolean,
       default: false,
     },

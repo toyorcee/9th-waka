@@ -200,10 +200,20 @@ export const register = async (req, res, next) => {
 
     // Validate vehicleType if rider
     if (finalRole === "rider" && vehicleType) {
-      if (!["motorcycle", "car"].includes(vehicleType)) {
+      // The User model uses: ["bicycle", "motorbike", "tricycle", "car", "van", null]
+      const validVehicleTypes = [
+        "bicycle",
+        "motorbike",
+        "tricycle",
+        "car",
+        "van",
+      ];
+      if (!validVehicleTypes.includes(vehicleType)) {
         return res.status(400).json({
           success: false,
-          error: "Invalid vehicleType. Must be 'motorcycle' or 'car'",
+          error: `Invalid vehicleType. Must be one of: ${validVehicleTypes.join(
+            ", "
+          )}`,
         });
       }
     }

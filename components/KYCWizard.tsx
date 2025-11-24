@@ -21,67 +21,54 @@ import Toast from "react-native-toast-message";
 
 interface KYCWizardProps {
   nin: string;
-  bvn: string;
   address: string;
   driverLicenseNumber: string;
   driverLicensePicture?: string;
   vehiclePicture?: string;
   ninVerified: boolean;
-  bvnVerified: boolean;
   driverLicenseVerified: boolean;
-  vehicleType?: "motorcycle" | "car";
+  vehicleType?: "bicycle" | "motorbike" | "tricycle" | "car" | "van";
 
   onNinChange: (value: string) => void;
-  onBvnChange: (value: string) => void;
   onAddressChange: (value: string) => void;
   onDriverLicenseNumberChange: (value: string) => void;
   onDriverLicensePictureChange: (value: string | undefined) => void;
   onVehiclePictureChange: (value: string | undefined) => void;
   onNinVerifiedChange: (value: boolean) => void;
-  onBvnVerifiedChange: (value: boolean) => void;
   onDriverLicenseVerifiedChange: (value: boolean) => void;
   onCheckAuthStatus: () => Promise<void>;
 
   verifyingNin: boolean;
-  verifyingBvn: boolean;
   uploadingLicense: boolean;
   uploadingVehicle: boolean;
 
   verifyNinDebounced: (value: string) => void;
-  verifyBvnDebounced: (value: string) => void;
 
-  // Optional callbacks for upload state management
   onUploadingLicenseChange?: (uploading: boolean) => void;
   onUploadingVehicleChange?: (uploading: boolean) => void;
 }
 
 export default function KYCWizard({
   nin,
-  bvn,
   address,
   driverLicenseNumber,
   driverLicensePicture,
   vehiclePicture,
   ninVerified,
-  bvnVerified,
   driverLicenseVerified,
   vehicleType,
   onNinChange,
-  onBvnChange,
   onAddressChange,
   onDriverLicenseNumberChange,
   onDriverLicensePictureChange,
   onVehiclePictureChange,
   onNinVerifiedChange,
-  onBvnVerifiedChange,
   onDriverLicenseVerifiedChange,
   onCheckAuthStatus,
   verifyingNin,
-  verifyingBvn,
   uploadingLicense,
   uploadingVehicle,
   verifyNinDebounced,
-  verifyBvnDebounced,
   onUploadingLicenseChange,
   onUploadingVehicleChange,
 }: KYCWizardProps) {
@@ -92,7 +79,7 @@ export default function KYCWizard({
 
   // Calculate completion status
   const kycSteps = {
-    identity: nin.trim().length > 0 || bvn.trim().length > 0,
+    identity: nin.trim().length > 0,
     address: address.trim().length > 0,
     driverLicense:
       driverLicenseNumber.trim().length > 0 &&
@@ -100,7 +87,7 @@ export default function KYCWizard({
       driverLicenseVerified,
     vehicle: !!vehiclePicture,
     allComplete:
-      (nin.trim().length > 0 || bvn.trim().length > 0) &&
+      nin.trim().length > 0 &&
       address.trim().length > 0 &&
       driverLicenseNumber.trim().length > 0 &&
       !!driverLicensePicture &&
@@ -411,8 +398,7 @@ export default function KYCWizard({
                 isDark ? "text-light-400" : "text-gray-500"
               }`}
             >
-              Provide at least one: NIN or BVN (you can verify both if you
-              prefer)
+              Provide your NIN (required)
             </Text>
             <Text
               className={`text-sm mb-2 ${
@@ -466,73 +452,7 @@ export default function KYCWizard({
                   isDark ? "text-light-400" : "text-gray-500"
                 }`}
               >
-                At least one is required (NIN or BVN). You can verify both if
-                you want.
-              </Text>
-            )}
-          </View>
-
-          <View
-            className={`rounded-2xl p-5 border mb-4 ${
-              isDark
-                ? "bg-secondary border-neutral-100"
-                : "bg-white border-gray-200"
-            }`}
-          >
-            <Text
-              className={`text-sm mb-2 ${
-                isDark ? "text-light-300" : "text-gray-600"
-              }`}
-            >
-              BVN (Bank Verification Number)
-            </Text>
-            <View className="relative">
-              <TextInput
-                value={bvn}
-                onChangeText={(text) => {
-                  onBvnChange(text);
-                  onBvnVerifiedChange(false);
-                  verifyBvnDebounced(text);
-                }}
-                placeholder="Enter your BVN (optional)"
-                placeholderTextColor="#9CA4AB"
-                keyboardType="numeric"
-                className={`rounded-xl px-4 py-3 text-base pr-12 ${
-                  isDark
-                    ? "text-light-100 bg-dark-100"
-                    : "text-black bg-gray-100"
-                } ${bvnVerified ? "border-2 border-green-500" : ""}`}
-              />
-              {verifyingBvn && (
-                <View className="absolute right-4 top-3">
-                  <ActivityIndicator size="small" color="#AB8BFF" />
-                </View>
-              )}
-              {bvnVerified && !verifyingBvn && (
-                <View className="absolute right-4 top-3">
-                  <Icons.safety
-                    name={IconNames.checkmarkCircle as any}
-                    size={20}
-                    color="#10B981"
-                  />
-                </View>
-              )}
-            </View>
-            {bvnVerified && !verifyingBvn && (
-              <View className="flex-row items-center mt-2">
-                <Text className="text-green-400 text-xs font-semibold">
-                  ✓ Verified
-                </Text>
-              </View>
-            )}
-            {!bvnVerified && !verifyingBvn && (
-              <Text
-                className={`text-xs mt-1 ${
-                  isDark ? "text-light-400" : "text-gray-500"
-                }`}
-              >
-                At least one is required (NIN or BVN). You can verify both if
-                you want.
+                Required to accept delivery orders. Provide your NIN.
               </Text>
             )}
           </View>
@@ -878,8 +798,7 @@ export default function KYCWizard({
               isDark ? "text-light-400" : "text-gray-500"
             }`}
           >
-            Upload a clear picture of your{" "}
-            {vehicleType === "motorcycle" ? "motorcycle" : "car/van"}
+            Upload a clear picture of your {vehicleType || "vehicle"}
           </Text>
         </View>
       )}

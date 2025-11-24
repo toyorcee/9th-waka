@@ -46,7 +46,6 @@ export default function EditProfileScreen() {
     user?.profilePicture || undefined
   );
   const [nin, setNin] = useState(user?.nin || "");
-  const [bvn, setBvn] = useState(user?.bvn || "");
   const [defaultAddress, setDefaultAddress] = useState(
     user?.defaultAddress || ""
   );
@@ -65,9 +64,7 @@ export default function EditProfileScreen() {
   const [uploadingVehicle, setUploadingVehicle] = useState(false);
   const [saving, setSaving] = useState(false);
   const [verifyingNin, setVerifyingNin] = useState(false);
-  const [verifyingBvn, setVerifyingBvn] = useState(false);
   const [ninVerified, setNinVerified] = useState(user?.ninVerified || false);
-  const [bvnVerified, setBvnVerified] = useState(user?.bvnVerified || false);
   const [driverLicenseVerified, setDriverLicenseVerified] = useState(
     user?.driverLicenseVerified || false
   );
@@ -75,8 +72,16 @@ export default function EditProfileScreen() {
   const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null);
   const [emailValid, setEmailValid] = useState<boolean | null>(null);
   const [emailMessage, setEmailMessage] = useState<string>("");
-  const [vehicleType, setVehicleType] = useState<"motorcycle" | "car" | null>(
-    user?.vehicleType || null
+  const [vehicleType, setVehicleType] = useState<
+    "bicycle" | "motorbike" | "tricycle" | "car" | "van" | null
+  >(
+    (user?.vehicleType as
+      | "bicycle"
+      | "motorbike"
+      | "tricycle"
+      | "car"
+      | "van"
+      | null) || null
   );
 
   // Slide-in animation from right to left
@@ -116,19 +121,18 @@ export default function EditProfileScreen() {
   const kycSteps = useMemo(() => {
     if (user?.role !== "rider") return null;
     const hasNin = nin.trim().length > 0;
-    const hasBvn = bvn.trim().length > 0;
     const hasAddress = address.trim().length > 0;
     const hasDriverLicense = driverLicenseNumber.trim().length > 0;
     const hasDriverLicensePic = !!driverLicensePicture;
 
     return {
-      identity: hasNin || hasBvn, // At least one required
+      identity: hasNin, // NIN required
       address: hasAddress,
       driverLicense:
         hasDriverLicense && hasDriverLicensePic && driverLicenseVerified,
       vehicle: !!vehiclePicture,
       allComplete:
-        (hasNin || hasBvn) &&
+        hasNin &&
         hasAddress &&
         hasDriverLicense &&
         hasDriverLicensePic &&
@@ -138,7 +142,6 @@ export default function EditProfileScreen() {
   }, [
     user?.role,
     nin,
-    bvn,
     address,
     driverLicenseNumber,
     driverLicensePicture,
@@ -181,7 +184,6 @@ export default function EditProfileScreen() {
       if (user.profilePicture) setProfilePicture(user.profilePicture);
       if (user.role === "rider") {
         if (!nin && user.nin) setNin(user.nin);
-        if (!bvn && user.bvn) setBvn(user.bvn);
         if (!address && user.address) setAddress(user.address);
         if (!driverLicenseNumber && user.driverLicenseNumber)
           setDriverLicenseNumber(user.driverLicenseNumber);
@@ -189,7 +191,6 @@ export default function EditProfileScreen() {
           setDriverLicensePicture(user.driverLicensePicture);
         if (user.vehiclePicture) setVehiclePicture(user.vehiclePicture);
         if (user.ninVerified !== undefined) setNinVerified(user.ninVerified);
-        if (user.bvnVerified !== undefined) setBvnVerified(user.bvnVerified);
         if (user.driverLicenseVerified !== undefined)
           setDriverLicenseVerified(user.driverLicenseVerified);
         if (user.vehicleType !== undefined) setVehicleType(user.vehicleType);
@@ -199,9 +200,7 @@ export default function EditProfileScreen() {
           setDefaultAddress(user.defaultAddress);
         // Load optional KYC fields for customers
         if (!nin && user.nin) setNin(user.nin);
-        if (!bvn && user.bvn) setBvn(user.bvn);
         if (user.ninVerified !== undefined) setNinVerified(user.ninVerified);
-        if (user.bvnVerified !== undefined) setBvnVerified(user.bvnVerified);
       }
     }
   }, [user]);
@@ -447,41 +446,6 @@ export default function EditProfileScreen() {
     [checkAuthStatus]
   );
 
-  // Debounced verification function for BVN
-  const verifyBvnDebounced = React.useMemo(
-    () =>
-      debounce(async (bvnValue: string) => {
-        if (!bvnValue || bvnValue.trim().length === 0) {
-          setBvnVerified(false);
-          return;
-        }
-
-        setVerifyingBvn(true);
-        try {
-          const updateData: any = {
-            bvn: bvnValue.trim(),
-          };
-          const response = await updateProfile(updateData);
-          if (response?.user?.bvnVerified) {
-            setBvnVerified(true);
-            Toast.show({
-              type: "success",
-              text1: "BVN Verified",
-              text2: "Your BVN has been successfully verified",
-            });
-          } else {
-            setBvnVerified(false);
-          }
-          await checkAuthStatus();
-        } catch (error: any) {
-          setBvnVerified(false);
-        } finally {
-          setVerifyingBvn(false);
-        }
-      }, 1500),
-    [checkAuthStatus]
-  );
-
   // Debounced email availability check
   const checkEmailDebounced = React.useMemo(
     () =>
@@ -551,7 +515,6 @@ export default function EditProfileScreen() {
 
       if (user?.role === "rider") {
         updateData.nin = nin.trim() || undefined;
-        updateData.bvn = bvn.trim() || undefined;
         updateData.address = address.trim() || undefined;
         updateData.driverLicenseNumber =
           driverLicenseNumber.trim() || undefined;
@@ -559,7 +522,6 @@ export default function EditProfileScreen() {
       } else if (user?.role === "customer") {
         updateData.defaultAddress = defaultAddress.trim() || undefined;
         updateData.nin = nin.trim() || undefined;
-        updateData.bvn = bvn.trim() || undefined;
       }
 
       const response = await updateProfile(updateData);
@@ -578,9 +540,7 @@ export default function EditProfileScreen() {
           profilePicture: response.user.profilePicture,
           vehicleType: response.user.vehicleType,
           nin: response.user.nin,
-          bvn: response.user.bvn,
           ninVerified: response.user.ninVerified,
-          bvnVerified: response.user.bvnVerified,
           defaultAddress: response.user.defaultAddress,
           address: response.user.address,
           driverLicenseNumber: response.user.driverLicenseNumber,
@@ -682,7 +642,7 @@ export default function EditProfileScreen() {
           className="flex-1"
           contentContainerStyle={{
             paddingTop: insets.top + 80,
-            paddingBottom: 20, // Reduced padding since TabBarSpacer handles the rest
+            paddingBottom: 20,
             paddingHorizontal: 24,
           }}
         >
@@ -866,8 +826,8 @@ export default function EditProfileScreen() {
                         }`}
                       >
                         {kycSteps.identity
-                          ? "NIN or BVN added"
-                          : "Add your NIN or BVN (required)"}
+                          ? "NIN added"
+                          : "Add your NIN (required)"}
                       </Text>
                     </View>
                   </Animated.View>
@@ -1308,59 +1268,42 @@ export default function EditProfileScreen() {
                   >
                     Vehicle Type
                   </Text>
-                  <View
-                    className={`flex-row rounded-2xl p-1 ${
-                      isDark ? "bg-dark-100" : "bg-white border border-gray-200"
-                    }`}
-                  >
-                    <TouchableOpacity
-                      onPress={() => setVehicleType("motorcycle")}
-                      className={`flex-1 py-3 rounded-xl ${
-                        vehicleType === "motorcycle"
-                          ? isDark
-                            ? "bg-accent"
-                            : "bg-blue-900"
-                          : ""
-                      }`}
-                    >
-                      <Text
-                        className={`text-center font-semibold text-sm ${
-                          vehicleType === "motorcycle"
+                  <View className="gap-2">
+                    {[
+                      { value: "bicycle", label: "Bicycle", icon: "🚲" },
+                      { value: "motorbike", label: "Motorbike", icon: "🏍️" },
+                      { value: "tricycle", label: "Tricycle", icon: "🛺" },
+                      { value: "car", label: "Car", icon: "🚗" },
+                      { value: "van", label: "Van", icon: "🚐" },
+                    ].map((type) => (
+                      <TouchableOpacity
+                        key={type.value}
+                        onPress={() => setVehicleType(type.value as any)}
+                        className={`py-3 px-4 rounded-xl border-2 ${
+                          vehicleType === type.value
                             ? isDark
-                              ? "text-primary"
-                              : "text-white"
+                              ? "bg-accent border-accent"
+                              : "bg-blue-900 border-blue-900"
                             : isDark
-                            ? "text-light-300"
-                            : "text-gray-600"
+                            ? "bg-dark-100 border-neutral-100"
+                            : "bg-white border-gray-200"
                         }`}
                       >
-                        🏍️ Motorcycle
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => setVehicleType("car")}
-                      className={`flex-1 py-3 rounded-xl ${
-                        vehicleType === "car"
-                          ? isDark
-                            ? "bg-accent"
-                            : "bg-blue-900"
-                          : ""
-                      }`}
-                    >
-                      <Text
-                        className={`text-center font-semibold text-sm ${
-                          vehicleType === "car"
-                            ? isDark
-                              ? "text-primary"
-                              : "text-white"
-                            : isDark
-                            ? "text-light-300"
-                            : "text-gray-600"
-                        }`}
-                      >
-                        🚗 Car/Van/Tricycle
-                      </Text>
-                    </TouchableOpacity>
+                        <Text
+                          className={`text-center font-semibold text-sm ${
+                            vehicleType === type.value
+                              ? isDark
+                                ? "text-primary"
+                                : "text-white"
+                              : isDark
+                              ? "text-light-300"
+                              : "text-gray-600"
+                          }`}
+                        >
+                          {type.icon} {type.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
                   </View>
                   <Text
                     className={`text-xs mt-2 ${
@@ -1475,9 +1418,17 @@ export default function EditProfileScreen() {
                     }`}
                   >
                     Upload a clear picture of your{" "}
-                    {user?.vehicleType === "motorcycle"
-                      ? "motorcycle"
-                      : "car/van"}
+                    {vehicleType === "bicycle"
+                      ? "bicycle"
+                      : vehicleType === "motorbike"
+                      ? "motorbike"
+                      : vehicleType === "tricycle"
+                      ? "tricycle"
+                      : vehicleType === "car"
+                      ? "car"
+                      : vehicleType === "van"
+                      ? "van"
+                      : "vehicle"}
                   </Text>
                 </View>
               )}
@@ -1511,10 +1462,10 @@ export default function EditProfileScreen() {
                         value={nin}
                         onChangeText={(text) => {
                           setNin(text);
-                          setNinVerified(false); // Reset verification when typing
+                          setNinVerified(false);
                           verifyNinDebounced(text);
                         }}
-                        placeholder="Enter your NIN (optional)"
+                        placeholder="Enter your NIN"
                         placeholderTextColor="#9CA4AB"
                         keyboardType="numeric"
                         className={`rounded-xl px-4 py-3 text-base pr-12 ${
@@ -1549,81 +1500,6 @@ export default function EditProfileScreen() {
                       </View>
                     )}
                     {!ninVerified && !verifyingNin && (
-                      <Text
-                        className={`text-xs mt-1 ${
-                          isDark ? "text-light-400" : "text-gray-500"
-                        }`}
-                      >
-                        Required to accept delivery orders. Provide either NIN
-                        or BVN.
-                      </Text>
-                    )}
-                  </View>
-
-                  <View
-                    className={`rounded-2xl p-5 border ${
-                      isDark
-                        ? "bg-secondary border-neutral-100"
-                        : "bg-white border-gray-200"
-                    }`}
-                    style={{
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 1 },
-                      shadowOpacity: isDark ? 0.05 : 0.03,
-                      shadowRadius: 4,
-                      elevation: 2,
-                    }}
-                  >
-                    <Text
-                      className={`text-sm mb-2 ${
-                        isDark ? "text-light-300" : "text-gray-600"
-                      }`}
-                    >
-                      BVN (Bank Verification Number)
-                    </Text>
-                    <View className="relative">
-                      <TextInput
-                        value={bvn}
-                        onChangeText={(text) => {
-                          setBvn(text);
-                          setBvnVerified(false); // Reset verification when typing
-                          verifyBvnDebounced(text);
-                        }}
-                        placeholder="Enter your BVN (optional)"
-                        placeholderTextColor="#9CA4AB"
-                        keyboardType="numeric"
-                        className={`rounded-xl px-4 py-3 text-base pr-12 ${
-                          isDark
-                            ? "text-light-100 bg-dark-100"
-                            : "text-black bg-white border border-gray-200"
-                        } ${bvnVerified ? "border-2 border-green-500" : ""}`}
-                      />
-                      {verifyingBvn && (
-                        <View className="absolute right-4 top-3">
-                          <ActivityIndicator
-                            size="small"
-                            color={isDark ? "#AB8BFF" : "#1E3A8A"}
-                          />
-                        </View>
-                      )}
-                      {bvnVerified && !verifyingBvn && (
-                        <View className="absolute right-4 top-3">
-                          <Icons.safety
-                            name={IconNames.checkmarkCircle as any}
-                            size={20}
-                            color="#10B981"
-                          />
-                        </View>
-                      )}
-                    </View>
-                    {bvnVerified && !verifyingBvn && (
-                      <View className="flex-row items-center mt-2">
-                        <Text className="text-green-400 text-xs font-semibold">
-                          ✓ Verified
-                        </Text>
-                      </View>
-                    )}
-                    {!bvnVerified && !verifyingBvn && (
                       <Text
                         className={`text-xs mt-1 ${
                           isDark ? "text-light-400" : "text-gray-500"
@@ -2046,66 +1922,6 @@ export default function EditProfileScreen() {
                       >
                         Optional: Helps with account security and dispute
                         resolution
-                      </Text>
-                    )}
-
-                    <Text
-                      className={`text-sm mb-2 mt-4 ${
-                        isDark ? "text-light-300" : "text-gray-600"
-                      }`}
-                    >
-                      BVN (Bank Verification Number)
-                    </Text>
-                    <View className="relative">
-                      <TextInput
-                        value={bvn}
-                        onChangeText={(text) => {
-                          setBvn(text);
-                          setBvnVerified(false);
-                          verifyBvnDebounced(text);
-                        }}
-                        placeholder="Enter your BVN (optional)"
-                        placeholderTextColor="#9CA4AB"
-                        keyboardType="numeric"
-                        className={`rounded-xl px-4 py-3 text-base pr-12 ${
-                          isDark
-                            ? "text-light-100 bg-dark-100"
-                            : "text-black bg-white border border-gray-200"
-                        } ${bvnVerified ? "border-2 border-green-500" : ""}`}
-                      />
-                      {verifyingBvn && (
-                        <View className="absolute right-4 top-3">
-                          <ActivityIndicator
-                            size="small"
-                            color={isDark ? "#AB8BFF" : "#1E3A8A"}
-                          />
-                        </View>
-                      )}
-                      {bvnVerified && !verifyingBvn && (
-                        <View className="absolute right-4 top-3">
-                          <Icons.safety
-                            name={IconNames.checkmarkCircle as any}
-                            size={20}
-                            color="#10B981"
-                          />
-                        </View>
-                      )}
-                    </View>
-                    {bvnVerified && !verifyingBvn && (
-                      <View className="flex-row items-center mt-2">
-                        <Text className="text-green-400 text-xs font-semibold">
-                          ✓ Verified
-                        </Text>
-                      </View>
-                    )}
-                    {!bvnVerified && !verifyingBvn && (
-                      <Text
-                        className={`text-xs mt-1 ${
-                          isDark ? "text-light-400" : "text-gray-500"
-                        }`}
-                      >
-                        Optional: Provide either NIN or BVN for identity
-                        verification
                       </Text>
                     )}
                   </View>

@@ -502,20 +502,67 @@ export default function AdminRidersScreen() {
                           {rider.phoneNumber}
                         </Text>
                       )}
-                    </View>
-                    {rider.driverLicenseVerified && (
-                      <View
-                        className={`px-2 py-1 rounded-lg ${
-                          isDark ? "bg-accent/20" : "bg-blue-100"
-                        }`}
-                      >
-                        <Icons.action
-                          name={IconNames.checkmarkCircle as any}
-                          size={16}
-                          color={isDark ? "#AB8BFF" : "#1E3A8A"}
-                        />
+                      <View className="flex-row items-center gap-2 mt-2">
+                        {rider.isVerified ? (
+                          <View
+                            className={`px-2 py-1 rounded-lg ${
+                              isDark ? "bg-active/20" : "bg-green-100"
+                            }`}
+                          >
+                            <Text
+                              className={`text-xs font-semibold ${
+                                isDark ? "text-active" : "text-green-700"
+                              }`}
+                            >
+                              ✓ VERIFIED
+                            </Text>
+                          </View>
+                        ) : (
+                          <View
+                            className={`px-2 py-1 rounded-lg ${
+                              isDark ? "bg-warning/20" : "bg-yellow-100"
+                            }`}
+                          >
+                            <Text
+                              className={`text-xs font-semibold ${
+                                isDark ? "text-warning" : "text-yellow-700"
+                              }`}
+                            >
+                              ⚠ UNVERIFIED
+                            </Text>
+                          </View>
+                        )}
+                        {rider.driverLicenseVerified ? (
+                          <View
+                            className={`px-2 py-1 rounded-lg ${
+                              isDark ? "bg-info/20" : "bg-blue-100"
+                            }`}
+                          >
+                            <Text
+                              className={`text-xs font-semibold ${
+                                isDark ? "text-info" : "text-blue-700"
+                              }`}
+                            >
+                              ✓ LICENSE VERIFIED
+                            </Text>
+                          </View>
+                        ) : (
+                          <View
+                            className={`px-2 py-1 rounded-lg ${
+                              isDark ? "bg-warning/20" : "bg-yellow-100"
+                            }`}
+                          >
+                            <Text
+                              className={`text-xs font-semibold ${
+                                isDark ? "text-warning" : "text-yellow-700"
+                              }`}
+                            >
+                              ⚠ LICENSE UNVERIFIED
+                            </Text>
+                          </View>
+                        )}
                       </View>
-                    )}
+                    </View>
                   </View>
 
                   <View className="flex-row items-center justify-between">

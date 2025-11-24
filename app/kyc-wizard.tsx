@@ -1,11 +1,15 @@
 import KYCWizard from "@/components/KYCWizard";
+import TabBarSpacer from "@/components/TabBarSpacer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { updateProfile } from "@/services/userApi";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 export default function KYCWizardScreen() {
@@ -16,7 +20,6 @@ export default function KYCWizardScreen() {
   const isDark = theme === "dark";
 
   const [nin, setNin] = useState(user?.nin || "");
-  const [bvn, setBvn] = useState(user?.bvn || "");
   const [address, setAddress] = useState(user?.address || "");
   const [driverLicenseNumber, setDriverLicenseNumber] = useState(
     user?.driverLicenseNumber || ""
@@ -31,9 +34,7 @@ export default function KYCWizardScreen() {
   const [uploadingLicense, setUploadingLicense] = useState(false);
   const [uploadingVehicle, setUploadingVehicle] = useState(false);
   const [verifyingNin, setVerifyingNin] = useState(false);
-  const [verifyingBvn, setVerifyingBvn] = useState(false);
   const [ninVerified, setNinVerified] = useState(user?.ninVerified || false);
-  const [bvnVerified, setBvnVerified] = useState(user?.bvnVerified || false);
   const [driverLicenseVerified, setDriverLicenseVerified] = useState(
     user?.driverLicenseVerified || false
   );
@@ -65,10 +66,6 @@ export default function KYCWizardScreen() {
   // Debounced auto-save functions
   const autoSaveNin = React.useMemo(
     () => debounce((value: string) => autoSave("nin", value.trim()), 2000),
-    []
-  );
-  const autoSaveBvn = React.useMemo(
-    () => debounce((value: string) => autoSave("bvn", value.trim()), 2000),
     []
   );
   const autoSaveAddress = React.useMemo(
@@ -119,54 +116,12 @@ export default function KYCWizardScreen() {
     [checkAuthStatus]
   );
 
-  // Debounced verification function for BVN
-  const verifyBvnDebounced = React.useMemo(
-    () =>
-      debounce(async (bvnValue: string) => {
-        if (!bvnValue || bvnValue.trim().length === 0) {
-          setBvnVerified(false);
-          return;
-        }
-
-        setVerifyingBvn(true);
-        try {
-          const updateData: any = {
-            bvn: bvnValue.trim(),
-          };
-          const response = await updateProfile(updateData);
-          if (response?.user?.bvnVerified) {
-            setBvnVerified(true);
-            Toast.show({
-              type: "success",
-              text1: "BVN Verified",
-              text2: "Your BVN has been successfully verified",
-            });
-          } else {
-            setBvnVerified(false);
-          }
-          await checkAuthStatus();
-        } catch (error: any) {
-          setBvnVerified(false);
-        } finally {
-          setVerifyingBvn(false);
-        }
-      }, 1500),
-    [checkAuthStatus]
-  );
-
   // Handle field changes with auto-save
   const handleNinChange = (value: string) => {
     setNin(value);
     setNinVerified(false);
     verifyNinDebounced(value);
     autoSaveNin(value);
-  };
-
-  const handleBvnChange = (value: string) => {
-    setBvn(value);
-    setBvnVerified(false);
-    verifyBvnDebounced(value);
-    autoSaveBvn(value);
   };
 
   const handleAddressChange = (value: string) => {
@@ -220,7 +175,6 @@ export default function KYCWizardScreen() {
   useEffect(() => {
     if (user) {
       if (user.nin) setNin(user.nin);
-      if (user.bvn) setBvn(user.bvn);
       if (user.address) setAddress(user.address);
       if (user.driverLicenseNumber)
         setDriverLicenseNumber(user.driverLicenseNumber);
@@ -228,7 +182,6 @@ export default function KYCWizardScreen() {
         setDriverLicensePicture(user.driverLicensePicture);
       if (user.vehiclePicture) setVehiclePicture(user.vehiclePicture);
       if (user.ninVerified !== undefined) setNinVerified(user.ninVerified);
-      if (user.bvnVerified !== undefined) setBvnVerified(user.bvnVerified);
       if (user.driverLicenseVerified !== undefined)
         setDriverLicenseVerified(user.driverLicenseVerified);
     }
@@ -241,91 +194,96 @@ export default function KYCWizardScreen() {
   }
 
   return (
-    <ScrollView
+    <SafeAreaView
+      edges={["top"]}
       className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
-      contentContainerStyle={{
-        paddingTop: insets.top + 20,
-        paddingBottom: insets.bottom + 20,
-        paddingHorizontal: 24,
-      }}
     >
-      {/* Header */}
-      <View className="flex-row items-center justify-between mb-6">
-        <View className="flex-1">
-          <Text
-            className={`text-2xl font-bold mb-2 ${
-              isDark ? "text-light-100" : "text-black"
-            }`}
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{
+          paddingTop: insets.top + 20,
+          paddingBottom: 20,
+          paddingHorizontal: 24,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View className="flex-row items-center justify-between mb-6">
+          <View className="flex-1">
+            <Text
+              className={`text-2xl font-bold mb-2 ${
+                isDark ? "text-light-100" : "text-black"
+              }`}
+            >
+              Complete Your KYC
+            </Text>
+            <Text
+              className={`text-sm ${
+                isDark ? "text-light-400" : "text-gray-500"
+              }`}
+            >
+              Verify your identity to start accepting deliveries
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => router.replace("/(tabs)/home")}
+            className="ml-4"
           >
-            Complete Your KYC
-          </Text>
-          <Text
-            className={`text-sm ${isDark ? "text-light-400" : "text-gray-500"}`}
-          >
-            Verify your identity to start accepting deliveries
-          </Text>
+            <Text
+              className={`text-sm ${
+                isDark ? "text-light-300" : "text-gray-600"
+              }`}
+            >
+              Skip for now
+            </Text>
+          </TouchableOpacity>
         </View>
+
+        {/* KYC Wizard Component */}
+        <KYCWizard
+          nin={nin}
+          address={address}
+          driverLicenseNumber={driverLicenseNumber}
+          driverLicensePicture={driverLicensePicture}
+          vehiclePicture={vehiclePicture}
+          ninVerified={ninVerified}
+          driverLicenseVerified={driverLicenseVerified}
+          vehicleType={user?.vehicleType || undefined}
+          onNinChange={handleNinChange}
+          onAddressChange={handleAddressChange}
+          onDriverLicenseNumberChange={handleDriverLicenseNumberChange}
+          onDriverLicensePictureChange={handleDriverLicensePictureChange}
+          onVehiclePictureChange={handleVehiclePictureChange}
+          onNinVerifiedChange={setNinVerified}
+          onDriverLicenseVerifiedChange={setDriverLicenseVerified}
+          onCheckAuthStatus={checkAuthStatus}
+          verifyingNin={verifyingNin}
+          uploadingLicense={uploadingLicense}
+          uploadingVehicle={uploadingVehicle}
+          verifyNinDebounced={verifyNinDebounced}
+          onUploadingLicenseChange={setUploadingLicense}
+          onUploadingVehicleChange={setUploadingVehicle}
+        />
+
+        {/* Skip Button */}
         <TouchableOpacity
           onPress={() => router.replace("/(tabs)/home")}
-          className="ml-4"
-        >
-          <Text
-            className={`text-sm ${isDark ? "text-light-300" : "text-gray-600"}`}
-          >
-            Skip for now
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* KYC Wizard Component */}
-      <KYCWizard
-        nin={nin}
-        bvn={bvn}
-        address={address}
-        driverLicenseNumber={driverLicenseNumber}
-        driverLicensePicture={driverLicensePicture}
-        vehiclePicture={vehiclePicture}
-        ninVerified={ninVerified}
-        bvnVerified={bvnVerified}
-        driverLicenseVerified={driverLicenseVerified}
-        vehicleType={user?.vehicleType || undefined}
-        onNinChange={handleNinChange}
-        onBvnChange={handleBvnChange}
-        onAddressChange={handleAddressChange}
-        onDriverLicenseNumberChange={handleDriverLicenseNumberChange}
-        onDriverLicensePictureChange={handleDriverLicensePictureChange}
-        onVehiclePictureChange={handleVehiclePictureChange}
-        onNinVerifiedChange={setNinVerified}
-        onBvnVerifiedChange={setBvnVerified}
-        onDriverLicenseVerifiedChange={setDriverLicenseVerified}
-        onCheckAuthStatus={checkAuthStatus}
-        verifyingNin={verifyingNin}
-        verifyingBvn={verifyingBvn}
-        uploadingLicense={uploadingLicense}
-        uploadingVehicle={uploadingVehicle}
-        verifyNinDebounced={verifyNinDebounced}
-        verifyBvnDebounced={verifyBvnDebounced}
-        onUploadingLicenseChange={setUploadingLicense}
-        onUploadingVehicleChange={setUploadingVehicle}
-      />
-
-      {/* Skip Button */}
-      <TouchableOpacity
-        onPress={() => router.replace("/(tabs)/home")}
-        className={`mt-6 border rounded-xl py-3 items-center ${
-          isDark
-            ? "bg-dark-100 border-neutral-100"
-            : "bg-gray-100 border-gray-200"
-        }`}
-      >
-        <Text
-          className={`font-semibold ${
-            isDark ? "text-light-300" : "text-gray-600"
+          className={`mt-6 border rounded-xl py-3 items-center ${
+            isDark
+              ? "bg-dark-100 border-neutral-100"
+              : "bg-gray-100 border-gray-200"
           }`}
         >
-          Skip for now - Complete later
-        </Text>
-      </TouchableOpacity>
-    </ScrollView>
+          <Text
+            className={`font-semibold ${
+              isDark ? "text-light-300" : "text-gray-600"
+            }`}
+          >
+            Skip for now - Complete later
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+      <TabBarSpacer />
+    </SafeAreaView>
   );
 }

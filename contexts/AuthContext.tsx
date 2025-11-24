@@ -1,4 +1,8 @@
 import {
+  clearLogoutCallback,
+  registerLogoutCallback,
+} from "@/services/apiClient";
+import {
   fetchCurrentUser,
   getStoredToken,
   loginUser,
@@ -8,7 +12,13 @@ import {
   User,
 } from "@/services/authApi";
 import { registerForPushNotificationsAsync } from "@/services/notificationService";
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 
 interface AuthContextType {
   user: User | null;
@@ -20,7 +30,7 @@ interface AuthContextType {
     email: string,
     password: string,
     role?: "customer" | "rider",
-    vehicleType?: "motorcycle" | "car"
+    vehicleType?: "bicycle" | "motorbike" | "tricycle" | "car" | "van"
   ) => Promise<void>;
   logout: () => Promise<void>;
   verifyEmail: (token: string, user: User) => Promise<void>;
@@ -102,7 +112,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     email: string,
     password: string,
     role?: "customer" | "rider",
-    vehicleType?: "motorcycle" | "car"
+    vehicleType?: "bicycle" | "motorbike" | "tricycle" | "car" | "van"
   ) => {
     try {
       const response = await registerUser({
@@ -119,7 +129,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await removeToken();
       setUser(null);
@@ -127,7 +137,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       console.error("Logout error:", error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    registerLogoutCallback(logout);
+
+    return () => {
+      clearLogoutCallback();
+    };
+  }, [logout]);
 
   const verifyEmail = async (token: string, user: User) => {
     try {

@@ -221,7 +221,7 @@ export const getAllRiders = async (req, res) => {
 
     const riders = await User.find(query)
       .select(
-        "fullName email phoneNumber vehicleType driverLicenseVerified paymentBlocked paymentBlockedAt strikes accountDeactivated averageRating totalRatings searchRadiusKm createdAt"
+        "fullName email phoneNumber vehicleType driverLicenseVerified paymentBlocked paymentBlockedAt strikes accountDeactivated averageRating totalRatings searchRadiusKm createdAt isVerified"
       )
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -327,7 +327,7 @@ export const getAllCustomers = async (req, res) => {
 
     const customers = await User.find(query)
       .select(
-        "fullName email phoneNumber defaultAddress createdAt accountDeactivated"
+        "fullName email phoneNumber defaultAddress createdAt accountDeactivated role isVerified"
       )
       .sort({ createdAt: -1 })
       .skip(skip)

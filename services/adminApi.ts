@@ -63,6 +63,7 @@ export interface AdminRider {
   phoneNumber?: string;
   vehicleType?: string;
   driverLicenseVerified: boolean;
+  isVerified?: boolean;
   paymentBlocked: boolean;
   paymentBlockedAt?: string | Date;
   strikes: number;
@@ -80,9 +81,11 @@ export interface AdminRider {
 
 export interface AdminCustomer {
   _id: string;
-  fullName: string;
+  fullName?: string | null;
   email: string;
   phoneNumber?: string;
+  role?: string;
+  isVerified?: boolean;
   defaultAddress?: {
     address: string;
     lat?: number;

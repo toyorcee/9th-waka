@@ -8,7 +8,7 @@ export interface User {
   role?: "customer" | "rider" | "admin";
   fullName?: string | null;
   phoneNumber?: string | null;
-  vehicleType?: "motorcycle" | "car" | null;
+  vehicleType?: "bicycle" | "motorbike" | "tricycle" | "car" | "van" | null;
   nin?: string | null;
   bvn?: string | null;
   defaultAddress?: string | null;
@@ -44,7 +44,7 @@ export interface RegisterCredentials {
   email: string;
   password: string;
   role?: "customer" | "rider";
-  vehicleType?: "motorcycle" | "car";
+  vehicleType?: "bicycle" | "motorbike" | "tricycle" | "car" | "van";
 }
 
 export const registerUser = async (

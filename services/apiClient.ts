@@ -6,14 +6,24 @@ const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ||
   "http://localhost:3000/api";
 
-// Create axios instance
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 10000, 
+  timeout: 10000,
 });
+
+// Logout callback registry - allows AuthContext to register logout function
+let logoutCallback: (() => Promise<void>) | null = null;
+
+export const registerLogoutCallback = (callback: () => Promise<void>) => {
+  logoutCallback = callback;
+};
+
+export const clearLogoutCallback = () => {
+  logoutCallback = null;
+};
 
 apiClient.interceptors.request.use(
   async (config) => {
@@ -36,11 +46,25 @@ apiClient.interceptors.request.use(
 // Handle response errors
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid
-      // You could dispatch a logout action here
-      console.error("Unauthorized - token may be expired");
+      // Token expired or invalid - automatically logout
+      console.warn(
+        "Unauthorized (401) - Token expired or invalid. Logging out..."
+      );
+
+      try {
+        // Clear token from storage
+        const { storage } = await import("./storage");
+        await storage.removeToken();
+
+        // Trigger logout callback if registered (from AuthContext)
+        if (logoutCallback) {
+          await logoutCallback();
+        }
+      } catch (logoutError) {
+        console.error("Error during automatic logout:", logoutError);
+      }
     }
     return Promise.reject(error);
   }

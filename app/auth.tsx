@@ -64,30 +64,40 @@ export default function AuthScreen() {
   }>({});
 
   const vehicleTypes = [
-    { value: "bicycle", label: "Bicycle", icon: "bicycle", backendValue: null }, // Not supported by backend
+    {
+      value: "bicycle",
+      label: "Bicycle",
+      icon: "bicycle",
+      backendValue: "bicycle",
+    },
     {
       value: "motorbike",
       label: "Motorbike",
       icon: "motorbike",
-      backendValue: "motorcycle",
+      backendValue: "motorbike",
     },
     {
       value: "tricycle",
       label: "Tricycle",
       icon: "rickshaw",
-      backendValue: null,
-    }, // Not supported by backend
+      backendValue: "tricycle",
+    },
     { value: "car", label: "Car", icon: "car-outline", backendValue: "car" },
-    { value: "van", label: "Van", icon: "van-utility", backendValue: null }, // Not supported by backend
+    { value: "van", label: "Van", icon: "van-utility", backendValue: "van" },
   ] as const;
 
   // Map frontend vehicle type to backend vehicle type
   const mapVehicleTypeToBackend = (
     frontendType: string
-  ): "motorcycle" | "car" | undefined => {
+  ): "bicycle" | "motorbike" | "tricycle" | "car" | "van" | undefined => {
     const vehicle = vehicleTypes.find((v) => v.value === frontendType);
     if (!vehicle || !vehicle.backendValue) return undefined;
-    return vehicle.backendValue as "motorcycle" | "car";
+    return vehicle.backendValue as
+      | "bicycle"
+      | "motorbike"
+      | "tricycle"
+      | "car"
+      | "van";
   };
 
   const { login, register, user } = useAuth();
@@ -292,7 +302,7 @@ export default function AuthScreen() {
             Toast.show({
               type: "error",
               text1: "Vehicle type not supported",
-              text2: "Please select Motorcycle or Car",
+              text2: "Please select a valid vehicle type",
             });
             setIsLoading(false);
             return;

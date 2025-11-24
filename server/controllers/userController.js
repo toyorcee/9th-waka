@@ -362,7 +362,6 @@ export const updateProfile = async (req, res) => {
       email,
       vehicleType,
       nin,
-      bvn,
       defaultAddress,
       address,
       driverLicenseNumber,
@@ -426,7 +425,7 @@ export const updateProfile = async (req, res) => {
 
     // KYC fields - role-specific
     if (user.role === "rider") {
-      // Verify NIN/BVN if provided and changed
+      // Verify NIN if provided and changed
       if (typeof nin !== "undefined") {
         const newNin = nin || null;
         const ninChanged = user.nin !== newNin;
@@ -464,42 +463,6 @@ export const updateProfile = async (req, res) => {
           user.ninVerified = true;
         } else if (!newNin) {
           user.ninVerified = false;
-        }
-      }
-
-      if (typeof bvn !== "undefined") {
-        const newBvn = bvn || null;
-        const bvnChanged = user.bvn !== newBvn;
-        user.bvn = newBvn;
-
-        // Verify BVN if it's new or changed
-        if (newBvn && bvnChanged) {
-          // TODO: Uncomment when Dojah API keys are ready
-          // try {
-          //   console.log("🔍 [KYC] Verifying BVN for user:", user._id);
-          //   const firstName = user.fullName?.split(" ")[0] || null;
-          //   const lastName = user.fullName?.split(" ").slice(1).join(" ") || null;
-          //   const verification = await verifyIdentity(null, newBvn, firstName, lastName);
-          //   user.bvnVerified = verification.success && verification.verified === true;
-          //
-          //   if (user.bvnVerified) {
-          //     console.log("✅ [KYC] BVN verified successfully");
-          //   } else {
-          //     console.log("⚠️ [KYC] BVN verification failed:", verification.error);
-          //   }
-          // } catch (error) {
-          //   console.error("❌ [KYC] Error during BVN verification:", error);
-          //   user.bvnVerified = false;
-          // }
-
-          // TEMPORARY: Auto-verify for testing (remove when Dojah is ready)
-          console.log(
-            "🧪 [KYC] TEST MODE: Auto-verifying BVN for user:",
-            user._id
-          );
-          user.bvnVerified = true;
-        } else if (!newBvn) {
-          user.bvnVerified = false;
         }
       }
 
@@ -562,22 +525,6 @@ export const updateProfile = async (req, res) => {
           user.ninVerified = false;
         }
       }
-
-      if (typeof bvn !== "undefined") {
-        const newBvn = bvn || null;
-        const bvnChanged = user.bvn !== newBvn;
-        user.bvn = newBvn;
-
-        if (newBvn && bvnChanged) {
-          console.log(
-            "🧪 [KYC] TEST MODE: Auto-verifying BVN for customer:",
-            user._id
-          );
-          user.bvnVerified = true;
-        } else if (!newBvn) {
-          user.bvnVerified = false;
-        }
-      }
     }
 
     await user.save();
@@ -602,9 +549,7 @@ export const updateProfile = async (req, res) => {
         role: user.role,
         vehicleType: user.vehicleType || null,
         nin: user.nin || null,
-        bvn: user.bvn || null,
         ninVerified: user.ninVerified || false,
-        bvnVerified: user.bvnVerified || false,
         defaultAddress: user.defaultAddress || null,
         address: user.address || null,
         driverLicenseNumber: user.driverLicenseNumber || null,
@@ -701,9 +646,7 @@ export const acceptTerms = async (req, res) => {
         role: user.role,
         vehicleType: user.vehicleType || null,
         nin: user.nin || null,
-        bvn: user.bvn || null,
         ninVerified: user.ninVerified || false,
-        bvnVerified: user.bvnVerified || false,
         defaultAddress: user.defaultAddress || null,
         address: user.address || null,
         driverLicenseNumber: user.driverLicenseNumber || null,

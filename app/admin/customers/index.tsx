@@ -359,7 +359,9 @@ export default function AdminCustomersScreen() {
                           isDark ? "text-light-100" : "text-gray-900"
                         }`}
                       >
-                        {customer.fullName || "Unknown"}
+                        {customer.fullName ||
+                          customer.email?.split("@")[0] ||
+                          "Unknown"}
                       </Text>
                       <Text
                         className={`text-sm ${
@@ -368,6 +370,21 @@ export default function AdminCustomersScreen() {
                       >
                         {customer.email}
                       </Text>
+                      {customer.role && customer.role !== "customer" && (
+                        <View
+                          className={`px-2 py-1 rounded-lg mt-1 self-start ${
+                            isDark ? "bg-warning/20" : "bg-yellow-100"
+                          }`}
+                        >
+                          <Text
+                            className={`text-xs font-semibold capitalize ${
+                              isDark ? "text-warning" : "text-yellow-700"
+                            }`}
+                          >
+                            {customer.role}
+                          </Text>
+                        </View>
+                      )}
                       {customer.phoneNumber && (
                         <Text
                           className={`text-sm ${
@@ -378,21 +395,52 @@ export default function AdminCustomersScreen() {
                         </Text>
                       )}
                     </View>
-                    {customer.accountDeactivated && (
-                      <View
-                        className={`px-2 py-1 rounded-lg ${
-                          isDark ? "bg-danger/20" : "bg-red-100"
-                        }`}
-                      >
-                        <Text
-                          className={`text-xs font-semibold ${
-                            isDark ? "text-danger" : "text-red-700"
+                    <View className="flex-row items-center gap-2">
+                      {customer.isVerified ? (
+                        <View
+                          className={`px-2 py-1 rounded-lg ${
+                            isDark ? "bg-active/20" : "bg-green-100"
                           }`}
                         >
-                          DEACTIVATED
-                        </Text>
-                      </View>
-                    )}
+                          <Text
+                            className={`text-xs font-semibold ${
+                              isDark ? "text-active" : "text-green-700"
+                            }`}
+                          >
+                            ✓ VERIFIED
+                          </Text>
+                        </View>
+                      ) : (
+                        <View
+                          className={`px-2 py-1 rounded-lg ${
+                            isDark ? "bg-warning/20" : "bg-yellow-100"
+                          }`}
+                        >
+                          <Text
+                            className={`text-xs font-semibold ${
+                              isDark ? "text-warning" : "text-yellow-700"
+                            }`}
+                          >
+                            ⚠ UNVERIFIED
+                          </Text>
+                        </View>
+                      )}
+                      {customer.accountDeactivated && (
+                        <View
+                          className={`px-2 py-1 rounded-lg ${
+                            isDark ? "bg-danger/20" : "bg-red-100"
+                          }`}
+                        >
+                          <Text
+                            className={`text-xs font-semibold ${
+                              isDark ? "text-danger" : "text-red-700"
+                            }`}
+                          >
+                            DEACTIVATED
+                          </Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
 
                   <View className="flex-row items-center justify-between">
