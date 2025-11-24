@@ -1,4 +1,5 @@
 import OrderChat from "@/components/OrderChat";
+import OrdersOnboarding from "@/components/OrdersOnboarding";
 import { IconNames, Icons, MCIconNames } from "@/constants/icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -115,6 +116,7 @@ export default function OrdersScreen() {
   });
   const [chatOrderId, setChatOrderId] = useState<string | null>(null);
   const [showChat, setShowChat] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const tabBarHeight = 65;
 
@@ -864,71 +866,83 @@ export default function OrdersScreen() {
             </View>
           ) : orders.length === 0 ? (
             <View
-              className={`rounded-3xl p-10 items-center border ${
-                isDark
-                  ? "bg-secondary border-neutral-100"
-                  : "bg-white border-gray-200"
+              className={`flex-1 items-center justify-center ${
+                isDark ? "bg-primary" : "bg-white"
               }`}
-              style={{
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-                elevation: 4,
-              }}
             >
-              <View
-                className={`rounded-full p-6 mb-4 ${
-                  isDark ? "bg-dark-100" : "bg-gray-100"
-                }`}
-              >
-                <Icons.package
-                  name={MCIconNames.packageVariant as any}
-                  size={48}
-                  color="#9CA4AB"
-                />
-              </View>
-              <Text
-                className={`text-xl font-bold mb-2 ${
-                  isDark ? "text-light-200" : "text-black"
-                }`}
-              >
-                No orders yet
-              </Text>
-              <Text
-                className={`text-sm text-center mb-6 leading-5 ${
-                  isDark ? "text-light-400" : "text-gray-500"
-                }`}
-              >
-                Start by creating your first delivery request and track it in
-                real-time
-              </Text>
-              <TouchableOpacity
-                onPress={() => router.push(Routes.standalone.newOrder)}
-                className="rounded-2xl px-8 py-4 flex-row items-center"
-                style={{
-                  backgroundColor: isDark ? "#AB8BFF" : "#1E3A8A",
-                  shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 8,
-                  elevation: 6,
-                }}
-              >
-                <Icons.action
-                  name={IconNames.addCircle as any}
-                  size={20}
-                  color={isDark ? "#030014" : "#FFFFFF"}
-                  style={{ marginRight: 8 }}
-                />
-                <Text
-                  className={`font-bold text-base ${
-                    isDark ? "text-primary" : "text-white"
+              <OrdersOnboarding
+                visible={showOnboarding}
+                onComplete={() => setShowOnboarding(false)}
+              />
+              {!showOnboarding && (
+                <View
+                  className={`rounded-3xl p-10 items-center border ${
+                    isDark
+                      ? "bg-secondary border-neutral-100"
+                      : "bg-white border-gray-200"
                   }`}
+                  style={{
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 8,
+                    elevation: 4,
+                  }}
                 >
-                  Create New Order
-                </Text>
-              </TouchableOpacity>
+                  <View
+                    className={`rounded-full p-6 mb-4 ${
+                      isDark ? "bg-dark-100" : "bg-gray-100"
+                    }`}
+                  >
+                    <Icons.package
+                      name={MCIconNames.packageVariant as any}
+                      size={48}
+                      color="#9CA4AB"
+                    />
+                  </View>
+                  <Text
+                    className={`text-xl font-bold mb-2 ${
+                      isDark ? "text-light-200" : "text-black"
+                    }`}
+                  >
+                    No orders yet
+                  </Text>
+                  <Text
+                    className={`text-sm text-center mb-6 leading-5 ${
+                      isDark ? "text-light-400" : "text-gray-500"
+                    }`}
+                  >
+                    Start by creating your first delivery request and track it in
+                    real-time
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => router.push(Routes.standalone.newOrder)}
+                    className="rounded-2xl px-8 py-4 flex-row items-center"
+                    style={{
+                      backgroundColor: isDark ? "#AB8BFF" : "#1E3A8A",
+                      shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 8,
+                      elevation: 6,
+                    }}
+                  >
+                    <Icons.action
+                      name={IconNames.addCircle as any}
+                      size={20}
+                      color={isDark ? "#030014" : "#FFFFFF"}
+                      style={{ marginRight: 8 }}
+                    />
+                    <Text
+                      className={`font-bold text-base ${
+                        isDark ? "text-primary" : "text-white"
+                      }`}
+                    >
+                      Create New Order
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           ) : (
             /* Orders List - THIS IS WHERE ALL FETCHED ORDERS ARE DISPLAYED */

@@ -24,9 +24,9 @@ import {
   View,
 } from "react-native";
 import Reanimated, {
+  Easing,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -143,28 +143,38 @@ export default function HomeLanding() {
   const welcomeFadeAnim = useRef(new Animated.Value(0)).current;
   const welcomeSlideAnim = useRef(new Animated.Value(20)).current;
 
-  // Slide in animation for home page
+  // Sharp flip animation for home page
   const translateX = useSharedValue(-screenWidth);
+  const rotateY = useSharedValue(-90);
   const opacity = useSharedValue(0);
   const hasAnimatedRef = useRef(false);
 
   const isDark = theme === "dark";
 
-  // Slide in from left animation only on mount when user is authenticated
+  // Sharp flip animation only on mount when user is authenticated
   useEffect(() => {
     if (isAuthenticated && !hasAnimatedRef.current) {
       // First mount for authenticated user - run animation
       translateX.value = -screenWidth;
+      rotateY.value = -90;
       opacity.value = 0;
-      translateX.value = withSpring(0, {
-        damping: 15,
-        stiffness: 100,
+      translateX.value = withTiming(0, {
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
       });
-      opacity.value = withTiming(1, { duration: 400 });
+      rotateY.value = withTiming(0, {
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+      });
+      opacity.value = withTiming(1, {
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+      });
       hasAnimatedRef.current = true;
     } else {
       // Subsequent visits or not authenticated - no animation
       translateX.value = 0;
+      rotateY.value = 0;
       opacity.value = 1;
     }
   }, [isAuthenticated]);
@@ -370,7 +380,10 @@ export default function HomeLanding() {
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
-      transform: [{ translateX: translateX.value }],
+      transform: [
+        { translateX: translateX.value },
+        { rotateY: `${rotateY.value}deg` },
+      ],
       opacity: opacity.value,
     };
   });

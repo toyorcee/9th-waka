@@ -10,8 +10,11 @@ import {
   archiveConversation,
   ChatConversation,
   deleteConversation,
+  getAdminSupportChats,
   getMyConversations,
   getOnlineAdmins,
+  SupportChat as SupportChatType,
+  SupportMessage,
 } from "@/services/chatApi";
 import { Routes } from "@/services/navigationHelper";
 import { updateOrderStatus } from "@/services/orderApi";
@@ -66,6 +69,17 @@ export default function MessagesScreen() {
   const [archivedConversations, setArchivedConversations] = useState<
     ChatConversation[]
   >([]);
+  const [adminSupportChats, setAdminSupportChats] = useState<
+    Array<
+      SupportChatType & {
+        lastMessage?: SupportMessage | null;
+        unreadCount: number;
+      }
+    >
+  >([]);
+  const [selectedSupportChatId, setSelectedSupportChatId] = useState<
+    string | null
+  >(null);
   const [activeTab, setActiveTab] = useState<"chats" | "archived">("chats");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -78,6 +92,8 @@ export default function MessagesScreen() {
   const [hasOnlineAdmins, setHasOnlineAdmins] = useState(false);
   const [checkingAdmins, setCheckingAdmins] = useState(false);
 
+  const isAdmin = user?.role === "admin";
+
   // Slide-in animation from left to right
   const slideAnim = useRef(new Animated.Value(-300)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -89,39 +105,54 @@ export default function MessagesScreen() {
     else setLoading(true);
 
     try {
-      const data = await getMyConversations();
-      // Filter active and archived conversations
-      // Only show conversations that have at least one message
-      const active = data.filter((conv) => !conv.archived && conv.lastMessage);
-      const archived = data.filter((conv) => conv.archived && conv.lastMessage);
-      setConversations(active);
-      setArchivedConversations(archived);
+      // For admins, load support chats with customers/riders
+      if (isAdmin) {
+        try {
+          const supportChats = await getAdminSupportChats();
+          setAdminSupportChats(supportChats);
+        } catch (error: any) {
+          console.error("Failed to load admin support chats:", error);
+        }
+      } else {
+        // For customers/riders, load regular order conversations
+        const data = await getMyConversations();
+        // Filter active and archived conversations
+        // Only show conversations that have at least one message
+        const active = data.filter(
+          (conv) => !conv.archived && conv.lastMessage
+        );
+        const archived = data.filter(
+          (conv) => conv.archived && conv.lastMessage
+        );
+        setConversations(active);
+        setArchivedConversations(archived);
 
-      // Load presence for all other parties
-      const presencePromises = data.map(async (conv) => {
-        const otherPartyId =
-          user?.role === "customer"
-            ? conv.participants.riderId
-            : conv.participants.customerId;
-        if (otherPartyId) {
-          try {
-            const presence = await getUserPresence(otherPartyId);
-            return { userId: otherPartyId, presence };
-          } catch (error) {
-            return null;
+        // Load presence for all other parties
+        const presencePromises = data.map(async (conv) => {
+          const otherPartyId =
+            user?.role === "customer"
+              ? conv.participants.riderId
+              : conv.participants.customerId;
+          if (otherPartyId) {
+            try {
+              const presence = await getUserPresence(otherPartyId);
+              return { userId: otherPartyId, presence };
+            } catch (error) {
+              return null;
+            }
           }
-        }
-        return null;
-      });
+          return null;
+        });
 
-      const presenceResults = await Promise.all(presencePromises);
-      const presencesMap: Record<string, UserPresence> = {};
-      presenceResults.forEach((result) => {
-        if (result) {
-          presencesMap[result.userId] = result.presence;
-        }
-      });
-      setPresences(presencesMap);
+        const presenceResults = await Promise.all(presencePromises);
+        const presencesMap: Record<string, UserPresence> = {};
+        presenceResults.forEach((result) => {
+          if (result) {
+            presencesMap[result.userId] = result.presence;
+          }
+        });
+        setPresences(presencesMap);
+      }
     } catch (error: any) {
       Toast.show({
         type: "error",
@@ -610,8 +641,12 @@ export default function MessagesScreen() {
     );
   };
 
-  const currentConversations =
-    activeTab === "chats" ? conversations : archivedConversations;
+  // For admins, use support chats; for others, use regular conversations
+  const currentConversations = isAdmin
+    ? adminSupportChats
+    : activeTab === "chats"
+    ? conversations
+    : archivedConversations;
 
   const filteredConversations = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -619,29 +654,54 @@ export default function MessagesScreen() {
     }
 
     const query = searchQuery.toLowerCase().trim();
-    return currentConversations.filter((conv) => {
-      const otherPartyName = user?.role === "customer" ? "Rider" : "Customer";
-      if (otherPartyName.toLowerCase().includes(query)) {
-        return true;
-      }
 
-      const orderId = conv.orderId.slice(-6).toUpperCase();
-      if (orderId.includes(query.toUpperCase())) {
-        return true;
-      }
+    if (isAdmin) {
+      // Filter admin support chats
+      return (currentConversations as typeof adminSupportChats).filter(
+        (chat) => {
+          const userName =
+            (chat.user as any)?.fullName ||
+            (chat.user as any)?.email ||
+            "Customer";
+          const lastMessageText = chat.lastMessage?.message || "";
+          return (
+            userName.toLowerCase().includes(query) ||
+            lastMessageText.toLowerCase().includes(query)
+          );
+        }
+      );
+    } else {
+      // Filter regular conversations
+      return (currentConversations as ChatConversation[]).filter((conv) => {
+        const otherPartyName = user?.role === "customer" ? "Rider" : "Customer";
+        if (otherPartyName.toLowerCase().includes(query)) {
+          return true;
+        }
 
-      if (conv.lastMessage?.message?.toLowerCase().includes(query)) {
-        return true;
-      }
+        const orderId = conv.orderId.slice(-6).toUpperCase();
+        if (orderId.includes(query.toUpperCase())) {
+          return true;
+        }
 
-      // Search by order status
-      if (conv.orderStatus?.toLowerCase().includes(query)) {
-        return true;
-      }
+        if (conv.lastMessage?.message?.toLowerCase().includes(query)) {
+          return true;
+        }
 
-      return false;
-    });
-  }, [currentConversations, searchQuery, user?.role]);
+        // Search by order status
+        if (conv.orderStatus?.toLowerCase().includes(query)) {
+          return true;
+        }
+
+        return false;
+      });
+    }
+  }, [
+    currentConversations,
+    searchQuery,
+    user?.role,
+    isAdmin,
+    adminSupportChats,
+  ]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -678,84 +738,115 @@ export default function MessagesScreen() {
                   isDark ? "text-light-400" : "text-gray-500"
                 }`}
               >
-                {conversations.length}{" "}
-                {conversations.length === 1 ? "conversation" : "conversations"}
+                {isAdmin
+                  ? `${adminSupportChats.length} ${
+                      adminSupportChats.length === 1
+                        ? "support chat"
+                        : "support chats"
+                    }`
+                  : `${conversations.length} ${
+                      conversations.length === 1
+                        ? "conversation"
+                        : "conversations"
+                    }`}
               </Text>
             </View>
           </View>
 
-          {/* Customer Care Support Chat */}
-          <TouchableOpacity
-            onPress={handleOpenSupportChat}
-            className={`rounded-2xl flex-row items-center ${
-              isDark ? "bg-secondary" : "bg-white"
-            }`}
-            style={{
-              padding: 20,
-              borderWidth: 1,
-              borderColor: isDark
-                ? "rgba(255, 255, 255, 0.08)"
-                : "rgba(0, 0, 0, 0.06)",
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.05,
-              shadowRadius: 4,
-              elevation: 2,
-            }}
-          >
-            <View className="relative" style={{ marginRight: 16 }}>
-              <Animated.View
-                style={{
-                  transform: [
-                    {
-                      scale: chatbotAnimation.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [1, 1.15],
-                      }),
-                    },
-                  ],
-                }}
-              >
-                <RobotIcon size={40} helpBubble={true} />
-              </Animated.View>
-            </View>
-            <View className="flex-1">
-              <Text
-                className={`font-bold text-base mb-1 ${
-                  isDark ? "text-light-100" : "text-black"
-                }`}
-              >
-                Customer Care Support
-              </Text>
-              <View className="flex-row items-center">
-                {checkingAdmins ? (
-                  <ActivityIndicator
-                    size="small"
-                    color={isDark ? "#9CA4AB" : "#6E6E73"}
-                    style={{ marginRight: 6 }}
-                  />
-                ) : hasOnlineAdmins ? (
-                  <View className="w-2 h-2 rounded-full bg-success mr-2" />
-                ) : null}
+          {/* Customer Care Support Chat - Only for non-admins */}
+          {!isAdmin && (
+            <TouchableOpacity
+              onPress={handleOpenSupportChat}
+              className={`rounded-2xl flex-row items-center ${
+                isDark ? "bg-secondary" : "bg-white"
+              }`}
+              style={{
+                padding: 20,
+                borderWidth: 1,
+                borderColor: isDark
+                  ? "rgba(255, 255, 255, 0.08)"
+                  : "rgba(0, 0, 0, 0.06)",
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.05,
+                shadowRadius: 4,
+                elevation: 2,
+              }}
+            >
+              <View className="relative" style={{ marginRight: 16 }}>
+                <Animated.View
+                  style={{
+                    transform: [
+                      {
+                        scale: chatbotAnimation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [1, 1.15],
+                        }),
+                      },
+                    ],
+                  }}
+                >
+                  <RobotIcon size={40} helpBubble={true} />
+                </Animated.View>
+              </View>
+              <View className="flex-1">
                 <Text
-                  className={`text-sm leading-5 ${
-                    isDark ? "text-light-400" : "text-gray-600"
+                  className={`font-bold text-base mb-1 ${
+                    isDark ? "text-light-100" : "text-black"
                   }`}
                 >
-                  {checkingAdmins
-                    ? "Checking availability..."
-                    : hasOnlineAdmins
-                    ? "Online - Get help with your orders and account"
-                    : "Get help with your orders and account"}
+                  Customer Care Support
                 </Text>
+                <View className="flex-row items-center">
+                  {checkingAdmins ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={isDark ? "#9CA4AB" : "#6E6E73"}
+                      style={{ marginRight: 6 }}
+                    />
+                  ) : hasOnlineAdmins ? (
+                    <View className="w-2 h-2 rounded-full bg-success mr-2" />
+                  ) : null}
+                  <Text
+                    className={`text-sm leading-5 ${
+                      isDark ? "text-light-400" : "text-gray-600"
+                    }`}
+                  >
+                    {checkingAdmins
+                      ? "Checking availability..."
+                      : hasOnlineAdmins
+                      ? "Online - Get help with your orders and account"
+                      : "Get help with your orders and account"}
+                  </Text>
+                </View>
               </View>
+              <Icons.navigation
+                name={IconNames.arrowForward as any}
+                size={20}
+                color={isDark ? "#9CA4AB" : "#6E6E73"}
+              />
+            </TouchableOpacity>
+          )}
+
+          {/* Admin Support Chats Header */}
+          {isAdmin && adminSupportChats.length > 0 && (
+            <View className="px-6 py-3">
+              <Text
+                className={`text-lg font-bold mb-2 ${
+                  isDark ? "text-light-100" : "text-gray-900"
+                }`}
+              >
+                Support Chats with Customers & Riders
+              </Text>
+              <Text
+                className={`text-sm ${
+                  isDark ? "text-light-400" : "text-gray-500"
+                }`}
+              >
+                Respond to customer and rider inquiries and complaints
+              </Text>
             </View>
-            <Icons.navigation
-              name={IconNames.arrowForward as any}
-              size={20}
-              color={isDark ? "#9CA4AB" : "#6E6E73"}
-            />
-          </TouchableOpacity>
+          )}
         </Reanimated.View>
 
         {/* Search Bar */}
@@ -1015,17 +1106,201 @@ export default function MessagesScreen() {
             </Reanimated.View>
           ) : (
             <View>
-              {filteredConversations.map((conversation, index) => (
-                <Reanimated.View
-                  key={conversation._id || conversation.orderId}
-                  entering={SlideInRight.delay(index * 50).duration(400)}
-                >
-                  {renderConversationItem(
-                    conversation,
-                    activeTab === "archived"
+              {isAdmin
+                ? filteredConversations.map((chat, index) => {
+                    const supportChat = chat as (typeof adminSupportChats)[0];
+                    const userName =
+                      (supportChat.user as any)?.fullName ||
+                      (supportChat.user as any)?.email ||
+                      "Customer";
+                    const userRole =
+                      (supportChat.user as any)?.role || "customer";
+                    const hasUnread = supportChat.unreadCount > 0;
+                    const lastMessage = supportChat.lastMessage;
+
+                    return (
+                      <Reanimated.View
+                        key={supportChat._id}
+                        entering={SlideInRight.delay(index * 50).duration(400)}
+                      >
+                        <TouchableOpacity
+                          onPress={() => {
+                            setSelectedSupportChatId(supportChat._id);
+                            setSupportChatOpen(true);
+                          }}
+                          className={`px-4 py-4 active:opacity-80 ${
+                            isDark ? "bg-secondary" : "bg-white"
+                          }`}
+                          style={{
+                            borderBottomWidth: 1,
+                            borderBottomColor: isDark
+                              ? "rgba(255, 255, 255, 0.05)"
+                              : "rgba(0, 0, 0, 0.04)",
+                          }}
+                        >
+                          <View className="flex-row items-center">
+                            <View className="relative mr-3">
+                              {(supportChat.user as any)?.profilePicture ? (
+                                <Image
+                                  source={{
+                                    uri: String(
+                                      toAbsoluteUrl(
+                                        String(
+                                          (supportChat.user as any)
+                                            ?.profilePicture
+                                        )
+                                      )
+                                    ),
+                                  }}
+                                  style={{
+                                    width: 56,
+                                    height: 56,
+                                    borderRadius: 28,
+                                  }}
+                                  contentFit="cover"
+                                />
+                              ) : (
+                                <View
+                                  className={`w-14 h-14 rounded-full items-center justify-center ${
+                                    hasUnread
+                                      ? isDark
+                                        ? "bg-accent/20"
+                                        : "bg-blue-900/20"
+                                      : isDark
+                                      ? "bg-dark-100"
+                                      : "bg-gray-100"
+                                  }`}
+                                >
+                                  <Icons.user
+                                    name={IconNames.personCircle as any}
+                                    size={28}
+                                    color={
+                                      hasUnread
+                                        ? isDark
+                                          ? "#AB8BFF"
+                                          : "#1E3A8A"
+                                        : isDark
+                                        ? "#9CA4AB"
+                                        : "#6E6E73"
+                                    }
+                                  />
+                                </View>
+                              )}
+                              {hasUnread && (
+                                <View
+                                  className={`absolute -top-1 -right-1 w-5 h-5 rounded-full items-center justify-center border-2 ${
+                                    isDark ? "border-secondary" : "border-white"
+                                  } ${
+                                    hasUnread
+                                      ? isDark
+                                        ? "bg-accent"
+                                        : "bg-blue-900"
+                                      : "bg-transparent"
+                                  }`}
+                                >
+                                  <Text className="text-white text-[10px] font-bold">
+                                    {supportChat.unreadCount > 9
+                                      ? "9+"
+                                      : supportChat.unreadCount}
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                            <View className="flex-1 mr-2">
+                              <View className="flex-row items-center mb-1">
+                                <Text
+                                  className={`font-bold text-base flex-1 ${
+                                    hasUnread
+                                      ? isDark
+                                        ? "text-light-100"
+                                        : "text-black"
+                                      : isDark
+                                      ? "text-light-300"
+                                      : "text-gray-700"
+                                  }`}
+                                  numberOfLines={1}
+                                >
+                                  {userName}
+                                </Text>
+                                {lastMessage && (
+                                  <Text
+                                    className={`text-xs ml-2 ${
+                                      isDark
+                                        ? "text-light-500"
+                                        : "text-gray-500"
+                                    }`}
+                                  >
+                                    {formatTime(lastMessage.createdAt)}
+                                  </Text>
+                                )}
+                              </View>
+                              <View className="flex-row items-center">
+                                <View
+                                  className={`px-2 py-0.5 rounded ${
+                                    userRole === "rider"
+                                      ? isDark
+                                        ? "bg-green-500/20"
+                                        : "bg-green-100"
+                                      : isDark
+                                      ? "bg-blue-500/20"
+                                      : "bg-blue-100"
+                                  }`}
+                                >
+                                  <Text
+                                    className={`text-[10px] font-bold capitalize ${
+                                      userRole === "rider"
+                                        ? isDark
+                                          ? "text-green-400"
+                                          : "text-green-700"
+                                        : isDark
+                                        ? "text-blue-400"
+                                        : "text-blue-700"
+                                    }`}
+                                  >
+                                    {userRole}
+                                  </Text>
+                                </View>
+                                {lastMessage && (
+                                  <Text
+                                    className={`text-sm ml-2 flex-1 ${
+                                      hasUnread
+                                        ? isDark
+                                          ? "text-light-200"
+                                          : "text-gray-800"
+                                        : isDark
+                                        ? "text-light-400"
+                                        : "text-gray-500"
+                                    }`}
+                                    numberOfLines={1}
+                                  >
+                                    {lastMessage.message}
+                                  </Text>
+                                )}
+                              </View>
+                            </View>
+                            <Icons.navigation
+                              name={IconNames.arrowForward as any}
+                              size={18}
+                              color={isDark ? "#9CA4AB" : "#6E6E73"}
+                            />
+                          </View>
+                        </TouchableOpacity>
+                      </Reanimated.View>
+                    );
+                  })
+                : (filteredConversations as ChatConversation[]).map(
+                    (conversation, index) => (
+                      <Reanimated.View
+                        key={conversation._id || conversation.orderId}
+                        entering={SlideInRight.delay(index * 50).duration(400)}
+                      >
+                        {renderConversationItem(
+                          conversation,
+                          activeTab === "archived"
+                        )}
+                      </Reanimated.View>
+                    )
                   )}
-                </Reanimated.View>
-              ))}
             </View>
           )}
         </ScrollView>
@@ -1047,7 +1322,11 @@ export default function MessagesScreen() {
       {/* Support Chat Modal */}
       <SupportChat
         visible={supportChatOpen}
-        onClose={() => setSupportChatOpen(false)}
+        onClose={() => {
+          setSupportChatOpen(false);
+          setSelectedSupportChatId(null);
+        }}
+        supportChatId={selectedSupportChatId || undefined}
       />
     </GestureHandlerRootView>
   );

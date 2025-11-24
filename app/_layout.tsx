@@ -105,6 +105,7 @@ function ToastConfig() {
         />
         <Stack.Screen name="orders/new" options={{ headerShown: false }} />
         <Stack.Screen name="orders/[id]" options={{ headerShown: false }} />
+        {/* Admin routes - handled automatically by Expo Router file-based routing */}
         <Stack.Screen name="sos" options={{ headerShown: false }} />
         <Stack.Screen name="support" options={{ headerShown: false }} />
         <Stack.Screen name="legal/privacy" options={{ headerShown: false }} />

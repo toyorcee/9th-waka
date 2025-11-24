@@ -140,6 +140,13 @@ export const generatePayoutsForWeek = async (req, res) => {
 
 export const listPayouts = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: "User is not defined",
+      });
+    }
+
     const { riderId, status, weekStart } = req.query || {};
     const query = {};
 
@@ -172,6 +179,13 @@ export const listPayouts = async (req, res) => {
  */
 export const markPayoutPaid = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: "User is not defined",
+      });
+    }
+
     const payout = await RiderPayout.findById(req.params.id);
     if (!payout)
       return res

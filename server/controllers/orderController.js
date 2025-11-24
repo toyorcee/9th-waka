@@ -17,24 +17,68 @@ const appendTimeline = (order, status, note) => {
 };
 
 /**
+ * Get pricing rates from database or environment variables
+ * Uses database settings if useDatabaseRates is true, otherwise falls back to env vars
+ */
+const getPricingRates = async () => {
+  try {
+    const settings = await Settings.getSettings();
+
+    if (settings.system.useDatabaseRates) {
+      return {
+        MIN_FARE: settings.pricing.minFare,
+        PER_KM_SHORT: settings.pricing.perKmShort,
+        PER_KM_MEDIUM: settings.pricing.perKmMedium,
+        PER_KM_LONG: settings.pricing.perKmLong,
+        SHORT_DISTANCE_MAX: settings.pricing.shortDistanceMax,
+        MEDIUM_DISTANCE_MAX: settings.pricing.mediumDistanceMax,
+        VEHICLE_MULTIPLIERS: settings.pricing.vehicleMultipliers,
+      };
+    }
+  } catch (error) {
+    console.warn(
+      "[PRICING] Failed to load database rates, using env vars:",
+      error.message
+    );
+  }
+
+  // Fallback to environment variables
+  return {
+    MIN_FARE: Number(process.env.PRICE_MIN_FARE) || 800,
+    PER_KM_SHORT: Number(process.env.PRICE_PER_KM_SHORT) || 100,
+    PER_KM_MEDIUM: Number(process.env.PRICE_PER_KM_MEDIUM) || 140,
+    PER_KM_LONG: Number(process.env.PRICE_PER_KM_LONG) || 200,
+    SHORT_DISTANCE_MAX: Number(process.env.PRICE_SHORT_DISTANCE_MAX) || 8,
+    MEDIUM_DISTANCE_MAX: Number(process.env.PRICE_MEDIUM_DISTANCE_MAX) || 15,
+    VEHICLE_MULTIPLIERS: {
+      bicycle: Number(process.env.PRICE_BICYCLE_MULTIPLIER) || 0.8,
+      motorbike: Number(process.env.PRICE_MOTORBIKE_MULTIPLIER) || 1.0,
+      tricycle: Number(process.env.PRICE_TRICYCLE_MULTIPLIER) || 1.15,
+      car: Number(process.env.PRICE_CAR_MULTIPLIER) || 1.25,
+      van: Number(process.env.PRICE_VAN_MULTIPLIER) || 1.5,
+    },
+  };
+};
+
+/**
  * Calculate delivery price using tiered distance model
  *
- * Pricing Structure (configurable via .env):
- * - Base fare: PRICE_MIN_FARE (default: ₦800)
- * - 0-8km: PRICE_PER_KM_SHORT (default: ₦100/km)
- * - 9-15km: PRICE_PER_KM_MEDIUM (default: ₦140/km)
- * - 16km+: PRICE_PER_KM_LONG (default: ₦200/km)
+ * Pricing Structure (configurable via database or .env):
+ * - Base fare: MIN_FARE (default: ₦800)
+ * - 0-8km: PER_KM_SHORT (default: ₦100/km)
+ * - 9-15km: PER_KM_MEDIUM (default: ₦140/km)
+ * - 16km+: PER_KM_LONG (default: ₦200/km)
  *
  * Distance Calculation:
  * - Uses Mapbox/OpenRouteService API for accurate road distance
  * - Falls back to Haversine distance × multiplier if routing API unavailable
  *
- * Vehicle Type Multipliers (configurable via .env):
- * - Bicycle: PRICE_BICYCLE_MULTIPLIER (default: 0.8 = 20% cheaper)
- * - Motorbike: PRICE_MOTORBIKE_MULTIPLIER (default: 1.0 = base price)
- * - Tricycle: PRICE_TRICYCLE_MULTIPLIER (default: 1.15 = 15% more)
- * - Car: PRICE_CAR_MULTIPLIER (default: 1.25 = 25% more)
- * - Van: PRICE_VAN_MULTIPLIER (default: 1.5 = 50% more)
+ * Vehicle Type Multipliers (configurable via database or .env):
+ * - Bicycle: 0.8 (20% cheaper)
+ * - Motorbike: 1.0 (base price)
+ * - Tricycle: 1.15 (15% more)
+ * - Car: 1.25 (25% more)
+ * - Van: 1.5 (50% more)
  *
  * Example: 10km → ₦800 + (8×₦100) + (2×₦140) = ₦1,880 base
  * - Bicycle: ₦1,504 (0.8x)
@@ -43,25 +87,20 @@ const appendTimeline = (order, status, note) => {
  * - Car: ₦2,350 (1.25x)
  * - Van: ₦2,820 (1.5x)
  */
-const calculateDeliveryPrice = (distanceKm, vehicleType = "motorbike") => {
-  // Environment variables with fallbacks
-  const MIN_FARE = Number(process.env.PRICE_MIN_FARE) || 800;
-  const PER_KM_SHORT = Number(process.env.PRICE_PER_KM_SHORT) || 100; // 0-8km
-  const PER_KM_MEDIUM = Number(process.env.PRICE_PER_KM_MEDIUM) || 140; // 9-15km
-  const PER_KM_LONG = Number(process.env.PRICE_PER_KM_LONG) || 200; // 16km+
-  const SHORT_DISTANCE_MAX = Number(process.env.PRICE_SHORT_DISTANCE_MAX) || 8;
-  const MEDIUM_DISTANCE_MAX =
-    Number(process.env.PRICE_MEDIUM_DISTANCE_MAX) || 15;
-
-  // Vehicle type multipliers (configurable via .env)
-  // Based on industry standards: bicycle (cheapest) < motorbike (base) < tricycle < car < van (most expensive)
-  const VEHICLE_MULTIPLIERS = {
-    bicycle: Number(process.env.PRICE_BICYCLE_MULTIPLIER) || 0.8, // 20% cheaper - eco-friendly, short distances
-    motorbike: Number(process.env.PRICE_MOTORBIKE_MULTIPLIER) || 1.0, // Base price - most common
-    tricycle: Number(process.env.PRICE_TRICYCLE_MULTIPLIER) || 1.15, // 15% more - can carry more weight
-    car: Number(process.env.PRICE_CAR_MULTIPLIER) || 1.25, // 25% more - comfort, weather protection
-    van: Number(process.env.PRICE_VAN_MULTIPLIER) || 1.5, // 50% more - large items, bulk deliveries
-  };
+const calculateDeliveryPrice = async (
+  distanceKm,
+  vehicleType = "motorbike"
+) => {
+  const rates = await getPricingRates();
+  const {
+    MIN_FARE,
+    PER_KM_SHORT,
+    PER_KM_MEDIUM,
+    PER_KM_LONG,
+    SHORT_DISTANCE_MAX,
+    MEDIUM_DISTANCE_MAX,
+    VEHICLE_MULTIPLIERS,
+  } = rates;
 
   // Default to motorbike if invalid vehicle type
   const normalizedVehicleType = vehicleType || "motorbike";
@@ -220,11 +259,11 @@ export const estimatePrice = async (req, res) => {
 
       // Calculate prices for all vehicle types
       const prices = {
-        bicycle: calculateDeliveryPrice(distanceKm, "bicycle"),
-        motorbike: calculateDeliveryPrice(distanceKm, "motorbike"),
-        tricycle: calculateDeliveryPrice(distanceKm, "tricycle"),
-        car: calculateDeliveryPrice(distanceKm, "car"),
-        van: calculateDeliveryPrice(distanceKm, "van"),
+        bicycle: await calculateDeliveryPrice(distanceKm, "bicycle"),
+        motorbike: await calculateDeliveryPrice(distanceKm, "motorbike"),
+        tricycle: await calculateDeliveryPrice(distanceKm, "tricycle"),
+        car: await calculateDeliveryPrice(distanceKm, "car"),
+        van: await calculateDeliveryPrice(distanceKm, "van"),
       };
 
       // Default estimated price is motorbike (most common)
@@ -252,7 +291,7 @@ export const estimatePrice = async (req, res) => {
         pickup: { lat: pickupData.lat, lng: pickupData.lng },
         dropoff: { lat: dropoffData.lat, lng: dropoffData.lng },
       });
-      estimatedPrice = calculateDeliveryPrice(0);
+      estimatedPrice = await calculateDeliveryPrice(0);
       console.log("[ESTIMATE] Minimum fare calculated:", estimatedPrice);
       res.json({
         success: true,
@@ -371,11 +410,11 @@ export const createOrder = async (req, res) => {
       );
       if (!price || process.env.PRICE_AUTO === "true") {
         const vehicleType = preferredVehicleType || "motorcycle";
-        calculatedPrice = calculateDeliveryPrice(distanceKm, vehicleType);
+        calculatedPrice = await calculateDeliveryPrice(distanceKm, vehicleType);
       }
     } else if (!price) {
       const vehicleType = preferredVehicleType || "motorcycle";
-      calculatedPrice = calculateDeliveryPrice(0, vehicleType);
+      calculatedPrice = await calculateDeliveryPrice(0, vehicleType);
     }
 
     const finalPrice = Math.round(calculatedPrice);

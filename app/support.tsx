@@ -1,3 +1,4 @@
+import TabBarSpacer from "@/components/TabBarSpacer";
 import { IconNames, Icons } from "@/constants/icons";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useTabBarPadding } from "@/hooks/useTabBarPadding";
@@ -14,7 +15,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Reanimated, { FadeInDown } from "react-native-reanimated";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 const FAQ_DATA = [
   {
@@ -120,18 +125,30 @@ export default function SupportScreen() {
   };
 
   return (
-    <ScrollView
+    <SafeAreaView
+      edges={["top"]}
       className={`flex-1 ${isDark ? "bg-primary" : "bg-white"}`}
-      contentContainerStyle={{
-        paddingTop: insets.top + 20,
-        paddingBottom: tabBarPadding,
-        paddingHorizontal: 24,
-      }}
-      showsVerticalScrollIndicator={false}
     >
-      <View>
-        {/* Header */}
-        <View className="flex-row items-center justify-between mb-6">
+      {/* Fixed Header */}
+      <Reanimated.View
+        entering={FadeInDown.delay(0)}
+        className={`absolute top-0 left-0 right-0 z-50 ${
+          isDark ? "bg-primary" : "bg-white"
+        }`}
+        style={{
+          paddingTop: insets.top + 10,
+          paddingBottom: 12,
+          paddingHorizontal: 24,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          elevation: 5,
+          borderBottomWidth: 1,
+          borderBottomColor: isDark ? "#3A3A3C" : "#E5E5EA",
+        }}
+      >
+        <View className="flex-row items-center justify-between">
           <TouchableOpacity
             onPress={() => {
               if (router.canGoBack()) {
@@ -140,29 +157,19 @@ export default function SupportScreen() {
                 router.replace(Routes.tabs.profile);
               }
             }}
-            className={`w-11 h-11 rounded-full border items-center justify-center ${
-              isDark
-                ? "bg-secondary border-neutral-100"
-                : "bg-white border-gray-200"
-            }`}
-            style={{
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: isDark ? 0.1 : 0.05,
-              shadowRadius: 4,
-              elevation: 3,
-            }}
+            className="w-10 h-10 items-center justify-center"
+            activeOpacity={0.7}
           >
             <Icons.navigation
               name={IconNames.arrowBack as any}
-              size={22}
+              size={20}
               color={isDark ? "#FFFFFF" : "#000000"}
             />
           </TouchableOpacity>
           <View className="flex-1 items-center">
             <View className="flex-row items-center">
               <View
-                className={`rounded-lg p-1.5 mr-2 ${
+                className={`rounded-xl p-2 mr-2 ${
                   isDark ? "bg-accent/20" : "bg-blue-900/20"
                 }`}
               >
@@ -173,7 +180,7 @@ export default function SupportScreen() {
                 />
               </View>
               <Text
-                className={`text-2xl font-bold ${
+                className={`text-lg font-bold ${
                   isDark ? "text-light-100" : "text-black"
                 }`}
               >
@@ -181,306 +188,181 @@ export default function SupportScreen() {
               </Text>
             </View>
           </View>
-          <View className="w-11" />
+          <View className="w-10" />
         </View>
+      </Reanimated.View>
 
-        {/* Customer Care Section */}
-        <View
-          className={`rounded-3xl p-6 mb-6 border ${
-            isDark
-              ? "bg-secondary border-neutral-100"
-              : "bg-white border-gray-200"
-          }`}
-          style={{
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: isDark ? 0.15 : 0.08,
-            shadowRadius: 12,
-            elevation: 8,
-          }}
-        >
-          <View className="items-center mb-5">
-            <View
-              className={`rounded-full p-6 mb-4 ${
-                isDark ? "bg-accent/20" : "bg-blue-900/20"
-              }`}
-            >
-              <Icons.communication
-                name={IconNames.chatbubbleOutline as any}
-                size={48}
-                color={isDark ? "#AB8BFF" : "#1E3A8A"}
-              />
-            </View>
-            <Text
-              className={`text-xl font-bold mb-2 text-center ${
-                isDark ? "text-light-100" : "text-black"
-              }`}
-            >
-              Need Help?
-            </Text>
-            <Text
-              className={`text-sm text-center leading-5 ${
-                isDark ? "text-light-400" : "text-gray-500"
-              }`}
-            >
-              Our customer care team is available 24/7 to assist you. Chat with
-              us on WhatsApp for instant support.
-            </Text>
-          </View>
-          <TouchableOpacity
-            onPress={handleWhatsApp}
-            className={`rounded-2xl py-4 px-6 flex-row items-center justify-center ${
-              isDark ? "bg-accent" : "bg-blue-900"
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{
+          paddingTop: insets.top + 80, // Header height + safe area
+          paddingBottom: tabBarPadding,
+          paddingHorizontal: 24,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View>
+          {/* Customer Care Section */}
+          <View
+            className={`rounded-3xl p-6 mb-6 border ${
+              isDark
+                ? "bg-secondary border-neutral-100"
+                : "bg-white border-gray-200"
             }`}
             style={{
-              shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
+              shadowColor: "#000",
               shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-              elevation: 6,
+              shadowOpacity: isDark ? 0.15 : 0.08,
+              shadowRadius: 12,
+              elevation: 8,
             }}
           >
-            <Icons.communication
-              name={IconNames.chatbubbleOutline as any}
-              size={20}
-              color={isDark ? "#030014" : "#FFFFFF"}
-              style={{ marginRight: 8 }}
-            />
-            <Text
-              className={`font-bold text-base ${
-                isDark ? "text-primary" : "text-white"
-              }`}
-            >
-              Chat on WhatsApp
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* FAQ Section */}
-        <View className="mb-6">
-          <View className="flex-row items-center mb-4">
-            <View className="bg-info/20 rounded-lg p-1.5 mr-2">
-              <Icons.info
-                name={IconNames.informationOutline as any}
-                size={18}
-                color="#5AC8FA"
-              />
-            </View>
-            <Text
-              className={`text-lg font-bold ${
-                isDark ? "text-light-100" : "text-black"
-              }`}
-            >
-              Frequently Asked Questions
-            </Text>
-          </View>
-
-          <View className="gap-3">
-            {FAQ_DATA.map((faq) => (
+            <View className="items-center mb-5">
               <View
-                key={faq.id}
-                className={`rounded-2xl border overflow-hidden ${
-                  isDark
-                    ? "bg-secondary border-neutral-100"
-                    : "bg-white border-gray-200"
+                className={`rounded-full p-6 mb-4 ${
+                  isDark ? "bg-accent/20" : "bg-blue-900/20"
                 }`}
-                style={{
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: isDark ? 0.1 : 0.05,
-                  shadowRadius: 4,
-                  elevation: 3,
-                }}
-              >
-                <TouchableOpacity
-                  onPress={() => toggleFAQ(faq.id)}
-                  className="p-5 flex-row items-center justify-between active:opacity-80"
-                >
-                  <View className="flex-1 mr-3">
-                    <Text
-                      className={`font-bold text-base mb-1 ${
-                        isDark ? "text-light-100" : "text-black"
-                      }`}
-                    >
-                      {faq.question}
-                    </Text>
-                  </View>
-                  <View
-                    className={`rounded-lg p-1.5 ${
-                      isDark ? "bg-accent/20" : "bg-blue-900/20"
-                    }`}
-                  >
-                    <Icons.navigation
-                      name={
-                        expandedFAQ === faq.id
-                          ? (IconNames.chevronUp as any)
-                          : (IconNames.chevronDown as any)
-                      }
-                      size={18}
-                      color={isDark ? "#AB8BFF" : "#1E3A8A"}
-                    />
-                  </View>
-                </TouchableOpacity>
-                {expandedFAQ === faq.id && (
-                  <View className="px-5 pb-5 pt-0">
-                    <View
-                      className={`h-px mb-4 ${
-                        isDark ? "bg-neutral-100" : "bg-gray-200"
-                      }`}
-                    />
-                    <Text
-                      className={`text-sm leading-6 ${
-                        isDark ? "text-light-300" : "text-gray-600"
-                      }`}
-                    >
-                      {faq.answer}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Additional Help */}
-        <View
-          className={`rounded-3xl p-6 mb-6 ${
-            isDark ? "bg-secondary" : "bg-white"
-          }`}
-          style={{
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isDark ? 0.08 : 0.04,
-            shadowRadius: 12,
-            elevation: 3,
-          }}
-        >
-          <View className="flex-row items-start mb-4">
-            <View className="bg-info/10 rounded-2xl p-3 mr-4">
-              <Icons.info
-                name={IconNames.informationOutline as any}
-                size={24}
-                color="#5AC8FA"
-              />
-            </View>
-            <View className="flex-1 pt-0.5">
-              <Text
-                className={`font-bold text-lg mb-2 ${
-                  isDark ? "text-light-100" : "text-black"
-                }`}
-              >
-                Still need help?
-              </Text>
-              <Text
-                className={`text-sm leading-6 mb-5 ${
-                  isDark ? "text-light-400" : "text-gray-600"
-                }`}
-              >
-                If you couldn't find the answer you're looking for, don't
-                hesitate to reach out to our support team via WhatsApp. We're
-                here to help!
-              </Text>
-              <TouchableOpacity
-                onPress={handleWhatsApp}
-                className="bg-info rounded-2xl py-3.5 px-5 flex-row items-center justify-center"
-                style={{
-                  shadowColor: "#5AC8FA",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.25,
-                  shadowRadius: 8,
-                  elevation: 5,
-                }}
               >
                 <Icons.communication
                   name={IconNames.chatbubbleOutline as any}
-                  size={18}
-                  color="#FFFFFF"
-                  style={{ marginRight: 8 }}
+                  size={48}
+                  color={isDark ? "#AB8BFF" : "#1E3A8A"}
                 />
-                <Text className="text-white font-bold text-sm">
-                  Contact Support
-                </Text>
-              </TouchableOpacity>
+              </View>
+              <Text
+                className={`text-xl font-bold mb-2 text-center ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
+                Need Help?
+              </Text>
+              <Text
+                className={`text-sm text-center leading-5 ${
+                  isDark ? "text-light-400" : "text-gray-500"
+                }`}
+              >
+                Our customer care team is available 24/7 to assist you. Chat
+                with us on WhatsApp for instant support.
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={handleWhatsApp}
+              className={`rounded-2xl py-4 px-6 flex-row items-center justify-center ${
+                isDark ? "bg-accent" : "bg-blue-900"
+              }`}
+              style={{
+                shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 6,
+              }}
+            >
+              <Icons.communication
+                name={IconNames.chatbubbleOutline as any}
+                size={20}
+                color={isDark ? "#030014" : "#FFFFFF"}
+                style={{ marginRight: 8 }}
+              />
+              <Text
+                className={`font-bold text-base ${
+                  isDark ? "text-primary" : "text-white"
+                }`}
+              >
+                Chat on WhatsApp
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* FAQ Section */}
+          <View className="mb-6">
+            <View className="flex-row items-center mb-4">
+              <View className="bg-info/20 rounded-lg p-1.5 mr-2">
+                <Icons.info
+                  name={IconNames.informationOutline as any}
+                  size={18}
+                  color="#5AC8FA"
+                />
+              </View>
+              <Text
+                className={`text-lg font-bold ${
+                  isDark ? "text-light-100" : "text-black"
+                }`}
+              >
+                Frequently Asked Questions
+              </Text>
+            </View>
+
+            <View className="gap-3">
+              {FAQ_DATA.map((faq) => (
+                <View
+                  key={faq.id}
+                  className={`rounded-2xl border overflow-hidden ${
+                    isDark
+                      ? "bg-secondary border-neutral-100"
+                      : "bg-white border-gray-200"
+                  }`}
+                  style={{
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: isDark ? 0.1 : 0.05,
+                    shadowRadius: 4,
+                    elevation: 3,
+                  }}
+                >
+                  <TouchableOpacity
+                    onPress={() => toggleFAQ(faq.id)}
+                    className="p-5 flex-row items-center justify-between active:opacity-80"
+                  >
+                    <View className="flex-1 mr-3">
+                      <Text
+                        className={`font-bold text-base mb-1 ${
+                          isDark ? "text-light-100" : "text-black"
+                        }`}
+                      >
+                        {faq.question}
+                      </Text>
+                    </View>
+                    <View
+                      className={`rounded-lg p-1.5 ${
+                        isDark ? "bg-accent/20" : "bg-blue-900/20"
+                      }`}
+                    >
+                      <Icons.navigation
+                        name={
+                          expandedFAQ === faq.id
+                            ? (IconNames.chevronUp as any)
+                            : (IconNames.chevronDown as any)
+                        }
+                        size={18}
+                        color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                      />
+                    </View>
+                  </TouchableOpacity>
+                  {expandedFAQ === faq.id && (
+                    <View className="px-5 pb-5 pt-0">
+                      <View
+                        className={`h-px mb-4 ${
+                          isDark ? "bg-neutral-100" : "bg-gray-200"
+                        }`}
+                      />
+                      <Text
+                        className={`text-sm leading-6 ${
+                          isDark ? "text-light-300" : "text-gray-600"
+                        }`}
+                      >
+                        {faq.answer}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              ))}
             </View>
           </View>
-        </View>
 
-        {/* Legal & App Review Section */}
-        <View className="mb-6">
-          <Text
-            className={`text-xs font-semibold mb-3 px-1 ${
-              isDark ? "text-light-400" : "text-gray-500"
-            }`}
-          >
-            Legal & Information
-          </Text>
-          <View className="gap-2 mb-4">
-            <TouchableOpacity
-              onPress={() => router.push("/legal/privacy" as any)}
-              className={`rounded-2xl p-4 flex-row items-center justify-between border active:opacity-80 ${
-                isDark
-                  ? "bg-secondary border-neutral-100"
-                  : "bg-white border-gray-200"
-              }`}
-            >
-              <View className="flex-row items-center flex-1">
-                <View className="bg-info/20 rounded-lg p-1.5 mr-3">
-                  <Icons.info
-                    name={IconNames.informationOutline as any}
-                    size={18}
-                    color="#5AC8FA"
-                  />
-                </View>
-                <Text
-                  className={`font-medium text-sm ${
-                    isDark ? "text-light-100" : "text-black"
-                  }`}
-                >
-                  Privacy Policy
-                </Text>
-              </View>
-              <Icons.navigation
-                name={IconNames.arrowForward as any}
-                size={16}
-                color={isDark ? "#9CA4AB" : "#6E6E73"}
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => router.push("/legal/terms" as any)}
-              className={`rounded-2xl p-4 flex-row items-center justify-between border active:opacity-80 ${
-                isDark
-                  ? "bg-secondary border-neutral-100"
-                  : "bg-white border-gray-200"
-              }`}
-            >
-              <View className="flex-row items-center flex-1">
-                <View className="bg-info/20 rounded-lg p-1.5 mr-3">
-                  <Icons.info
-                    name={IconNames.informationOutline as any}
-                    size={18}
-                    color="#5AC8FA"
-                  />
-                </View>
-                <Text
-                  className={`font-medium text-sm ${
-                    isDark ? "text-light-100" : "text-black"
-                  }`}
-                >
-                  Terms & Conditions
-                </Text>
-              </View>
-              <Icons.navigation
-                name={IconNames.arrowForward as any}
-                size={16}
-                color={isDark ? "#9CA4AB" : "#6E6E73"}
-              />
-            </TouchableOpacity>
-          </View>
-
-          {/* App Review Section */}
+          {/* Additional Help */}
           <View
-            className={`rounded-3xl p-6 ${
+            className={`rounded-3xl p-6 mb-6 ${
               isDark ? "bg-secondary" : "bg-white"
             }`}
             style={{
@@ -492,15 +374,11 @@ export default function SupportScreen() {
             }}
           >
             <View className="flex-row items-start mb-4">
-              <View
-                className={`rounded-2xl p-3 mr-4 ${
-                  isDark ? "bg-accent/10" : "bg-blue-900/10"
-                }`}
-              >
-                <Icons.status
-                  name={IconNames.starOutline as any}
+              <View className="bg-info/10 rounded-2xl p-3 mr-4">
+                <Icons.info
+                  name={IconNames.informationOutline as any}
                   size={24}
-                  color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                  color="#5AC8FA"
                 />
               </View>
               <View className="flex-1 pt-0.5">
@@ -509,74 +387,216 @@ export default function SupportScreen() {
                     isDark ? "text-light-100" : "text-black"
                   }`}
                 >
-                  Enjoying 9thWaka?
+                  Still need help?
                 </Text>
                 <Text
                   className={`text-sm leading-6 mb-5 ${
                     isDark ? "text-light-400" : "text-gray-600"
                   }`}
                 >
-                  Your feedback helps us improve! Please rate and review the app
-                  on the App Store or Google Play Store.
+                  If you couldn't find the answer you're looking for, don't
+                  hesitate to reach out to our support team via WhatsApp. We're
+                  here to help!
                 </Text>
                 <TouchableOpacity
-                  onPress={async () => {
-                    try {
-                      // For iOS
-                      if (Platform.OS === "ios") {
-                        const url =
-                          "https://apps.apple.com/app/id[YOUR_APP_ID]?action=write-review";
-                        await Linking.openURL(url);
-                      } else {
-                        // For Android
-                        const url = "market://details?id=com.ninthwaka.app";
-                        const canOpen = await Linking.canOpenURL(url);
-                        if (canOpen) {
-                          await Linking.openURL(url);
-                        } else {
-                          // Fallback to web
-                          await Linking.openURL(
-                            "https://play.google.com/store/apps/details?id=com.ninthwaka.app"
-                          );
-                        }
-                      }
-                    } catch (error) {
-                      Alert.alert(
-                        "Error",
-                        "Could not open app store. Please search for '9thWaka' in your app store."
-                      );
-                    }
-                  }}
-                  className={`rounded-2xl py-3.5 px-5 flex-row items-center justify-center ${
-                    isDark ? "bg-accent" : "bg-blue-900"
-                  }`}
+                  onPress={handleWhatsApp}
+                  className="bg-info rounded-2xl py-3.5 px-5 flex-row items-center justify-center"
                   style={{
-                    shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
+                    shadowColor: "#5AC8FA",
                     shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.3,
+                    shadowOpacity: 0.25,
                     shadowRadius: 8,
                     elevation: 5,
                   }}
                 >
-                  <Icons.status
-                    name={IconNames.starOutline as any}
+                  <Icons.communication
+                    name={IconNames.chatbubbleOutline as any}
                     size={18}
-                    color={isDark ? "#030014" : "#FFFFFF"}
+                    color="#FFFFFF"
                     style={{ marginRight: 8 }}
                   />
-                  <Text
-                    className={`font-bold text-sm ${
-                      isDark ? "text-primary" : "text-white"
-                    }`}
-                  >
-                    Rate & Review
+                  <Text className="text-white font-bold text-sm">
+                    Contact Support
                   </Text>
                 </TouchableOpacity>
               </View>
             </View>
           </View>
+
+          {/* Legal & App Review Section */}
+          <View className="mb-6">
+            <Text
+              className={`text-xs font-semibold mb-3 px-1 ${
+                isDark ? "text-light-400" : "text-gray-500"
+              }`}
+            >
+              Legal & Information
+            </Text>
+            <View className="gap-2 mb-4">
+              <TouchableOpacity
+                onPress={() => router.push("/legal/privacy" as any)}
+                className={`rounded-2xl p-4 flex-row items-center justify-between border active:opacity-80 ${
+                  isDark
+                    ? "bg-secondary border-neutral-100"
+                    : "bg-white border-gray-200"
+                }`}
+              >
+                <View className="flex-row items-center flex-1">
+                  <View className="bg-info/20 rounded-lg p-1.5 mr-3">
+                    <Icons.info
+                      name={IconNames.informationOutline as any}
+                      size={18}
+                      color="#5AC8FA"
+                    />
+                  </View>
+                  <Text
+                    className={`font-medium text-sm ${
+                      isDark ? "text-light-100" : "text-black"
+                    }`}
+                  >
+                    Privacy Policy
+                  </Text>
+                </View>
+                <Icons.navigation
+                  name={IconNames.arrowForward as any}
+                  size={16}
+                  color={isDark ? "#9CA4AB" : "#6E6E73"}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => router.push("/legal/terms" as any)}
+                className={`rounded-2xl p-4 flex-row items-center justify-between border active:opacity-80 ${
+                  isDark
+                    ? "bg-secondary border-neutral-100"
+                    : "bg-white border-gray-200"
+                }`}
+              >
+                <View className="flex-row items-center flex-1">
+                  <View className="bg-info/20 rounded-lg p-1.5 mr-3">
+                    <Icons.info
+                      name={IconNames.informationOutline as any}
+                      size={18}
+                      color="#5AC8FA"
+                    />
+                  </View>
+                  <Text
+                    className={`font-medium text-sm ${
+                      isDark ? "text-light-100" : "text-black"
+                    }`}
+                  >
+                    Terms & Conditions
+                  </Text>
+                </View>
+                <Icons.navigation
+                  name={IconNames.arrowForward as any}
+                  size={16}
+                  color={isDark ? "#9CA4AB" : "#6E6E73"}
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* App Review Section */}
+            <View
+              className={`rounded-3xl p-6 ${
+                isDark ? "bg-secondary" : "bg-white"
+              }`}
+              style={{
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: isDark ? 0.08 : 0.04,
+                shadowRadius: 12,
+                elevation: 3,
+              }}
+            >
+              <View className="flex-row items-start mb-4">
+                <View
+                  className={`rounded-2xl p-3 mr-4 ${
+                    isDark ? "bg-accent/10" : "bg-blue-900/10"
+                  }`}
+                >
+                  <Icons.status
+                    name={IconNames.starOutline as any}
+                    size={24}
+                    color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                  />
+                </View>
+                <View className="flex-1 pt-0.5">
+                  <Text
+                    className={`font-bold text-lg mb-2 ${
+                      isDark ? "text-light-100" : "text-black"
+                    }`}
+                  >
+                    Enjoying 9thWaka?
+                  </Text>
+                  <Text
+                    className={`text-sm leading-6 mb-5 ${
+                      isDark ? "text-light-400" : "text-gray-600"
+                    }`}
+                  >
+                    Your feedback helps us improve! Please rate and review the
+                    app on the App Store or Google Play Store.
+                  </Text>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      try {
+                        // For iOS
+                        if (Platform.OS === "ios") {
+                          const url =
+                            "https://apps.apple.com/app/id[YOUR_APP_ID]?action=write-review";
+                          await Linking.openURL(url);
+                        } else {
+                          // For Android
+                          const url = "market://details?id=com.ninthwaka.app";
+                          const canOpen = await Linking.canOpenURL(url);
+                          if (canOpen) {
+                            await Linking.openURL(url);
+                          } else {
+                            // Fallback to web
+                            await Linking.openURL(
+                              "https://play.google.com/store/apps/details?id=com.ninthwaka.app"
+                            );
+                          }
+                        }
+                      } catch (error) {
+                        Alert.alert(
+                          "Error",
+                          "Could not open app store. Please search for '9thWaka' in your app store."
+                        );
+                      }
+                    }}
+                    className={`rounded-2xl py-3.5 px-5 flex-row items-center justify-center ${
+                      isDark ? "bg-accent" : "bg-blue-900"
+                    }`}
+                    style={{
+                      shadowColor: isDark ? "#AB8BFF" : "#1E3A8A",
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 8,
+                      elevation: 5,
+                    }}
+                  >
+                    <Icons.status
+                      name={IconNames.starOutline as any}
+                      size={18}
+                      color={isDark ? "#030014" : "#FFFFFF"}
+                      style={{ marginRight: 8 }}
+                    />
+                    <Text
+                      className={`font-bold text-sm ${
+                        isDark ? "text-primary" : "text-white"
+                      }`}
+                    >
+                      Rate & Review
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </View>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+      <TabBarSpacer />
+    </SafeAreaView>
   );
 }

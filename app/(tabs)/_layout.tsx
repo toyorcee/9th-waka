@@ -10,7 +10,7 @@ const TabIcon = ({
   focused,
   IconComp,
   name,
-  size = 22,
+  size = 18,
   isDark,
 }: {
   focused: boolean;
@@ -19,13 +19,13 @@ const TabIcon = ({
   size?: number;
   isDark: boolean;
 }) => (
-  <View className="items-center justify-center">
+  <View className="items-center justify-center" style={{ marginTop: 4 }}>
     {focused ? (
       <View
         className="rounded-full items-center justify-center"
         style={{
-          width: 48,
-          height: 48,
+          width: 40,
+          height: 40,
           backgroundColor: isDark ? "#AB8BFF" : "#1E3A8A",
         }}
       >
@@ -57,12 +57,23 @@ export default function TabsLayout() {
   const userRole = user?.role || "customer";
   const insets = useSafeAreaInsets();
   const isDark = theme === "dark";
-  const tabBarHeight = 75;
-  const labelHeight = 22;
+  const tabBarHeight = 60; // Reduced from 75
+  const labelHeight = 18; // Reduced from 22
   const bottomPadding = insets.bottom > 0 ? insets.bottom : 20;
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated && user && !user.termsAccepted) {
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/auth");
+      return;
+    }
+
+    if (
+      !isLoading &&
+      isAuthenticated &&
+      user &&
+      !user.termsAccepted &&
+      user.role !== "admin"
+    ) {
       const currentRoute = segments[0];
       if (currentRoute !== "accept-terms") {
         router.replace("/accept-terms");
@@ -76,9 +87,9 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarShowLabel: true,
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10, // Reduced from 11
           fontWeight: "600",
-          marginTop: 8,
+          marginTop: 6, // Reduced from 8, but will be adjusted by paddingTop
           marginBottom: 0,
         },
         tabBarItemStyle: {
@@ -86,7 +97,7 @@ export default function TabsLayout() {
           height: "100%",
           justifyContent: "center",
           alignItems: "center",
-          paddingVertical: 6,
+          paddingVertical: 4, // Reduced from 6
         },
         tabBarStyle: isAuthenticated
           ? {
@@ -107,8 +118,8 @@ export default function TabsLayout() {
               borderBottomWidth: 0,
               borderColor: isDark ? "#3A3A3C" : "#E5E5EA",
               height: tabBarHeight + bottomPadding + labelHeight,
-              paddingBottom: bottomPadding,
-              paddingTop: 10,
+              paddingBottom: bottomPadding, // Safe area bottom padding
+              paddingTop: 8, // Reduced from 10
               shadowColor: "#000",
               shadowOffset: { width: 0, height: -2 },
               shadowOpacity: isDark ? 0.3 : 0.1,
@@ -212,6 +223,23 @@ export default function TabsLayout() {
               focused={focused}
               IconComp={Icons.communication}
               name={IconNames.chatbubbleOutline}
+              isDark={isDark}
+            />
+          ),
+        }}
+      />
+
+      {/* Admin Tab (shown when role is admin; hidden otherwise) */}
+      <Tabs.Screen
+        name="admin"
+        options={{
+          title: "Admin",
+          href: userRole === "admin" ? undefined : null,
+          tabBarIcon: ({ focused }: { focused: boolean }) => (
+            <TabIcon
+              focused={focused}
+              IconComp={Icons.action}
+              name={IconNames.shield}
               isDark={isDark}
             />
           ),

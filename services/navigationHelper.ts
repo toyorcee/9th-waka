@@ -64,4 +64,12 @@ export const Routes = {
     profileSettings: "/profile/settings",
     notifications: "/notifications",
   },
+  admin: {
+    orders: "/admin/orders",
+    riders: "/admin/riders",
+    blockedRiders: "/admin/riders/blocked",
+    customers: "/admin/customers",
+    payouts: "/admin/payouts",
+    rates: "/admin/rates",
+  },
 } as const;

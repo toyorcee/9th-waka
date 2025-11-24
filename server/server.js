@@ -8,6 +8,7 @@ import path from "path";
 import { Server as SocketIOServer } from "socket.io";
 import { fileURLToPath } from "url";
 import { errorHandler } from "./middleware/index.js";
+import adminRoutes from "./routes/admin.js";
 import analyticsRoutes from "./routes/analytics.js";
 import authRoutes from "./routes/auth.js";
 import chatRoutes from "./routes/chat.js";
@@ -130,6 +131,7 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/presence", presenceRoutes);
 app.use("/api/geocoding", geocodingRoutes);
 app.use("/api/ratings", ratingRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.get("/api/health", (req, res) => {
   res.json({

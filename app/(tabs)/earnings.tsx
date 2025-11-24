@@ -1,3 +1,6 @@
+import EarningsOnboarding, {
+  hasSeenEarningsOnboarding,
+} from "@/components/EarningsOnboarding";
 import { IconNames, Icons, MCIconNames } from "@/constants/icons";
 import { SocketEvents } from "@/constants/socketEvents";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,6 +37,7 @@ export default function EarningsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const isDark = theme === "dark";
+
   const [earnings, setEarnings] = useState<EarningsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -47,13 +51,13 @@ export default function EarningsScreen() {
   const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(
     null
   );
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Animation refs
   const icon1Anim = useRef(new Animated.Value(1)).current;
   const icon2Anim = useRef(new Animated.Value(1)).current;
   const icon3Anim = useRef(new Animated.Value(1)).current;
 
-  // Start icon animations after 3 seconds
   useEffect(() => {
     const timer = setTimeout(() => {
       const createPulseAnimation = (animValue: Animated.Value) => {
@@ -82,12 +86,15 @@ export default function EarningsScreen() {
   }, []);
 
   const isRider = user?.role === "rider";
+
   const tabBarHeight = 65;
   const bottomPadding = insets.bottom > 0 ? insets.bottom : 20;
   const contentBottomPadding = tabBarHeight + bottomPadding + 32;
 
   const loadEarnings = async (showRefreshing = false) => {
-    if (!isRider) return;
+    if (!isRider || !user) {
+      return;
+    }
     if (showRefreshing) setRefreshing(true);
     else setLoading(true);
     try {
@@ -106,7 +113,9 @@ export default function EarningsScreen() {
   };
 
   const loadPaymentHistory = async () => {
-    if (!isRider) return;
+    if (!isRider || !user) {
+      return;
+    }
     setLoadingHistory(true);
     try {
       const data = await getPaymentHistory();
@@ -123,10 +132,21 @@ export default function EarningsScreen() {
   };
 
   useEffect(() => {
-    if (isRider) {
+    if (user && isRider) {
       loadEarnings();
     }
-  }, [isRider]);
+  }, [isRider, user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Check for onboarding after earnings are loaded
+  useEffect(() => {
+    if (user && isRider && !earnings && !loading) {
+      hasSeenEarningsOnboarding().then((seen) => {
+        if (!seen) {
+          setShowOnboarding(true);
+        }
+      });
+    }
+  }, [earnings, loading, user, isRider]);
 
   useEffect(() => {
     if (!isRider) return;
@@ -159,7 +179,7 @@ export default function EarningsScreen() {
     );
   }
 
-  if (!isRider) {
+  if (!user || !isRider) {
     return (
       <View
         className={`flex-1 items-center justify-center ${
@@ -180,38 +200,44 @@ export default function EarningsScreen() {
           isDark ? "bg-black" : "bg-white"
         }`}
       >
-        <Animated.View
-          style={{
-            transform: [{ scale: icon1Anim }],
-          }}
-          className="items-center"
-        >
-          <View
-            className={`rounded-full p-8 mb-6 ${
-              isDark ? "bg-dark-100" : "bg-gray-100"
-            }`}
+        <EarningsOnboarding
+          visible={showOnboarding}
+          onComplete={() => setShowOnboarding(false)}
+        />
+        {!showOnboarding && (
+          <Animated.View
+            style={{
+              transform: [{ scale: icon1Anim }],
+            }}
+            className="items-center"
           >
-            <Icons.money
-              name={MCIconNames.cash as any}
-              size={64}
-              color={isDark ? "#AB8BFF" : "#1E3A8A"}
-            />
-          </View>
-          <Text
-            className={`text-xl font-bold mb-2 ${
-              isDark ? "text-light-400" : "text-black"
-            }`}
-          >
-            No Earnings Yet
-          </Text>
-          <Text
-            className={`text-sm text-center px-8 ${
-              isDark ? "text-light-400" : "text-gray-500"
-            }`}
-          >
-            Start accepting deliveries to see your earnings here
-          </Text>
-        </Animated.View>
+            <View
+              className={`rounded-full p-8 mb-6 ${
+                isDark ? "bg-dark-100" : "bg-gray-100"
+              }`}
+            >
+              <Icons.money
+                name={MCIconNames.cash as any}
+                size={64}
+                color={isDark ? "#AB8BFF" : "#1E3A8A"}
+              />
+            </View>
+            <Text
+              className={`text-xl font-bold mb-2 ${
+                isDark ? "text-light-400" : "text-black"
+              }`}
+            >
+              No Earnings Yet
+        </Text>
+            <Text
+              className={`text-sm text-center px-8 ${
+                isDark ? "text-light-400" : "text-gray-500"
+              }`}
+            >
+              Start accepting deliveries to see your earnings here
+            </Text>
+          </Animated.View>
+        )}
       </View>
     );
   }
@@ -257,17 +283,17 @@ export default function EarningsScreen() {
                   transform: [{ scale: icon1Anim }],
                 }}
               >
-                <View
-                  className={`rounded-xl p-2.5 mr-3 ${
-                    isDark ? "bg-accent/20" : "bg-blue-900/20"
-                  }`}
-                >
-                  <Icons.money
-                    name={MCIconNames.cash as any}
-                    size={22}
-                    color={isDark ? "#AB8BFF" : "#1E3A8A"}
-                  />
-                </View>
+              <View
+                className={`rounded-xl p-2.5 mr-3 ${
+                  isDark ? "bg-accent/20" : "bg-blue-900/20"
+                }`}
+              >
+                <Icons.money
+                  name={MCIconNames.cash as any}
+                  size={22}
+                  color={isDark ? "#AB8BFF" : "#1E3A8A"}
+                />
+              </View>
               </Animated.View>
               <View className="flex-1">
                 <Text

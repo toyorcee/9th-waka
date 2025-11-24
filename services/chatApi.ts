@@ -215,3 +215,13 @@ export async function markSupportMessagesAsRead(
 ): Promise<void> {
   await apiClient.patch(`/chat/support/${supportChatId}/read`);
 }
+
+/**
+ * Get all support chats assigned to an admin
+ */
+export async function getAdminSupportChats(): Promise<
+  Array<SupportChat & { lastMessage?: SupportMessage | null; unreadCount: number }>
+> {
+  const response = await apiClient.get("/chat/support/admin/chats");
+  return response.data?.chats || [];
+}

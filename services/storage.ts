@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const TOKEN_KEY = "authToken";
 const THEME_KEY = "themeMode";
+const AUTO_THEME_KEY = "autoThemeEnabled";
 
 export const storage = {
   // Get token from storage
@@ -49,6 +50,25 @@ export const storage = {
       await AsyncStorage.setItem(THEME_KEY, theme);
     } catch (error) {
       console.error("Error storing theme:", error);
+    }
+  },
+
+  // Get auto theme preference
+  getAutoTheme: async (): Promise<string | null> => {
+    try {
+      return await AsyncStorage.getItem(AUTO_THEME_KEY);
+    } catch (error) {
+      console.error("Error getting auto theme:", error);
+      return null;
+    }
+  },
+
+  // Store auto theme preference
+  setAutoTheme: async (enabled: string): Promise<void> => {
+    try {
+      await AsyncStorage.setItem(AUTO_THEME_KEY, enabled);
+    } catch (error) {
+      console.error("Error storing auto theme:", error);
     }
   },
 };

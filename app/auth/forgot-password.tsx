@@ -12,13 +12,13 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import Reanimated, {
+  Easing,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -31,6 +31,8 @@ type ResetMethod = "email" | "phone";
 export default function ForgotPasswordScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const screenHeight = Dimensions.get("window").height;
+  const screenWidth = Dimensions.get("window").width;
 
   const isRouterReady = router && typeof router.replace === "function";
   const [resetMethod, setResetMethod] = useState<ResetMethod>("email");
@@ -44,27 +46,48 @@ export default function ForgotPasswordScreen() {
   const successOpacity = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  // Slide in animation from left to right
-  const translateX = useSharedValue(-Dimensions.get("window").width);
+  const translateX = useSharedValue(-screenWidth);
+  const rotateY = useSharedValue(-90);
   const opacity = useSharedValue(0);
 
   useFocusEffect(
     useCallback(() => {
-      translateX.value = -Dimensions.get("window").width;
+      setCodeSent(false);
+      setEmail("");
+      setPhoneNumber("");
+      setIsLoading(false);
+      
+      successScale.setValue(0);
+      successOpacity.setValue(0);
+      fadeAnim.setValue(1);
+      
+      translateX.value = -screenWidth;
+      rotateY.value = -90;
       opacity.value = 0;
       translateX.value = withTiming(0, {
-        duration: 400,
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
       });
-      opacity.value = withTiming(1, { duration: 400 });
+      rotateY.value = withTiming(0, {
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+      });
+      opacity.value = withTiming(1, {
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+      });
       return () => {
         // Optional cleanup
       };
-    }, [])
+    }, [screenWidth])
   );
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
-      transform: [{ translateX: translateX.value }],
+      transform: [
+        { translateX: translateX.value },
+        { rotateY: `${rotateY.value}deg` },
+      ],
       opacity: opacity.value,
     };
   });
@@ -243,20 +266,22 @@ export default function ForgotPasswordScreen() {
           <View className="absolute inset-0 bg-primary/10" />
         </View>
 
-        <ScrollView
+        <View
           className="flex-1"
-          contentContainerStyle={{
-            flexGrow: 1,
+          style={{
+            minHeight: screenHeight,
             paddingTop: insets.top,
             paddingBottom: insets.bottom,
           }}
-          showsVerticalScrollIndicator={false}
         >
-          <View className="flex-1 justify-center px-6 py-12">
+          <View
+            className="flex-1 justify-center px-4"
+            style={{ minHeight: screenHeight - insets.top - insets.bottom }}
+          >
             {/* Back Button */}
             <View
-              className="absolute top-0 left-0 right-0 z-10 flex-row justify-start items-center px-6"
-              style={{ marginTop: insets.top + 8 }}
+              className="absolute top-0 left-0 right-0 z-10 flex-row justify-start items-center px-4"
+              style={{ marginTop: 8 }}
             >
               <BackButton
                 fallbackRoute={Routes.standalone.auth}
@@ -264,59 +289,83 @@ export default function ForgotPasswordScreen() {
               />
             </View>
 
-            {/* Logo/Branding Section */}
-            <View className="items-center mb-8">
-              <Image
-                source={images.logo}
-                style={{ width: 100, height: 50 }}
-                contentFit="contain"
-                className="mb-3"
-              />
-              <Text className="text-base text-center text-light-200">
-                Reset Your Password
+            {/* Icon Section */}
+            <View
+              className="items-center mb-4"
+              style={{ marginTop: screenHeight * 0.05 }}
+            >
+              <View
+                className="rounded-full p-4 mb-3"
+                style={{
+                  backgroundColor: "rgba(171, 139, 255, 0.2)",
+                }}
+              >
+                <Icons.safety
+                  name={IconNames.security as any}
+                  size={screenWidth * 0.12}
+                  color="#AB8BFF"
+                />
+              </View>
+              <Text
+                className="text-lg font-bold text-center text-light-100"
+                style={{ fontSize: screenWidth * 0.045 }}
+              >
+                Forgot Password?
+              </Text>
+              <Text
+                className="text-xs text-center text-light-400 mt-1"
+                style={{ fontSize: screenWidth * 0.03 }}
+              >
+                We'll help you reset it
               </Text>
             </View>
 
             {/* Auth Card */}
             <Animated.View
-              className="rounded-3xl p-6 border backdrop-blur bg-secondary/95 border-neutral-100/50"
-              style={[{ opacity: fadeAnim }]}
+              className="rounded-3xl border backdrop-blur bg-secondary/95 border-neutral-100/50"
+              style={[
+                { opacity: fadeAnim },
+                {
+                  padding: screenWidth * 0.04,
+                  maxHeight: screenHeight * 0.65,
+                },
+              ]}
             >
-              <Text className="text-2xl font-bold mb-2 text-center text-light-100">
-                Forgot Password?
-              </Text>
-              <Text className="text-sm text-center mb-16 text-light-400">
-                No worries! Enter your email or phone number and we'll send you
-                a code to reset your password.
-              </Text>
-
               {/* Method Selection */}
-              <View className="flex-row gap-3 mb-6">
+              <View
+                className="flex-row gap-2 mb-4"
+                style={{ marginBottom: screenHeight * 0.02 }}
+              >
                 <TouchableOpacity
                   onPress={() => {
                     setResetMethod("email");
                     setEmail("");
                     setPhoneNumber("");
                   }}
-                  className={`flex-1 rounded-xl py-3 px-4 border-2 ${
+                  className={`flex-1 rounded-xl border-2 ${
                     resetMethod === "email"
                       ? "bg-accent/20 border-accent"
                       : "bg-dark-100 border-neutral-100"
                   }`}
+                  style={{
+                    paddingVertical: screenHeight * 0.012,
+                    paddingHorizontal: screenWidth * 0.03,
+                  }}
                 >
                   <View className="flex-row items-center justify-center">
                     <Icons.communication
                       name={IconNames.message as any}
-                      size={18}
+                      size={screenWidth * 0.045}
                       color={resetMethod === "email" ? "#AB8BFF" : "#9CA4AB"}
-                      style={{ marginRight: 6 }}
+                      style={{ marginRight: 4 }}
                     />
                     <Text
-                      className={`font-semibold text-sm ${
+                      className={`font-semibold ${
                         resetMethod === "email"
                           ? "text-accent"
                           : "text-light-400"
                       }`}
+                      style={{ fontSize: screenWidth * 0.032 }}
                     >
                       Email
                     </Text>
@@ -329,25 +378,30 @@ export default function ForgotPasswordScreen() {
                     setEmail("");
                     setPhoneNumber("");
                   }}
-                  className={`flex-1 rounded-xl py-3 px-4 border-2 ${
+                  className={`flex-1 rounded-xl border-2 ${
                     resetMethod === "phone"
                       ? "bg-accent/20 border-accent"
                       : "bg-dark-100 border-neutral-100"
                   }`}
+                  style={{
+                    paddingVertical: screenHeight * 0.012,
+                    paddingHorizontal: screenWidth * 0.03,
+                  }}
                 >
                   <View className="flex-row items-center justify-center">
                     <Icons.communication
                       name={IconNames.callOutline as any}
-                      size={18}
+                      size={screenWidth * 0.045}
                       color={resetMethod === "phone" ? "#AB8BFF" : "#9CA4AB"}
-                      style={{ marginRight: 6 }}
+                      style={{ marginRight: 4 }}
                     />
                     <Text
-                      className={`font-semibold text-sm ${
+                      className={`font-semibold ${
                         resetMethod === "phone"
                           ? "text-accent"
                           : "text-light-400"
                       }`}
+                      style={{ fontSize: screenWidth * 0.032 }}
                     >
                       Phone
                     </Text>
@@ -357,18 +411,24 @@ export default function ForgotPasswordScreen() {
 
               {/* Input Field */}
               {resetMethod === "email" ? (
-                <View className="mb-6">
-                  <View className="mb-2 px-2 py-1 rounded-xl">
-                    <Text className="text-xs font-medium text-light-400">
+                <View
+                  className="mb-4"
+                  style={{ marginBottom: screenHeight * 0.02 }}
+                >
+                  <View className="mb-1 px-2 py-0.5 rounded-xl">
+                    <Text
+                      className="text-xs font-medium text-light-400"
+                      style={{ fontSize: screenWidth * 0.028 }}
+                    >
                       Email Address
                     </Text>
                   </View>
-                  <View className="flex-row items-center rounded-xl px-4 border bg-dark-100 border-neutral-100">
+                  <View className="flex-row items-center rounded-xl px-3 border bg-dark-100 border-neutral-100">
                     <Icons.communication
                       name={IconNames.message as any}
-                      size={20}
+                      size={screenWidth * 0.05}
                       color="#9CA4AB"
-                      style={{ marginRight: 12 }}
+                      style={{ marginRight: 8 }}
                     />
                     <TextInput
                       value={email}
@@ -377,23 +437,30 @@ export default function ForgotPasswordScreen() {
                       placeholderTextColor="#9CA4AB"
                       autoCapitalize="none"
                       keyboardType="email-address"
-                      className="flex-1 py-4 text-light-100"
+                      className="flex-1 py-3 text-light-100"
+                      style={{ fontSize: screenWidth * 0.035 }}
                     />
                   </View>
                 </View>
               ) : (
-                <View className="mb-6">
-                  <View className="mb-2 px-2 py-1 rounded-xl">
-                    <Text className="text-xs font-medium text-light-400">
+                <View
+                  className="mb-4"
+                  style={{ marginBottom: screenHeight * 0.02 }}
+                >
+                  <View className="mb-1 px-2 py-0.5 rounded-xl">
+                    <Text
+                      className="text-xs font-medium text-light-400"
+                      style={{ fontSize: screenWidth * 0.028 }}
+                    >
                       Phone Number
                     </Text>
                   </View>
-                  <View className="flex-row items-center rounded-xl px-4 border bg-dark-100 border-neutral-100">
+                  <View className="flex-row items-center rounded-xl px-3 border bg-dark-100 border-neutral-100">
                     <Icons.communication
                       name={IconNames.callOutline as any}
-                      size={20}
+                      size={screenWidth * 0.05}
                       color="#9CA4AB"
-                      style={{ marginRight: 12 }}
+                      style={{ marginRight: 8 }}
                     />
                     <TextInput
                       value={phoneNumber}
@@ -401,7 +468,8 @@ export default function ForgotPasswordScreen() {
                       placeholder="08012345678"
                       placeholderTextColor="#9CA4AB"
                       keyboardType="phone-pad"
-                      className="flex-1 py-4 text-light-100"
+                      className="flex-1 py-3 text-light-100"
+                      style={{ fontSize: screenWidth * 0.035 }}
                     />
                   </View>
                 </View>
@@ -411,14 +479,21 @@ export default function ForgotPasswordScreen() {
               <TouchableOpacity
                 onPress={handleRequestReset}
                 disabled={isLoading}
-                className={`rounded-xl py-4 items-center mb-4 ${
+                className={`rounded-xl items-center mb-3 ${
                   isLoading ? "bg-accent/60" : "bg-accent"
                 }`}
+                style={{
+                  paddingVertical: screenHeight * 0.015,
+                  marginBottom: screenHeight * 0.01,
+                }}
               >
                 {isLoading ? (
                   <ActivityIndicator color="#030014" />
                 ) : (
-                  <Text className="font-bold text-base text-primary">
+                  <Text
+                    className="font-bold text-primary"
+                    style={{ fontSize: screenWidth * 0.038 }}
+                  >
                     Send Reset Code
                   </Text>
                 )}
@@ -435,9 +510,12 @@ export default function ForgotPasswordScreen() {
                     }
                   }
                 }}
-                className="py-3 items-center"
+                className="py-2 items-center"
               >
-                <Text className="text-sm text-light-300">
+                <Text
+                  className="text-light-300"
+                  style={{ fontSize: screenWidth * 0.03 }}
+                >
                   Remember your password?{" "}
                   <Text className="text-accent font-semibold">Sign In</Text>
                 </Text>
@@ -486,7 +564,7 @@ export default function ForgotPasswordScreen() {
               </Animated.View>
             )}
           </View>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </Reanimated.View>
   );

@@ -13,13 +13,13 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import Reanimated, {
+  Easing,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -29,8 +29,10 @@ import Toast from "react-native-toast-message";
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { verifyEmail } = useAuth();
   const insets = useSafeAreaInsets();
+  const screenHeight = Dimensions.get("window").height;
+  const screenWidth = Dimensions.get("window").width;
 
   const isRouterReady = router && typeof router.replace === "function";
   const params = useLocalSearchParams<{
@@ -48,33 +50,48 @@ export default function ResetPasswordScreen() {
   const [isResending, setIsResending] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
   const [hasToken, setHasToken] = useState(false);
+  const [isCodeVerified, setIsCodeVerified] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   // Animation values for success state
   const successScale = useRef(new Animated.Value(0)).current;
   const successOpacity = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  // Slide in animation from left to right
-  const translateX = useSharedValue(-Dimensions.get("window").width);
+  // Sharp flip animation
+  const translateX = useSharedValue(-screenWidth);
+  const rotateY = useSharedValue(-90);
   const opacity = useSharedValue(0);
 
   useFocusEffect(
     useCallback(() => {
-      translateX.value = -Dimensions.get("window").width;
+      translateX.value = -screenWidth;
+      rotateY.value = -90;
       opacity.value = 0;
       translateX.value = withTiming(0, {
-        duration: 400,
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
       });
-      opacity.value = withTiming(1, { duration: 400 });
+      rotateY.value = withTiming(0, {
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+      });
+      opacity.value = withTiming(1, {
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+      });
       return () => {
         // Optional cleanup
       };
-    }, [])
+    }, [screenWidth])
   );
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
-      transform: [{ translateX: translateX.value }],
+      transform: [
+        { translateX: translateX.value },
+        { rotateY: `${rotateY.value}deg` },
+      ],
       opacity: opacity.value,
     };
   });
@@ -96,6 +113,57 @@ export default function ResetPasswordScreen() {
   };
 
   const passwordStrength = evaluatePassword(newPassword);
+
+  const handleVerifyCode = async () => {
+    if (!code.trim() || code.length !== 6) {
+      Toast.show({
+        type: "error",
+        text1: "Invalid code",
+        text2: "Please enter the 6-digit reset code",
+      });
+      return;
+    }
+
+    setIsVerifying(true);
+    try {
+      // Verify code with backend
+      await apiClient.post("/auth/verify-reset-code", {
+        code: code.trim(),
+        email: resetMethod === "email" ? identifier : undefined,
+        phoneNumber: resetMethod === "phone" ? identifier : undefined,
+      });
+
+      setIsCodeVerified(true);
+      Toast.show({
+        type: "success",
+        text1: "Code verified",
+        text2: "Please enter your new password",
+      });
+    } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.error || error?.message || "Verification failed";
+
+      if (
+        errorMessage.toLowerCase().includes("invalid") ||
+        errorMessage.toLowerCase().includes("expired")
+      ) {
+        Toast.show({
+          type: "error",
+          text1: "Invalid or expired code",
+          text2:
+            "The reset code is invalid or has expired. Please request a new one.",
+        });
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Verification failed",
+          text2: "Please check your code and try again",
+        });
+      }
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const handleResetPassword = async () => {
     if (!code.trim() || code.length !== 6) {
@@ -175,7 +243,8 @@ export default function ResetPasswordScreen() {
 
       // Auto-login if token is provided
       if (hasAuthToken) {
-        await login(response.data.token, response.data.user);
+        // Use verifyEmail which accepts token and user (same as password reset response)
+        await verifyEmail(response.data.token, response.data.user);
         // Navigate after animation
         setTimeout(() => {
           if (isRouterReady && typeof router.replace === "function") {
@@ -237,12 +306,18 @@ export default function ResetPasswordScreen() {
         phoneNumber: resetMethod === "phone" ? identifier : undefined,
       });
 
+      // Reset verification state and clear inputs
+      setIsCodeVerified(false);
+      setCode("");
+      setNewPassword("");
+      setConfirmPassword("");
+
       Toast.show({
         type: "success",
         text1: "Code resent",
         text2: `A new reset code has been sent to your ${
           resetMethod === "email" ? "email" : "phone"
-        }`,
+        }. Please verify the new code.`,
       });
     } catch (error: any) {
       Toast.show({
@@ -271,20 +346,22 @@ export default function ResetPasswordScreen() {
           <View className="absolute inset-0 bg-primary/10" />
         </View>
 
-        <ScrollView
+        <View
           className="flex-1"
-          contentContainerStyle={{
-            flexGrow: 1,
+          style={{
+            minHeight: screenHeight,
             paddingTop: insets.top,
             paddingBottom: insets.bottom,
           }}
-          showsVerticalScrollIndicator={false}
         >
-          <View className="flex-1 justify-center px-6 py-12">
+          <View
+            className="flex-1 justify-center px-4"
+            style={{ minHeight: screenHeight - insets.top - insets.bottom }}
+          >
             {/* Back Button */}
             <View
-              className="absolute top-0 left-0 right-0 z-10 flex-row justify-start items-center px-6"
-              style={{ marginTop: insets.top + 8 }}
+              className="absolute top-0 left-0 right-0 z-10 flex-row justify-start items-center px-4"
+              style={{ marginTop: 8 }}
             >
               <BackButton
                 fallbackRoute="/auth/forgot-password"
@@ -292,37 +369,58 @@ export default function ResetPasswordScreen() {
               />
             </View>
 
-            {/* Logo/Branding Section */}
-            <View className="items-center mb-8">
-              <Image
-                source={images.logo}
-                style={{ width: 100, height: 50 }}
-                contentFit="contain"
-                className="mb-3"
-              />
-              <Text className="text-base text-center text-light-200">
-                Create New Password
+            {/* Icon Section */}
+            <View
+              className="items-center mb-4"
+              style={{ marginTop: screenHeight * 0.05 }}
+            >
+              <View
+                className="rounded-full p-4 mb-3"
+                style={{
+                  backgroundColor: "rgba(171, 139, 255, 0.2)",
+                }}
+              >
+                <Icons.safety
+                  name={IconNames.security as any}
+                  size={screenWidth * 0.12}
+                  color="#AB8BFF"
+                />
+              </View>
+              <Text
+                className="text-lg font-bold text-center text-light-100"
+                style={{ fontSize: screenWidth * 0.045 }}
+              >
+                Reset Password
+              </Text>
+              <Text
+                className="text-xs text-center text-light-400 mt-1"
+                style={{ fontSize: screenWidth * 0.03 }}
+              >
+                Enter code and create new password
               </Text>
             </View>
 
             {/* Auth Card */}
             <Animated.View
-              className="rounded-3xl p-6 border backdrop-blur bg-secondary/95 border-neutral-100/50"
-              style={[{ opacity: fadeAnim }]}
+              className="rounded-3xl border backdrop-blur bg-secondary/95 border-neutral-100/50"
+              style={[
+                { opacity: fadeAnim },
+                {
+                  padding: screenWidth * 0.04,
+                  maxHeight: screenHeight * 0.7,
+                },
+              ]}
             >
-              <Text className="text-2xl font-bold mb-2 text-center text-light-100">
-                Reset Password
-              </Text>
-              <Text className="text-sm text-center mb-6 text-light-400">
-                Enter the 6-digit code sent to{" "}
-                {resetMethod === "email" ? identifier : identifier} and create a
-                new password.
-              </Text>
-
               {/* Reset Code */}
-              <View className="mb-4">
-                <View className="mb-2 px-2 py-1 rounded-xl">
-                  <Text className="text-xs font-medium text-light-400">
+              <View
+                className="mb-3"
+                style={{ marginBottom: screenHeight * 0.015 }}
+              >
+                <View className="mb-1 px-2 py-0.5 rounded-xl">
+                  <Text
+                    className="text-xs font-medium text-light-400"
+                    style={{ fontSize: screenWidth * 0.028 }}
+                  >
                     Reset Code
                   </Text>
                 </View>
@@ -331,151 +429,244 @@ export default function ResetPasswordScreen() {
                   onChangeText={setCode}
                   keyboardType="number-pad"
                   maxLength={6}
-                  className="rounded-xl p-4 tracking-widest text-center text-2xl border bg-dark-100 text-light-100 border-neutral-100"
+                  editable={!isCodeVerified}
+                  className={`rounded-xl tracking-widest text-center border bg-dark-100 text-light-100 border-neutral-100 ${
+                    isCodeVerified ? "opacity-60" : ""
+                  }`}
                   placeholder="000000"
                   placeholderTextColor="#9CA4AB"
+                  style={{
+                    padding: screenHeight * 0.015,
+                    fontSize: screenWidth * 0.08,
+                  }}
                 />
-              </View>
-
-              {/* New Password */}
-              <View className="mb-4">
-                <View className="mb-2 px-2 py-1 rounded-xl">
-                  <Text className="text-xs font-medium text-light-400">
-                    New Password
-                  </Text>
-                </View>
-                <View className="flex-row items-center rounded-xl px-4 border bg-dark-100 border-neutral-100">
-                  <Icons.safety
-                    name={IconNames.security as any}
-                    size={20}
-                    color="#9CA4AB"
-                    style={{ marginRight: 12 }}
-                  />
-                  <TextInput
-                    value={newPassword}
-                    onChangeText={setNewPassword}
-                    placeholder="Enter new password"
-                    placeholderTextColor="#9CA4AB"
-                    secureTextEntry={!showPassword}
-                    className="flex-1 py-4 text-light-100"
-                  />
-                  <TouchableOpacity
-                    onPress={() => setShowPassword(!showPassword)}
-                  >
-                    <Icons.action
-                      name={
-                        showPassword
-                          ? (IconNames.eyeOutline as any)
-                          : (IconNames.eyeOffOutline as any)
-                      }
-                      size={20}
-                      color="#9CA4AB"
+                {isCodeVerified && (
+                  <View className="mt-2 flex-row items-center justify-center">
+                    <Icons.status
+                      name={IconNames.checkmarkCircle as any}
+                      size={16}
+                      color="#30D158"
+                      style={{ marginRight: 6 }}
                     />
-                  </TouchableOpacity>
-                </View>
-                {/* Password Strength Indicator */}
-                {newPassword.length > 0 && (
-                  <View className="mt-2">
-                    <View className="flex-row items-center gap-2 mb-1">
-                      <View
-                        className={`h-1 flex-1 rounded-full ${
-                          passwordStrength === "strong"
-                            ? "bg-success"
-                            : passwordStrength === "medium"
-                            ? "bg-warning"
-                            : "bg-danger"
-                        }`}
-                      />
-                      <Text className="text-xs text-light-400">
-                        {passwordStrength === "strong"
-                          ? "Strong"
-                          : passwordStrength === "medium"
-                          ? "Medium"
-                          : "Weak"}
-                      </Text>
-                    </View>
+                    <Text
+                      className="text-xs text-success"
+                      style={{ fontSize: screenWidth * 0.025 }}
+                    >
+                      Code verified
+                    </Text>
                   </View>
                 )}
               </View>
 
-              {/* Confirm Password */}
-              <View className="mb-6">
-                <View className="mb-2 px-2 py-1 rounded-xl">
-                  <Text className="text-xs font-medium text-light-400">
-                    Confirm Password
-                  </Text>
-                </View>
-                <View className="flex-row items-center rounded-xl px-4 border bg-dark-100 border-neutral-100">
-                  <Icons.safety
-                    name={IconNames.security as any}
-                    size={20}
-                    color="#9CA4AB"
-                    style={{ marginRight: 12 }}
-                  />
-                  <TextInput
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    placeholder="Confirm new password"
-                    placeholderTextColor="#9CA4AB"
-                    secureTextEntry={!showConfirmPassword}
-                    className="flex-1 py-4 text-light-100"
-                  />
-                  <TouchableOpacity
-                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    <Icons.action
-                      name={
-                        showConfirmPassword
-                          ? (IconNames.eyeOutline as any)
-                          : (IconNames.eyeOffOutline as any)
-                      }
-                      size={20}
-                      color="#9CA4AB"
-                    />
-                  </TouchableOpacity>
-                </View>
-                {confirmPassword.length > 0 &&
-                  newPassword !== confirmPassword && (
-                    <Text className="text-danger text-xs mt-1">
-                      Passwords don't match
+              {/* Verify Code Button - Only show if code not verified */}
+              {!isCodeVerified && (
+                <TouchableOpacity
+                  onPress={handleVerifyCode}
+                  disabled={isVerifying || code.length !== 6}
+                  className={`rounded-xl items-center mb-3 ${
+                    isVerifying || code.length !== 6
+                      ? "bg-accent/60"
+                      : "bg-accent"
+                  }`}
+                  style={{
+                    paddingVertical: screenHeight * 0.015,
+                    marginBottom: screenHeight * 0.01,
+                  }}
+                >
+                  {isVerifying ? (
+                    <ActivityIndicator color="#030014" />
+                  ) : (
+                    <Text
+                      className="font-bold text-primary"
+                      style={{ fontSize: screenWidth * 0.038 }}
+                    >
+                      Verify Code
                     </Text>
                   )}
-              </View>
+                </TouchableOpacity>
+              )}
 
-              {/* Submit Button */}
-              <TouchableOpacity
-                onPress={handleResetPassword}
-                disabled={isLoading}
-                className={`rounded-xl py-4 items-center mb-3 ${
-                  isLoading ? "bg-accent/60" : "bg-accent"
-                }`}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="#030014" />
-                ) : (
-                  <Text className="font-bold text-base text-primary">
-                    Reset Password
-                  </Text>
-                )}
-              </TouchableOpacity>
+              {/* New Password - Only show after code is verified */}
+              {isCodeVerified && (
+                <>
+                  <View
+                    className="mb-3"
+                    style={{ marginBottom: screenHeight * 0.015 }}
+                  >
+                    <View className="mb-1 px-2 py-0.5 rounded-xl">
+                      <Text
+                        className="text-xs font-medium text-light-400"
+                        style={{ fontSize: screenWidth * 0.028 }}
+                      >
+                        New Password
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center rounded-xl px-3 border bg-dark-100 border-neutral-100">
+                      <Icons.safety
+                        name={IconNames.security as any}
+                        size={screenWidth * 0.05}
+                        color="#9CA4AB"
+                        style={{ marginRight: 8 }}
+                      />
+                      <TextInput
+                        value={newPassword}
+                        onChangeText={setNewPassword}
+                        placeholder="Enter new password"
+                        placeholderTextColor="#9CA4AB"
+                        secureTextEntry={!showPassword}
+                        className="flex-1 py-3 text-light-100"
+                        style={{ fontSize: screenWidth * 0.035 }}
+                      />
+                      <TouchableOpacity
+                        onPress={() => setShowPassword(!showPassword)}
+                      >
+                        <Icons.action
+                          name={
+                            showPassword
+                              ? (IconNames.eyeOutline as any)
+                              : (IconNames.eyeOffOutline as any)
+                          }
+                          size={screenWidth * 0.05}
+                          color="#9CA4AB"
+                        />
+                      </TouchableOpacity>
+                    </View>
+                    {/* Password Strength Indicator */}
+                    {newPassword.length > 0 && (
+                      <View className="mt-1.5">
+                        <View className="flex-row items-center gap-2">
+                          <View
+                            className={`h-1 flex-1 rounded-full ${
+                              passwordStrength === "strong"
+                                ? "bg-success"
+                                : passwordStrength === "medium"
+                                ? "bg-warning"
+                                : "bg-danger"
+                            }`}
+                          />
+                          <Text
+                            className="text-xs text-light-400"
+                            style={{ fontSize: screenWidth * 0.025 }}
+                          >
+                            {passwordStrength === "strong"
+                              ? "Strong"
+                              : passwordStrength === "medium"
+                              ? "Medium"
+                              : "Weak"}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Confirm Password */}
+                  <View
+                    className="mb-4"
+                    style={{ marginBottom: screenHeight * 0.015 }}
+                  >
+                    <View className="mb-1 px-2 py-0.5 rounded-xl">
+                      <Text
+                        className="text-xs font-medium text-light-400"
+                        style={{ fontSize: screenWidth * 0.028 }}
+                      >
+                        Confirm Password
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center rounded-xl px-3 border bg-dark-100 border-neutral-100">
+                      <Icons.safety
+                        name={IconNames.security as any}
+                        size={screenWidth * 0.05}
+                        color="#9CA4AB"
+                        style={{ marginRight: 8 }}
+                      />
+                      <TextInput
+                        value={confirmPassword}
+                        onChangeText={setConfirmPassword}
+                        placeholder="Confirm new password"
+                        placeholderTextColor="#9CA4AB"
+                        secureTextEntry={!showConfirmPassword}
+                        className="flex-1 py-3 text-light-100"
+                        style={{ fontSize: screenWidth * 0.035 }}
+                      />
+                      <TouchableOpacity
+                        onPress={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
+                        }
+                      >
+                        <Icons.action
+                          name={
+                            showConfirmPassword
+                              ? (IconNames.eyeOutline as any)
+                              : (IconNames.eyeOffOutline as any)
+                          }
+                          size={screenWidth * 0.05}
+                          color="#9CA4AB"
+                        />
+                      </TouchableOpacity>
+                    </View>
+                    {confirmPassword.length > 0 &&
+                      newPassword !== confirmPassword && (
+                        <Text
+                          className="text-danger text-xs mt-1"
+                          style={{ fontSize: screenWidth * 0.025 }}
+                        >
+                          Passwords don't match
+                        </Text>
+                      )}
+                  </View>
+
+                  {/* Submit Button - Only show after code is verified */}
+                  <TouchableOpacity
+                    onPress={handleResetPassword}
+                    disabled={isLoading}
+                    className={`rounded-xl items-center mb-3 ${
+                      isLoading ? "bg-accent/60" : "bg-accent"
+                    }`}
+                    style={{
+                      paddingVertical: screenHeight * 0.015,
+                      marginBottom: screenHeight * 0.01,
+                    }}
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator color="#030014" />
+                    ) : (
+                      <Text
+                        className="font-bold text-primary"
+                        style={{ fontSize: screenWidth * 0.038 }}
+                      >
+                        Reset Password
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </>
+              )}
 
               {/* Resend Code */}
               <TouchableOpacity
                 onPress={handleResendCode}
                 disabled={isResending}
-                className={`rounded-xl py-3 items-center border border-neutral-100 ${
+                className={`rounded-xl items-center border border-neutral-100 ${
                   isResending ? "opacity-60" : ""
                 }`}
+                style={{
+                  paddingVertical: screenHeight * 0.012,
+                }}
               >
                 {isResending ? (
                   <View className="flex-row items-center gap-2">
                     <ActivityIndicator color="#9CA4AB" size="small" />
-                    <Text className="font-semibold text-sm text-light-300">
+                    <Text
+                      className="font-semibold text-light-300"
+                      style={{ fontSize: screenWidth * 0.03 }}
+                    >
                       Sending…
                     </Text>
                   </View>
                 ) : (
-                  <Text className="font-semibold text-sm text-light-300">
+                  <Text
+                    className="font-semibold text-light-300"
+                    style={{ fontSize: screenWidth * 0.03 }}
+                  >
                     Resend Code
                   </Text>
                 )}
@@ -522,7 +713,7 @@ export default function ResetPasswordScreen() {
               </Animated.View>
             )}
           </View>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </Reanimated.View>
   );

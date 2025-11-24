@@ -304,9 +304,18 @@ export const login = async (req, res, next) => {
   try {
     let { email, password } = req.body;
 
-    email = email ? email.trim().toLowerCase() : email;
+    email =
+      email && typeof email === "string" ? email.trim().toLowerCase() : email;
+    password =
+      password && typeof password === "string" ? password.trim() : password;
 
-    password = password ? password.trim() : password;
+    console.log("📧 [LOGIN] Email:", email);
+    console.log(
+      "🔑 [LOGIN] Password type:",
+      typeof password,
+      "Length:",
+      password?.length
+    );
 
     if (!email || !password) {
       return res.status(400).json({
@@ -563,10 +572,22 @@ export const resendVerification = async (req, res, next) => {
 // @access  Public
 export const forgotPassword = async (req, res, next) => {
   try {
+    console.log(
+      "🔔 [FORGOT PASSWORD] Endpoint hit at:",
+      new Date().toISOString()
+    );
+    console.log(
+      "📥 [FORGOT PASSWORD] Request body:",
+      JSON.stringify(req.body, null, 2)
+    );
+
     let { email, phoneNumber } = req.body;
 
     // Validate that at least one identifier is provided
     if (!email && !phoneNumber) {
+      console.log(
+        "❌ [FORGOT PASSWORD] Validation failed: No email or phone provided"
+      );
       return res.status(400).json({
         success: false,
         error: "Please provide either an email address or phone number",
@@ -587,11 +608,14 @@ export const forgotPassword = async (req, res, next) => {
 
     // Format email if provided
     email = email ? email.trim().toLowerCase() : null;
+    console.log("📧 [FORGOT PASSWORD] Formatted email:", email);
+    console.log("📱 [FORGOT PASSWORD] Formatted phone:", formattedPhone);
 
     // Validate email format if provided
     if (email) {
       const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
       if (!emailRegex.test(email)) {
+        console.log("❌ [FORGOT PASSWORD] Invalid email format:", email);
         return res.status(400).json({
           success: false,
           error: "Please provide a valid email address",
@@ -601,14 +625,28 @@ export const forgotPassword = async (req, res, next) => {
 
     // Find user by email or phone
     let user = null;
+    console.log("🔍 [FORGOT PASSWORD] Searching for user...");
     if (email) {
       user = await User.findOne({ email });
+      console.log(
+        "🔍 [FORGOT PASSWORD] User search by email:",
+        email,
+        user ? "✅ Found" : "❌ Not found"
+      );
     } else if (formattedPhone) {
       user = await User.findOne({ phoneNumber: formattedPhone });
+      console.log(
+        "🔍 [FORGOT PASSWORD] User search by phone:",
+        formattedPhone,
+        user ? "✅ Found" : "❌ Not found"
+      );
     }
 
     // Don't reveal if user exists (security best practice)
     if (!user) {
+      console.log(
+        "⚠️ [FORGOT PASSWORD] User not found - returning generic success message"
+      );
       return res.status(200).json({
         success: true,
         message:
@@ -616,11 +654,20 @@ export const forgotPassword = async (req, res, next) => {
       });
     }
 
+    console.log("✅ [FORGOT PASSWORD] User found:", {
+      id: user._id,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+    });
+
     // Generate 6-digit reset code
     const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    console.log("🔑 [FORGOT PASSWORD] Generated reset code:", resetCode);
+
     user.resetPasswordCode = resetCode;
     user.resetPasswordCodeExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
     await user.save({ validateBeforeSave: false });
+    console.log("💾 [FORGOT PASSWORD] Reset code saved to database");
 
     // Log code in development mode only
     if (
@@ -637,9 +684,14 @@ export const forgotPassword = async (req, res, next) => {
     }
 
     // Send code via email or SMS
+    console.log("📤 [FORGOT PASSWORD] Attempting to send reset code...");
     try {
       if (email && user.email) {
-        await sendEmail({
+        console.log(
+          "📧 [FORGOT PASSWORD] Preparing to send email to:",
+          user.email
+        );
+        const emailData = {
           to: user.email,
           subject: "9thWaka Password Reset Code",
           html: buildDarkEmailTemplate(
@@ -647,27 +699,141 @@ export const forgotPassword = async (req, res, next) => {
             "Use the code below to reset your password. This code will expire in 10 minutes.",
             resetCode
           ),
+        };
+        console.log("📧 [FORGOT PASSWORD] Email data prepared:", {
+          to: emailData.to,
+          subject: emailData.subject,
+          hasHtml: !!emailData.html,
         });
-        console.log("✉️ [EMAIL] Password reset code sent to:", user.email);
+
+        await sendEmail(emailData);
+        console.log(
+          "✅ [FORGOT PASSWORD] Email sent successfully to:",
+          user.email
+        );
       } else if (formattedPhone && user.phoneNumber) {
+        console.log(
+          "📱 [FORGOT PASSWORD] Preparing to send SMS to:",
+          user.phoneNumber
+        );
         const smsMessage = `Your 9thWaka password reset code is: ${resetCode}. This code expires in 10 minutes. If you didn't request this, please ignore this message.`;
         await sendSMS(user.phoneNumber, smsMessage);
-        console.log("📱 [SMS] Password reset code sent to:", user.phoneNumber);
+        console.log(
+          "✅ [FORGOT PASSWORD] SMS sent successfully to:",
+          user.phoneNumber
+        );
+      } else {
+        console.log(
+          "⚠️ [FORGOT PASSWORD] No email or phone available to send code"
+        );
+        console.log("   Email provided:", email);
+        console.log("   User email:", user.email);
+        console.log("   Phone provided:", formattedPhone);
+        console.log("   User phone:", user.phoneNumber);
       }
     } catch (sendError) {
+      console.error("❌ [FORGOT PASSWORD] Failed to send reset code!");
+      console.error("   Error type:", sendError?.constructor?.name);
+      console.error("   Error message:", sendError?.message);
+      console.error("   Error stack:", sendError?.stack);
       console.error(
-        "❌ [AUTH] Failed to send reset code:",
-        sendError?.message || sendError
+        "   Full error:",
+        JSON.stringify(sendError, Object.getOwnPropertyNames(sendError), 2)
       );
       // Still return success to not reveal if user exists
     }
 
+    console.log("✅ [FORGOT PASSWORD] Request completed successfully");
     res.status(200).json({
       success: true,
       message:
         "If an account exists with that information, a password reset code has been sent",
     });
   } catch (error) {
+    console.error("❌ [FORGOT PASSWORD] Unexpected error:", error?.message);
+    console.error("   Error stack:", error?.stack);
+    next(error);
+  }
+};
+
+// @desc    Verify reset code (without resetting password)
+// @route   POST /api/auth/verify-reset-code
+// @access  Public
+export const verifyResetCode = async (req, res, next) => {
+  try {
+    console.log(
+      "🔔 [VERIFY RESET CODE] Endpoint hit at:",
+      new Date().toISOString()
+    );
+    console.log(
+      "📥 [VERIFY RESET CODE] Request body:",
+      JSON.stringify(req.body, null, 2)
+    );
+
+    let { email, phoneNumber, code } = req.body;
+
+    if (!code || code.length !== 6) {
+      console.log("❌ [VERIFY RESET CODE] Invalid code format");
+      return res.status(400).json({
+        success: false,
+        error: "Invalid reset code. Please enter the 6-digit code.",
+      });
+    }
+
+    // Format identifiers
+    email = email ? email.trim().toLowerCase() : null;
+    let formattedPhone = null;
+    if (phoneNumber) {
+      formattedPhone = phoneNumber.trim();
+      formattedPhone = formattedPhone.replace(/^\+/, "");
+      if (!formattedPhone.startsWith("234")) {
+        formattedPhone = "234" + formattedPhone;
+      }
+      formattedPhone = "+" + formattedPhone;
+    }
+
+    if (!email && !formattedPhone) {
+      console.log("❌ [VERIFY RESET CODE] No email or phone provided");
+      return res.status(400).json({
+        success: false,
+        error: "Please provide either email or phone number",
+      });
+    }
+
+    // Build query to find user
+    const query = {
+      resetPasswordCode: code,
+      resetPasswordCodeExpires: { $gt: new Date() }, // Code must not be expired
+    };
+
+    if (email) {
+      query.email = email;
+    } else if (formattedPhone) {
+      query.phoneNumber = formattedPhone;
+    }
+
+    console.log("🔍 [VERIFY RESET CODE] Searching for user with code...");
+    const user = await User.findOne(query);
+
+    if (!user) {
+      console.log("❌ [VERIFY RESET CODE] Code invalid or expired");
+      return res.status(400).json({
+        success: false,
+        error:
+          "Invalid or expired reset code. Please request a new code if needed.",
+      });
+    }
+
+    console.log(
+      "✅ [VERIFY RESET CODE] Code is valid for user:",
+      user.email || user.phoneNumber
+    );
+    return res.status(200).json({
+      success: true,
+      message: "Reset code is valid",
+    });
+  } catch (error) {
+    console.error("❌ [VERIFY RESET CODE] Unexpected error:", error?.message);
     next(error);
   }
 };
@@ -677,8 +843,22 @@ export const forgotPassword = async (req, res, next) => {
 // @access  Public
 export const resetPassword = async (req, res, next) => {
   try {
+    console.log(
+      "🔔 [RESET PASSWORD] Endpoint hit at:",
+      new Date().toISOString()
+    );
+    console.log("📥 [RESET PASSWORD] Request params:", req.params);
+    console.log(
+      "📥 [RESET PASSWORD] Request body:",
+      JSON.stringify(req.body, null, 2)
+    );
+
     let { password, email, phoneNumber } = req.body;
-    const resetCode = req.params.code;
+    // Route parameter is named 'resettoken' but it contains the reset code
+    const resetCode = req.params.resettoken || req.params.code;
+
+    console.log("🔑 [RESET PASSWORD] Reset code from params:", resetCode);
+    console.log("🔑 [RESET PASSWORD] All params:", req.params);
 
     // Normalize password: trim whitespace
     password = password ? password.trim() : password;
@@ -728,22 +908,65 @@ export const resetPassword = async (req, res, next) => {
     } else if (formattedPhone) {
       query.phoneNumber = formattedPhone;
     } else {
+      console.log("❌ [RESET PASSWORD] No email or phone provided");
       return res.status(400).json({
         success: false,
         error: "Please provide either email or phone number",
       });
     }
 
+    console.log("🔍 [RESET PASSWORD] Searching for user with query:", {
+      resetPasswordCode: resetCode,
+      email: query.email,
+      phoneNumber: query.phoneNumber,
+      expiresCheck: "> " + new Date().toISOString(),
+    });
+
     // Find user with matching code
     const user = await User.findOne(query);
 
     if (!user) {
+      console.log("❌ [RESET PASSWORD] User not found with matching code");
+
+      // Check if user exists but code is wrong/expired
+      const userWithoutCodeCheck = await User.findOne({
+        email: query.email || undefined,
+        phoneNumber: query.phoneNumber || undefined,
+      });
+
+      if (userWithoutCodeCheck) {
+        console.log(
+          "⚠️ [RESET PASSWORD] User exists but code mismatch or expired"
+        );
+        console.log(
+          "   User reset code:",
+          userWithoutCodeCheck.resetPasswordCode
+        );
+        console.log(
+          "   Code expires:",
+          userWithoutCodeCheck.resetPasswordCodeExpires?.toISOString()
+        );
+        console.log("   Current time:", new Date().toISOString());
+        console.log(
+          "   Is expired?",
+          userWithoutCodeCheck.resetPasswordCodeExpires &&
+            userWithoutCodeCheck.resetPasswordCodeExpires < new Date()
+        );
+      }
+
       return res.status(400).json({
         success: false,
         error:
           "Invalid or expired reset code. Please request a new code if needed.",
       });
     }
+
+    console.log("✅ [RESET PASSWORD] User found:", {
+      id: user._id,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      codeExpires: user.resetPasswordCodeExpires?.toISOString(),
+    });
 
     // Set new password (pre-save hook will hash it automatically)
     user.password = password;
@@ -754,7 +977,9 @@ export const resetPassword = async (req, res, next) => {
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
 
+    console.log("💾 [RESET PASSWORD] Saving new password to database...");
     await user.save();
+    console.log("✅ [RESET PASSWORD] Password saved successfully");
 
     // Generate new login token
     const token = generateToken(user._id);

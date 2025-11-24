@@ -8,18 +8,18 @@ import { createAndSendNotification } from "../services/notificationService.js";
 /**
  * Create or update rating for a rider
  * POST /api/ratings/order/:id
- * 
+ *
  * Mathematics for rating aggregation:
  * - When a NEW rating is added:
  *   averageRating = (oldSum + newRating) / (oldCount + 1)
  *   totalRatings = oldCount + 1
- * 
+ *
  * - When an EXISTING rating is UPDATED:
  *   averageRating = (oldSum - oldRating + newRating) / oldCount
  *   totalRatings remains the same
- * 
+ *
  * - General formula: averageRating = Σ(all ratings) / count
- * 
+ *
  * Example:
  * - Rider has 3 ratings: [5, 4, 5] → average = 14/3 = 4.67
  * - New rating of 3 added: average = (14 + 3) / 4 = 4.25
@@ -27,10 +27,18 @@ import { createAndSendNotification } from "../services/notificationService.js";
  */
 export const createRating = async (req, res) => {
   try {
-    if (req.user.role !== "customer")
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: "User is not defined",
+      });
+    }
+
+    if (req.user.role !== "customer") {
       return res
         .status(403)
         .json({ success: false, error: "Only customers can rate riders" });
+    }
 
     const { rating, comment } = req.body || {};
     const orderId = req.params.id;
@@ -76,7 +84,7 @@ export const createRating = async (req, res) => {
     if (existingRating) {
       // Store old rating value for recalculation
       oldRatingValue = existingRating.rating;
-      
+
       // Update existing rating
       existingRating.rating = rating;
       if (comment !== undefined) existingRating.comment = comment || null;
@@ -93,7 +101,9 @@ export const createRating = async (req, res) => {
     }
 
     // Get current rider stats
-    const rider = await User.findById(order.riderId).select("averageRating totalRatings");
+    const rider = await User.findById(order.riderId).select(
+      "averageRating totalRatings"
+    );
     const currentAverage = rider.averageRating || 0;
     const currentCount = rider.totalRatings || 0;
 
@@ -130,7 +140,9 @@ export const createRating = async (req, res) => {
       await createAndSendNotification(order.riderId, {
         type: isUpdate ? "rating_updated" : "rating_received",
         title: isUpdate ? "Rating Updated" : "New Rating Received",
-        message: `You received a ${rating}-star rating${isUpdate ? " (updated)" : ""} for order #${String(order._id).slice(-8)}`,
+        message: `You received a ${rating}-star rating${
+          isUpdate ? " (updated)" : ""
+        } for order #${String(order._id).slice(-8)}`,
         metadata: { orderId: order._id.toString() },
       });
     } catch {}
@@ -146,7 +158,7 @@ export const createRating = async (req, res) => {
     } catch {}
 
     // Get the rating document to return
-    const ratingDoc = existingRating || await Rating.findOne({ orderId });
+    const ratingDoc = existingRating || (await Rating.findOne({ orderId }));
 
     res.json({ success: true, rating: ratingDoc });
   } catch (e) {
@@ -160,6 +172,13 @@ export const createRating = async (req, res) => {
  */
 export const getRating = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: "User is not defined",
+      });
+    }
+
     const orderId = req.params.id;
 
     const order = await Order.findById(orderId);
@@ -168,7 +187,8 @@ export const getRating = async (req, res) => {
 
     // Check permissions
     const isOwner = String(order.customerId) === String(req.user._id);
-    const isRider = order.riderId && String(order.riderId) === String(req.user._id);
+    const isRider =
+      order.riderId && String(order.riderId) === String(req.user._id);
     const isAdmin = req.user.role === "admin";
 
     if (!isOwner && !isRider && !isAdmin)
@@ -188,7 +208,7 @@ export const getRating = async (req, res) => {
 /**
  * Get all ratings for a rider
  * GET /api/ratings/rider/:riderId
- * 
+ *
  * Returns paginated list of all ratings for a specific rider
  */
 export const getRiderRatings = async (req, res) => {
@@ -210,7 +230,9 @@ export const getRiderRatings = async (req, res) => {
 
     const total = await Rating.countDocuments({ riderId });
 
-    const riderStats = await User.findById(riderId).select("averageRating totalRatings");
+    const riderStats = await User.findById(riderId).select(
+      "averageRating totalRatings"
+    );
 
     res.json({
       success: true,
@@ -225,4 +247,3 @@ export const getRiderRatings = async (req, res) => {
     res.status(500).json({ success: false, error: e.message });
   }
 };
-
